@@ -1,5 +1,17 @@
 //! Common modulo arithmetics and algorithms
 
+/// At this moment a brute-force attempt to find all square roots of x within
+/// the modulo
+pub fn sqrt(x: i64, modulo: i64) -> Vec<i64> {
+    return (0..modulo).filter_map(|elem| {
+        if modulo_sub(elem * elem, x, modulo) == 0 {
+            return Some(elem);
+        }
+        return None;
+    })
+    .collect();
+}
+
 /// subtract y from x within the input modulo
 pub fn modulo_sub(x: i64, y: i64, modulo: i64) -> i64 {
     let x = x % modulo;

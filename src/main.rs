@@ -1,3 +1,5 @@
+use waterloo_crypto::arithmetics;
+
 fn main() {
-    println!("Hello, world!");
+    println!("{:?}", arithmetics::sqrt(29, 35));
 }
