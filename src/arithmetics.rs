@@ -3,13 +3,14 @@
 /// At this moment a brute-force attempt to find all square roots of x within
 /// the modulo
 pub fn sqrt(x: i64, modulo: i64) -> Vec<i64> {
-    return (0..modulo).filter_map(|elem| {
-        if modulo_sub(elem * elem, x, modulo) == 0 {
-            return Some(elem);
-        }
-        return None;
-    })
-    .collect();
+    return (0..modulo)
+        .filter_map(|elem| {
+            if modulo_sub(elem * elem, x, modulo) == 0 {
+                return Some(elem);
+            }
+            return None;
+        })
+        .collect();
 }
 
 /// subtract y from x within the input modulo
@@ -90,9 +91,40 @@ impl CRT {
     }
 }
 
+/// Bascially factorial
+pub fn permutation(n: usize) -> usize {
+    let mut mul = 1;
+    for i in 1..=n {
+        mul = mul * i;
+    }
+    return mul;
+}
+
+/// "n choose c"
+pub fn combination(n: usize, c: usize) -> usize {
+    if n < c {
+        return 0;
+    }
+    let mut mul = 1;
+    for i in (n - c + 1)..=n {
+        mul *= i;
+    }
+    for i in 1..=c {
+        mul /= i;
+    }
+
+    return mul;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_permutation_combination() {
+        assert_eq!(permutation(5), 120);
+        assert_eq!(combination(5, 2), 10);
+    }
 
     #[test]
     fn test_modulo_sub() {
