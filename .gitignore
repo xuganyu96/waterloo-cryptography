@@ -16,3 +16,4 @@ Cargo.lock
 # Python
 .venv/
 .ipynb_checkpoints/
+__pycache__/
