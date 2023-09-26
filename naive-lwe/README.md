@@ -52,3 +52,15 @@ D(\text{sk}, (\vec{c}_1, c_2)) &= \begin{cases}
 \end{cases}
 \end{aligned}
 $$
+
+The correctness of this naive-LWE system relies on the observation that the sum of $m$ error terms has negligible chance of being greater than $\frac{q}{4}$ when $e \leftarrow N(0, \alpha q)$.
+
+## Implementation
+
+### Modulo arithmetics
+
+### Prime generation
+
+### Matrix arithmetics
+
+### Random sampling
