@@ -17,3 +17,6 @@ Cargo.lock
 .venv/
 .ipynb_checkpoints/
 __pycache__/
+
+# MacOS
+.DS_Store
