@@ -1,33 +1,27 @@
+# A gentle introduction to LWE
+
 ## Introduction
-Learning with errors (LWE) and related constructions have been a rich source of computational problems that have robust reduction to known hard problems in lattices and that have been applied to a large variety of cryptographic constructions, including collision-resistant hashing, digital signatures, key exchange, and public-key/symmetric-key cryptosystems with nice properties (e.g. FHE).
+Learning with errors (LWE) and related constructions have been a rich source of computational problems that provide a robust and versatile foundation enabling a large variety of cryptographic applciations, including collision-resistant hashing, digital signatures, key exchange, and public-key/symmetric-key cryptosystems with nice properties (e.g. FHE).
 
-Unfortunately, there is a genuine lack of introductory material to bring undergraduate-level students and engineers up to speed with the current state of the art and to provide mathematical intuition behind the various cryptographic applications. Students and engineers with limited mathematical background (such as the author himself) finds the jump from "what is LWE" to "building meaningful things in cryptography" rather daunting and unapprochable.
+The last decade saw a substantial increase of interest in lattice-based cryptography, but unfortunately there is a genuine lack of introductory material. At this moment, high quality content are concentrated in surveys that assume graduate level of mathematical background and lecture notes that are more complementary to the lecturers than comprehensive. This survey aims to bridge the jump from *"what is LWE"* to *"building meaningful crypto stuff"* by reviewing a select number of topics:
 
-For this project, this article aims to provide a gentle introduction to the mathematics behind LWE and expand in two directions:
-
-1. From LWE to hard lattice problems, most notably Regev's results linking the hardness of LWE to the hardness of shortest vector problem
-2. From LWE to application in cryptography, including
+- What is LWE: definition and intuition, variants and their equivalences
+- Why LWE: reduction to hard lattice problems
+    - [Regev '09](https://cims.nyu.edu/~regev/papers/qcrypto.pdf)
+- How to apply LWE: a collection of cryptographic applications
     - Collision resistant hashing
-    - Digital signature through lattice trapdoors
-    - Optimization through polynomial ring
-
-Time and effort permitting, the author also plans to explore advanced/adjacent topics including:
-
-1. `NTRUEncrypt` and `NTRUSign`
-2. Fully homomorphic encryption
-
-**Table of content**
-
-- Background information in linear algebra and probability
-- Statement of LWE and some equivalent variations
-- **reduction of LWE to SVP**
-- Collision resistant hashing
-- Lattice trapdoor and digital signature
-- Public-key/symmetric-key cryptosystem
-- (Bonus) NTRU
-- (Bonus) fully homomorphic encryption
+    - Digital signature
+    - Public-key and symmetric-key cryptosystem
+    - Ring variant of LWE
+- Bonus material if time permits
+    - NTRU
+    - Fully homomorphic encryption
 
 
 ## Resources
 - [On lattices, learning with errors, random linear codes, and cryptography](https://cims.nyu.edu/~regev/papers/qcrypto.pdf)
 - [Practical Lattice-based Digital Signature Schemes](https://csrc.nist.gov/csrc/media/events/workshop-on-cybersecurity-in-a-post-quantum-world/documents/papers/session9-oneill-paper.pdf)
+- [An intense introduction to cryptography](https://intensecrypto.org/public/index.html)  
+Online textbook written by Barak Boaz, includes a chapter on lattice-based cryptography
+- [A decade of lattice cryptography](https://web.eecs.umich.edu/~cpeikert/pubs/lattice-survey.pdf)  
+A survey by Chris Peikert
