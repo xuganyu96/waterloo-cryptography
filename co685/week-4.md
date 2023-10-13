@@ -7,7 +7,7 @@
 TODO: this is actually wrong; if $g$ is already a QR then $h$ is always a QR
 
 The Decisional Diffie-Hellman Assumption (DDH assumption) is the basis on which we can argue for IND-CPA of ElGamal's crypto system. However, the vanilla DDH asumption cannot hold for arbitrary $g$.
-
+    
 Recall the DDH assumption game:
 
 1. Challenger generates the parameters $g, p \in \mathbb{Z}$, randomly sample positive integers $x, y, z \leftarrow \mathbb{Z}^+$ and randomly sample a bit $b \in \{0, 1\}$
