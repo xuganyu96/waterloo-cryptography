@@ -25,3 +25,6 @@ The last decade saw a substantial increase of interest in lattice-based cryptogr
 Online textbook written by Barak Boaz, includes a chapter on lattice-based cryptography
 - [A decade of lattice cryptography](https://web.eecs.umich.edu/~cpeikert/pubs/lattice-survey.pdf)  
 A survey by Chris Peikert
+- [Implementation of Lattice-based Signature scheme ring-TESLA and comparison with ECSDA](https://crypto.stanford.edu/cs359c/17sp/projects/KennethXu.pdf)
+- [TESLA-sharp](https://eprint.iacr.org/2016/1026.pdf)
+- [qTESLA](https://eprint.iacr.org/2019/085.pdf)
