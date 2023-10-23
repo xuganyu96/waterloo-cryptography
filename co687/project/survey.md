@@ -6,6 +6,8 @@ Theoretical construction of lattice trapdoor has been found since as early as 19
 Within the reasonable scope of 6-8 weeks, I plan to focus on providing a digest of a number of papers including AJ99, GPV08, AP09, MP12, and MG17, in each case discussing the trapdoor construction and their performance/security characteristics. If capacity permits, I would also like to cover some digital signature schemes based on lattice trapdoors, including their constructions and security arguments. Finally with further capacity permits, I would like to try to implement a trapdoor generation algorithm in Rust, as there is very little implementation on the public space at this moment.
 
 ## References
+- Application of Lattice trapdoor
+    - [(Peikert, 08')Application of lossy trapdoor functions](https://eprint.iacr.org/2007/279.pdf)
 - Lattice trapdoor construction
     - [(Micciancio, Peikert, 12') Trapdoors for lattices: simpler, tighter, faster, smaller](https://eprint.iacr.org/2011/501)
     - [(Micciancio, Genise, 17') Faster Gaussian sampling for trapdoor lattices with arbitrary modulus](https://eprint.iacr.org/2017/308)
