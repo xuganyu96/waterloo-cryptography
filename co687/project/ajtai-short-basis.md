@@ -16,7 +16,7 @@ Solving the $\operatorname{SIS}(n, m, q, \beta)$ is thus equivalent to solving t
 
 If $A$ is truly uniformly random, then finding short solution is hard (source?). However, Ajtai showed in AJTAI'96 that it is possible to generate an instance of an SIS problem with a known short solution while the generated $A^\prime$ has negligible statistical distance from truly random. In AJTAI'99, Ajtai improved the generation algorithm to produce a full basis $S$ for $\mathcal{L}$ such that $AS = 0$.
 
-## Generate SIS with short vector
+## Generate SIS lattice with short vector
 The algorithm for generating an SIS problem with a known short vector contains the following steps:
 
 1. Independently sample $n - 1$ vectors $a_i \leftarrow \mathbb{Z}_q^n$
@@ -25,3 +25,12 @@ The algorithm for generating an SIS problem with a known short vector contains t
 4. $A = \lbrack a_1, a_2, \ldots, a_n \rbrack$ has known short solution $x = (b_1, b_2, \ldots, b_{n-1}, 1)$
 
 Ajtai proved (AJTAI'96) that the generated instance $A$ has negligible statistical distance from uniformly random samples in $\mathbb{Z}_q^{n \times n}$
+
+## Generating SIS lattice with short basis
+In 1999, Ajtai improved the algorithm for generating SIS problem from producing a single known short lattice point to producing $n$ linearly independent short lattice points (hence a short basis) each with a Euclidean norm bounded by $n^2\sqrt{n}$.
+
+The main drawback of Ajtai's algorithm is its excessive complexity. In addition, the quality of the short basis, as measured by the norm of the short lattice points, is improved by later works. Therefore, we will not cover the details of this SIS generator algorithm.
+
+## References:
+- [(Ajtai, '99) Generating hard instances of the short basis problem](https://people.csail.mit.edu/vinodv/CS294/ajtai99.pdf)
+- [(Ajtai, '96) Generating hard instances of lattice problems](https://dl.acm.org/doi/10.1145/237814.237838)
