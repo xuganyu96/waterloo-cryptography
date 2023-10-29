@@ -5,6 +5,19 @@ Theoretical construction of lattice trapdoor has been found since as early as 19
 
 Within the reasonable scope of 6-8 weeks, I plan to focus on providing a digest of a number of papers including AJ99, GPV08, AP09, MP12, and MG17, in each case discussing the trapdoor construction and their performance/security characteristics. If capacity permits, I would also like to cover some digital signature schemes based on lattice trapdoors, including their constructions and security arguments. Finally with further capacity permits, I would like to try to implement a trapdoor generation algorithm in Rust, as there is very little implementation on the public space at this moment.
 
+**Table of content**
+- Preliminaries
+    - [ ] Dual lattice is the lattice spanned by rows of $B^{-1}$
+    - [ ] Two basis matrices describe the same lattice if and only if they are related by a unimodular matrix
+    - [ ] [LLL basis reduction](https://math.mit.edu/~apost/courses/18.204-2016/18.204_Xinyue_Deng_final_paper.pdf)?
+- Generate lattices with short basis from SIS (Ajtai '96, Ajtai '99)
+    - [ ] Need to read Ajtai '96
+    - [ ] Need more details on Ajtai '99
+- Generate lattices with short basis, then use linear transformation to produce bad basis (GGH '97)
+    - This paper is fairly readable
+    - Additional material on [LLL](https://math.mit.edu/~apost/courses/18.204-2016/18.204_Xinyue_Deng_final_paper.pdf). LLL runs in polynomial time, but only provides exponentially bounded estimation of SVP; this means that when the number of dimension is large enough, LLL will not be able to provide meaningful recovery of the "good basis" from the "bad basis"
+
+
 ## References
 - Application of Lattice trapdoor
     - [(Peikert, Waters, 08')Application of lossy trapdoor functions](https://eprint.iacr.org/2007/279.pdf)
