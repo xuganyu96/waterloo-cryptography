@@ -110,10 +110,48 @@ def verify_hashed(
     ):
         return False
     
-    # Check congruence
-    lhs = pow(signature.r, 1, pk.params.q)
+    # Check congruence; note that the first reduction by p is necessary because
+    # the bound condition can sometimes 
+    lhs = pow(signature.r, 1, pk.params.p)
+    lhs = pow(lhs, 1, pk.params.q)
     v1 = pow(pk.params.g, m, pk.params.p)
     v2 = pow(pk.val, signature.r, pk.params.p)
     s_inv = pow(signature.s, -1, pk.params.q)
     rhs = pow(pow(v1 * v2, s_inv, pk.params.p), 1, pk.params.q)
     return lhs == rhs
+
+def forge_unbounded(
+    m_hashed: int, 
+    pk: PublicKey, 
+    params: Params, 
+    s: int | None = None
+):
+    """Forge a signature that will pass the no-bound-check verification.
+     
+    The forged signature randomly samples the second part of the forgery, but
+    if a value for (s) is provided, then the provided value will be used
+
+    >> p, q, g = 48731, 443, 5260
+    >> sk_val = 242
+    >> m_hashed = 343
+    >> nonce = 427
+    >> params = Params(p, q, g)
+    >> keypair = KeyPair(pow(g, sk_val, p), sk_val, params)
+    >> sigma = sign_hashed(keypair, m_hashed, nonce)
+    >> assert verify_hashed(keypair.pk, m_hashed, sigma, True), "Verification is wrong"
+    >> forged = forge_unbounded(m_hashed, keypair.pk, keypair.pk.params, None)
+    >> print(verify_hashed(keypair.pk, m_hashed, forged, False))
+    """
+    if s is None:
+        s = random.randint(1, params.q - 1)
+    s_inv = pow(s, -1, params.q)
+    r_prime = random.randint(1, params.q - 1)
+    r_pprime = pow(
+        pow(params.g, m_hashed, params.p) * pow(pk.val, r_prime, params.p),
+        s_inv,
+        params.p
+    )
+    sols = sympy.ntheory.modular.crt([params.q, params.p], [r_prime, r_pprime])
+    r = sols[0]
+    
+    return Signature(r, s)
