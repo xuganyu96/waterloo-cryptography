@@ -5,6 +5,14 @@ Theoretical construction of lattice trapdoor has been found since as early as 19
 
 Within the reasonable scope of 6-8 weeks, I plan to focus on providing a digest of a number of papers including AJ99, GPV08, AP09, MP12, and MG17, in each case discussing the trapdoor construction and their performance/security characteristics. If capacity permits, I would also like to cover some digital signature schemes based on lattice trapdoors, including their constructions and security arguments. Finally with further capacity permits, I would like to try to implement a trapdoor generation algorithm in Rust, as there is very little implementation on the public space at this moment.
 
+General structure of each topic:
+
+1. High level verview of the scheme
+2. A formal statement
+3. Correctness of inversion with the trapdoor
+4. Hardness of inversion without the trapdoor
+5. Applications
+
 **Table of content**
 - Preliminaries
     - [ ] Dual lattice is the lattice spanned by rows of $B^{-1}$

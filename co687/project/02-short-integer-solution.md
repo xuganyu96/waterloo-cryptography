@@ -3,7 +3,7 @@
 Recall the short integer solution $\operatorname{SIS}(n, m, q, \beta)$
 
 $$
-A\vec{x} = \vec{0}
+A\vec{x} = \vec{0} 
 $$
 
 Where $A \leftarrow \mathbb{Z}_q^{n \times m}$ is uniformly randomly sampled, and we are looking for $x \in \mathbb{Z}^m$  satisfying the equation such that the "length" of $\vec{x}$ is bounded by the parameter $\beta$. The short integer solution problem defined a lattice $\mathcal{L}(A^\bot)$:
