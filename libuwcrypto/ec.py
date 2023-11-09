@@ -114,18 +114,3 @@ class Point:
         if self.is_identity():
             return "<Point 0>"
         return f"<Point ({self.x}, {self.y})>"
-
-if __name__ == "__main__":
-    curve = EllipticCurve(103, 3, 4)
-    q = Point(2, 11, curve)
-    p = Point(84, 68, curve)
-    c = 3
-    assert p == q * c
-
-    t1 = 42
-    sols = curve.solve_y(t1)
-    r1q = Point(t1, sols[1], curve)
-    r1p = r1q * c
-    s1 = r1p.x; print(s1)
-    r2 = (p * s1).x
-    t2 = (q * r2).x; print(t2)

@@ -1,6 +1,6 @@
 import random
 import unittest
-from lib685.dsa import Params, KeyPair, verify_hashed, sign_hashed, forge_unbounded
+from libuwcrypto.dsa import Params, KeyPair, verify_hashed, sign_hashed, forge_unbounded
 
 
 class TestDSA(unittest.TestCase):
