@@ -1,9 +1,9 @@
 # Lattice trapdoor using reduced basis
 One class of constructing lattice trapdoor uses a pair of public and secret basis for the same lattice. Since the two basis generate the same lattice, they are equally good at mapping integer coordinates into a lattice point. On the other hand, the secret basis is very "good" and can be used to efficiently find the closest lattice point, but the public basis is very "bad" at recovering the closest lattice point.
 
-One of the earliest instances of such class of lattice trapdoor is proposed by Goldreich, GoldWasser, and Halevi in their 1997 paper *"Public-key cryptosystem from lattice reduction problem"*. At a high level, the trapdoor is parameterized by three items: a "bad" basis $B$, a "good" basis $R$, and an error bound $\sigma$. In the forward direction, the function maps a pair of lattice coordinate $\bold{v} \in \mathbb{Z}^n$ and a small error vector $\bold{e} \leftarrow \{ -\sigma, \sigma \}^n$ to $\bold{x} = B\bold{v} + \bold{e} \in \mathbb{R}^n$. If the parameters are generated correctly, then the closest lattice point in $\mathcal{L}(B)$ is exactly $B\bold{v}$.
+One of the earliest instances of such class of lattice trapdoor is proposed by Goldreich, GoldWasser, and Halevi in their 1997 paper *"Public-key cryptosystem from lattice reduction problem"*. At a high level, the trapdoor is parameterized by three items: a "bad" basis $B$, a "good" basis $R$, and an error bound $\sigma$. In the forward direction, the function maps a pair of lattice coordinate $\mathbf{v} \in \mathbb{Z}^n$ and a small error vector $\mathbf{e} \leftarrow \{ -\sigma, \sigma \}^n$ to $\mathbf{x} = B\mathbf{v} + \mathbf{e} \in \mathbb{R}^n$. If the parameters are generated correctly, then the closest lattice point in $\mathcal{L}(B)$ is exactly $B\mathbf{v}$.
 
-Inverting the function involves recovering the integer coordinate $\bold{v}$ (or the error vector $\bold{e}$, since recovering one of them automatically gives you the other). However, the inversion is exactly the cloest vector problem (CVP), and should be hard if $B$ is a sufficiently bad basis. On the other hand, since $R$ is a good basis, finding the closest vector point should be "easy" if we have $R$.
+Inverting the function involves recovering the integer coordinate $\mathbf{v}$ (or the error vector $\mathbf{e}$, since recovering one of them automatically gives you the other). However, the inversion is exactly the cloest vector problem (CVP), and should be hard if $B$ is a sufficiently bad basis. On the other hand, since $R$ is a good basis, finding the closest vector point should be "easy" if we have $R$.
 
 From here, GGH '97 proposed a public-key cryptosystem as well as a digital signature scheme that uses such a trapdoor construction, and the security of the two schemes naturally rest on the hardness of the underlying hard lattice problem.
 
@@ -15,32 +15,32 @@ The main security parameter in this scheme is the number of dimensions $n$ of th
 2. Key generation  
 First generate the "good" basis $R \in \mathbb{R}^{n \times }$, then apply some (unimodular) transformation to $R$ to obtain the "bad" basis $B$. The error bound $\sigma > 0 \in \mathbb{R}$ is dependent on the choice of $R$ and the choice of "probability of inversion error" $\epsilon >= 0$, which will be discussed in a later section.
 3. Forward evaluation  
-$f_{B}(\bold{v}, \bold{e}) = B\bold{v} + \bold{e}$, where $\bold{v} \in \{-n, \ldots, n\}^n$ and $\bold{e} \in \{-\sigma, \sigma\}$. According to the authors, the choice of bounds for values of $\bold{v}$ is arbitrary and not a significant contributor to the overall security of the scheme.
+$f_{B}(\mathbf{v}, \mathbf{e}) = B\mathbf{v} + \mathbf{e}$, where $\mathbf{v} \in \{-n, \ldots, n\}^n$ and $\mathbf{e} \in \{-\sigma, \sigma\}$. According to the authors, the choice of bounds for values of $\mathbf{v}$ is arbitrary and not a significant contributor to the overall security of the scheme.
 4. Inversion  
-Denote the output by $\bold{x} = f_{B}(\bold{v}, \bold{e})$, first attempt to recover the integer coordinate $\bold{v} \leftarrow B^{-1}R\lfloor R^{-1}\bold{x} \rceil$. From here it is trivial to recompute the lattice point $B\bold{v}$ and recover the error term $\bold{e} = \bold{x} - B\bold{v}$.
+Denote the output by $\mathbf{x} = f_{B}(\mathbf{v}, \mathbf{e})$, first attempt to recover the integer coordinate $\mathbf{v} \leftarrow B^{-1}R\lfloor R^{-1}\mathbf{x} \rceil$. From here it is trivial to recompute the lattice point $B\mathbf{v}$ and recover the error term $\mathbf{e} = \mathbf{x} - B\mathbf{v}$.
 
 ### Correctness of trapdoor inversion
-Without the error term, the function $f_B: \bold{v} \mapsto B\bold{v}$ is trivially invertible with either choice of the basis. However, with a non-zero the error term, the quality of the basis makes a substantial difference in how much error can be added before the points can no longer be recovered.
+Without the error term, the function $f_B: \mathbf{v} \mapsto B\mathbf{v}$ is trivially invertible with either choice of the basis. However, with a non-zero the error term, the quality of the basis makes a substantial difference in how much error can be added before the points can no longer be recovered.
 
-Observe the calculation used for recovering the integer coordinate $\bold{v}$:
-
-$$
-\begin{aligned}
-\lfloor R^{-1}\bold{x} \rceil &= B^{-1}R\lfloor R^{-1}(B\bold{v} + \bold{e})\rceil \\
-&= B^{-1}R\lfloor R^{-1}B\bold{v} + R^{-1}\bold{e}\rceil
-\end{aligned}
-$$
-
-Since $R, B$ are related by a unimodular matrix and $\bold{v}$ is an integer vector, $R^{-1}B\bold{v}$ is an integer vector and can be moved out of the "rounding" operator:
+Observe the calculation used for recovering the integer coordinate $\mathbf{v}$:
 
 $$
 \begin{aligned}
-\lfloor R^{-1}\bold{x} \rceil &= B^{-1}RR^{-1}B\bold{v} + B^{-1}R\lfloor R^{-1}\bold{e}\rceil \\
-&= \bold{v} + B^{-1}R\lfloor R^{-1}\bold{e} \rceil
+\lfloor R^{-1}\mathbf{x} \rceil &= B^{-1}R\lfloor R^{-1}(B\mathbf{v} + \mathbf{e})\rceil \\
+&= B^{-1}R\lfloor R^{-1}B\mathbf{v} + R^{-1}\mathbf{e}\rceil
 \end{aligned}
 $$
 
-Since $B^{-1}R$ is also a unimodular matrix, we can conclude that the equation above is successful at recovering the original coordinate if and only if $R^{-1}\bold{e} = \bold{0}$.
+Since $R, B$ are related by a unimodular matrix and $\mathbf{v}$ is an integer vector, $R^{-1}B\mathbf{v}$ is an integer vector and can be moved out of the "rounding" operator:
+
+$$
+\begin{aligned}
+\lfloor R^{-1}\mathbf{x} \rceil &= B^{-1}RR^{-1}B\mathbf{v} + B^{-1}R\lfloor R^{-1}\mathbf{e}\rceil \\
+&= \mathbf{v} + B^{-1}R\lfloor R^{-1}\mathbf{e} \rceil
+\end{aligned}
+$$
+
+Since $B^{-1}R$ is also a unimodular matrix, we can conclude that the equation above is successful at recovering the original coordinate if and only if $R^{-1}\mathbf{e} = \mathbf{0}$.
 
 To guarantee that inversion error never happens, we can bound the error term $\sigma > 0$ by $\frac{1}{2\rho}$, where $\rho$ is maximal $L_1$ norm among the rows of $R^{-1}$. This bound is excessively conservative, however, and we might want to relax the bound to enhance the security of the trapdoor scheme (larger error terms makes it harder to invert the function using only the public basis). The authors provided one such relaxation based on the Hoeffding inequality. This relaxation is stated as follows
 
@@ -65,10 +65,10 @@ From a high level, inverting the function corresponds to finding the an approxim
 The most straightforward attack on the trapdoor is to simply run the inversion algorithm with the public basis instead of the private basis:
 
 $$
-B^{-1}\bold{x} = B^{-1}(B\bold{v} + \bold{e}) = \bold{v} + B^{-1}\bold{e}
+B^{-1}\mathbf{x} = B^{-1}(B\mathbf{v} + \mathbf{e}) = \mathbf{v} + B^{-1}\mathbf{e}
 $$
 
-Due to $B$ being very skewed, this procedure does not immediately yield the correct value for $\bold{v}$ since $B^{-1}\bold{e}$  is not $\bold{0}$. However, since the possible values of $\bold{e}$ is finite, we can perform an exhaustive search on all possible values of $\bold{d} = B^{-1}\bold{e}$, although the search space will grow exponentially with the number of dimensions $n$. In experimental settings, with $n \geq 100$ the search space reaches 168 bits of entropy.
+Due to $B$ being very skewed, this procedure does not immediately yield the correct value for $\mathbf{v}$ since $B^{-1}\mathbf{e}$  is not $\mathbf{0}$. However, since the possible values of $\mathbf{e}$ is finite, we can perform an exhaustive search on all possible values of $\mathbf{d} = B^{-1}\mathbf{e}$, although the search space will grow exponentially with the number of dimensions $n$. In experimental settings, with $n \geq 100$ the search space reaches 168 bits of entropy.
 
 Using a better approximation algorithm for CVP, such as the nearest plane algorithm, yields a more efficient inversion than the brute-force search described above, although the complexity of the algorithm still scales exponentially with $n$. In experimental settings, with $n=150$ the workload of the nearest plane algorithm reaches 104 bits.
 
