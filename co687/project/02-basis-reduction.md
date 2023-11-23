@@ -1,7 +1,7 @@
 # Lattice basis reduction
 In this section we discuss some known best bounds on the shortest vector (of a lattice), as well as the known best algorithm for approximating the shortest vector.
 
-By convention, we define the minimum distance of a lattice to be the minimum of all distances between two distinct points on a lattice. Because lattice is a discrete sub-group of $\mathbb{Z}^n$, this minimum distance is always achieved by some pair of points. Also becasue a lattice is closed under addition (and thus subtraction), the minimum distance is exactly the length of the shortest vector on the lattice. Denote the mininum distance by $\lambda(\mathcal{L})$. For convenience, where there is no confusion of which lattice we are working with, we simply denote the minimum distance by $\lambda$
+By convention, we define the minimum distance of a lattice to be the minimum of all distances between two distinct points on a lattice. Because lattice is a discrete sub-group of $\mathbb{Z}^n$, this minimum distance is always achieved by some pair of points. Also because a lattice is closed under addition (and thus subtraction), the minimum distance is exactly the length of the shortest vector on the lattice. Denote the mininum distance by $\lambda(\mathcal{L})$. For convenience, where there is no confusion of which lattice we are working with, we simply denote the minimum distance by $\lambda$
 
 ## A lower bound on the shortest vector
 We can first provide a lower bound on the length of the shortest vector of a lattice, given a basis $B$. First, recall the Gram-Schmidt orthognoalization process for converting a basis $B = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n]$ into an orthogonal basis $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ via the following algorithm:
@@ -81,7 +81,7 @@ $$
 ## LLL lattice basis reduction algorithm
 At the time of this survey, the best algorithm for solving the (approximate) shortest vector problem is the LLL lattice basis reduction algorithm, attributed to Arjen Lenstra, Hendrik Lenstra, and László Lovász. The reduction algorithm transforms an input basis into an LLL-reduced form, where the first base vector of the reduced basis is an approximation of the shortest vector.
 
-**If time permits, we will discuss the algorithm itself. However, I found it okay to first treat the algorithm as a black box, and instead focus on the properties of the output.**
+**If time permits, we will discuss the algorithm itself. However, I found it okay to first treat the algorithm as a black box, and instead focus on the properties of the reduced basis.**
 
 The definition of a reduced basis is parameterized by a real number $\frac{1}{4} < \delta \leq 1$. A basis $B$ is $\delta$-LLL reduced if the following conditions are satisfied:
 
@@ -140,5 +140,3 @@ This in equality bounds the length of the first base vector of the reduced basis
 
 In other words, the LLL reduction algorithm computes an approximation of the shortest vector within a factor of $\gamma \in O(\alpha^n)$. With specific choices of "bad" basis and sufficiently high dimension $n$, the basis reduction algorithm will not be able to provide meaningfully tight approximation of the shortest vector, making the shortest vector problem suitably hard for cryptographic applications.
 
-## From shortest vector problem to closest vector problem
-sources: https://cseweb.ucsd.edu/classes/fa21/cse206A-a/LecLLL.pdf

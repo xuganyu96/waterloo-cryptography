@@ -1,0 +1,186 @@
+# Nearest plane algorithm
+In this section we state the closest vector problem (CVP), which is a hard lattice problem that the GGH construction is based on. We will then discuss Babai's nearest plane algorithm, which can be used to approximate solutions to the CVP.
+
+Let $\mathcal{L}(B) \subseteq \mathbb{Z}^n$ be a full-rank lattice, and let $\mathbf{t} \in \mathbb{Z}^n$ be a target vector. The closest vector problem asks to find $\mathbf{v} \in \mathcal{L}(B)$ that minimizes $\Vert \mathbf{t} - \mathbf{v} \Vert$, where the norm is the Euclidean norm (over real numbers).
+
+## Fundamental regions
+Before attempting the closest vector problem, we first introduce a highly relevant concept called the **fundamental region** of a lattice. A fundamental region $S$ is a subset of the (real) linear span of the basis such that it tiles the linear span of the basis and each tile contains exactly one lattice point. If we have a fundamental region $S$ defined, then each point in the linear span of the basis can be uniquely decomposed into the sum of a lattice point and a point in the fundamental region:
+
+$$
+\mathcal{L}(B) = \{S + B\mathbf{x} \mid \mathbf{x} \in \mathbb{Z}^n\}
+$$
+
+A few notable examples include the fundamental parallelpiped 
+
+$$
+\mathcal{P}(B) = \{B\mathbf{x} \mid \mathbf{x} \in [0, 1)^n\}
+$$
+
+and the centered fundamental parallelpiped
+
+$$
+\mathcal{C}(B) = \{B\mathbf{x} \mid \mathbf{x} \in [-\frac{1}{2}, \frac{1}{2})^n\}
+$$
+
+Computing the decomposition using the (centered) fundmental parallelpiped is easy. First compute $B^{-1}\mathbf{t}$ (over $\mathbb{R}$), then perform some kind of rounding (flooring or nearest integer) depending on whether the fundamental parallelpiped is centered or or not. $B\lfloor B^{-1}\mathbf{T} \rceil$ is the lattice point whose corresponding fundamental region contains the target. This is Babai's rounding algorithm. As we will see in later section, this algorithm works well if $B$ is short and orthogonal, but falls apart badly if $B$ is long and skewed.
+
+The Voronoi region is defined by the set of points in the linear span that are closer to $\mathbf{0}$ than to any other lattice points. There is some additional details that need to be specified to ensure that the Voronoi region properly closes and forms a partition of $\text{span}(B)$, which we will not discuss in details here. If we have an algorithm that can efficiently decompose $\mathbf{t} \in \text{span}(B)$ using the Voronoi region, then we automatically have a way to solve the closest vector problem. Unfortunately, no such algorithm is known.
+
+Of particular interest is the (centered) orthogonalized fundamental parallelpiped, which is defined using the orthogonalized basis $B^\ast = \text{Gram-Schmidt}(B)$:
+
+$$
+\mathcal{C}(B^\ast) = \{B^\ast\mathbf{x} \mid \mathbf{x} \in [-\frac{1}{2}, \frac{1}{2})\}
+$$
+
+(If time permits we should try to prove that $\mathcal{C}(B^\ast)$ is indeed a fundamental region. For now, we will take that for granted without proof).
+
+Because $B^\ast$ is an orthogonal basis, it's easy to see that the sphere centered at some lattice point $\mathbf{v} \in \mathcal{L}$ and whose radius is $\frac{1}{2}\min \Vert \mathbf{b}_i^\ast\Vert$ is entirely contained in the (shifted) fundamental region $\text{sphere} \subset \{\mathcal{C}(B^\ast) + \mathbf{v}\}$.
+
+## Babai's nearest plane algorithm
+Babai's nearest plane algorithm, attributed to László Babai, is a recursive algorithm that can approximate the closest vector under a given basis to a target vector. More specifically, it returns a vector point $\mathbf{v}$ such that, if target vector is projected onto the orthogonalized basis, the projection is contained in $\mathbf{v} + \mathcal{C}(B^\ast)$. If the target vector is in the linear span of the basis, then the target vector itself is contained in $\mathbf{v} + \mathcal{C}(B^\ast)$.
+
+The algorithm $\text{NearestPlane}(B, \mathbf{t})$ takes a set of basis $B = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n}]$ and a target vector $\mathbf{t}$, then performs the following procedure:
+
+1. If $B$ is an empty set of basis, return $\mathbf{0}$
+2. $B^\ast \leftarrow \text{GramSchmidt}(B)$
+3. $c \leftarrow \lfloor \frac{\langle\mathbf{t}, \mathbf{b}_n^\ast\rangle}{\langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle} \rceil$, where $\mathbf{b}_n^\ast$ is the last base vector in $B^\ast$
+4. $B' = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n-1}]$ is obtained by removing the last base vector from $B$
+5. return $c\mathbf{b}_n + \text{NearestPlane}(B', \mathbf{t} - c\mathbf{b}_n)$
+
+Denote the output of this algorithm by $\mathbf{v}$, the key theorem about this algorithm is as follows:
+
+$$
+\forall 1 \leq i \leq n, 
+\frac{
+    \langle
+        \mathbf{t} - \mathbf{v}, \mathbf{b}_i^\ast
+    \rangle
+}{
+    \langle
+        \mathbf{b}_i^\ast, \mathbf{b}_i^\ast
+    \rangle
+} 
+\in [-\frac{1}{2}, \frac{1}{2})
+$$
+
+Intuitively, the inequality above states that the deviation of $\mathbf{t}$ from $\mathbf{v}$ is between $-\frac{1}{2}\mathbf{b}_i^\ast$ and $\frac{1}{2}\mathbf{b}_i^\ast$ in any of the chosen direction $\mathbf{b}_i^\ast$, which means that $\mathbf{t} - \mathbf{v}$ is indeed contained in the orthogonalized fundamental parallelpiped.
+
+We can prove this result inductively. In the base case, if the input set of basis is empty, then this result is trivially correct. In the inductive case, we denote the output of $\text{NearestPlane}(B', \mathbf{t} - c\mathbf{b}_n)$ by $\mathbf{v}^\prime$. Assuming that the algorithm produces the desired result for the sublattice $\mathcal{L}(B^\prime)$:
+
+$$
+\forall 1 \leq i \leq (n-1), 
+\frac{
+    \langle
+        (\mathbf{t} - c\mathbf{b}_n) - \mathbf{v}^\prime, 
+        \mathbf{b}_i^\ast
+    \rangle
+}{
+    \langle
+        \mathbf{b}_i^\ast, \mathbf{b}_i^\ast
+    \rangle
+} \in [-\frac{1}{2}, \frac{1}{2})
+$$
+
+However, notice in step 5 of the algorithm $c\mathbf{b}_n + \mathbf{v}^\prime$ is the output of the current iteration of the algorithm, so we have
+
+$$
+\begin{aligned}
+(\mathbf{t} - c\mathbf{b}_n) - \mathbf{v}^\prime 
+&= \mathbf{t} - (c\mathbf{b}_n + \mathbf{v}^\prime) \\
+&= \mathbf{t} - \mathbf{v}
+\end{aligned}
+$$
+
+which means that
+
+$$
+\forall 1 \leq i \leq (n-1), 
+\frac{
+    \langle
+        \mathbf{t} - \mathbf{v}, 
+        \mathbf{b}_i^\ast
+    \rangle
+}{
+    \langle
+        \mathbf{b}_i^\ast, \mathbf{b}_i^\ast
+    \rangle
+} \in [-\frac{1}{2}, \frac{1}{2})
+$$
+
+So all that remains is to show that this relationship also holds for $i = n$.
+
+To prove that the relationship holds for $i = n$, first observe how $c$ is computed:
+
+$$
+c \leftarrow \lfloor \frac{\langle\mathbf{t}, \mathbf{b}_n^\ast\rangle}{\langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle} \rceil
+$$
+
+which is equivalent to saying that
+
+$$
+\frac{
+    \langle\mathbf{t}, \mathbf{b}_n^\ast\rangle
+}{
+    \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+}
+- c \in [-\frac{1}{2}, \frac{1}{2})
+$$
+
+Also recall the Gram-Schmid orthogonalization process:
+
+$$
+\mathbf{b}_n^\ast +\sum_{i<n}\mu_{n, i}\mathbf{b}_i^\ast = \mathbf{b}_n
+$$
+
+Therefore
+
+$$
+\begin{aligned}
+\langle\mathbf{b}_n, \mathbf{b}_n^\ast\rangle
+&= \langle 
+    \mathbf{b}_n^\ast +\sum_{i<n}\mu_{n, i}\mathbf{b}_i^\ast, \mathbf{b}_n^\ast
+\rangle \\
+&= \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+\end{aligned}
+$$
+
+All non $\mathbf{b}_n^\ast$ terms can be cleared because they are orthogonal to $\mathbf{b}_n^\ast$, so their inner product is 0. This equality means that:
+
+$$
+\frac{
+    \langle\mathbf{b}_n, \mathbf{b}_n^\ast\rangle
+}{
+    \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+} = 1
+$$
+
+Finally we can put everything together:
+
+$$
+\begin{aligned}
+\frac{
+    \langle\mathbf{t}, \mathbf{b}_n^\ast\rangle
+}{
+    \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+}
+- c 
+&= \frac{
+    \langle\mathbf{t}, \mathbf{b}_n^\ast\rangle
+}{
+    \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+}
+- c \frac{
+    \langle\mathbf{b}_n, \mathbf{b}_n^\ast\rangle
+}{
+    \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+} \\
+&= \frac{
+    \langle\mathbf{t} - c\mathbf{b}_n, \mathbf{b}_n^\ast\rangle
+}{
+    \langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle
+}
+\in [-\frac{1}{2}, \frac{1}{2})
+\end{aligned}
+$$
+
+Hence we've proved the relationship for $i = n$. $\blacksquare$
