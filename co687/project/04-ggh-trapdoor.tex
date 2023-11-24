@@ -1,7 +1,7 @@
 \section{The Goldreich-Goldwasser-Halevi trapdoor}
 One class of constructing lattice trapdoor uses a pair of public and secret basis for the same lattice. Since the two basis generate the same lattice, they are equally good at mapping integer coordinates into a lattice point. On the other hand, the secret basis is very "good" and can be used to efficiently find the closest lattice point, but the public basis is very "bad" at recovering the closest lattice point.
 
-One of the earliest instances of such class of lattice trapdoor is proposed by Goldreich, GoldWasser, and Halevi in their 1997 paper *"Public-key cryptosystem from lattice reduction problem"*. At a high level, the trapdoor is parameterized by three items: a "bad" basis $B$, a "good" basis $R$, and an error bound $\sigma$. In the forward direction, the function maps a pair of lattice coordinate $\mathbf{v} \in \mathbb{Z}^n$ and a small error vector $\mathbf{e} \leftarrow \{ -\sigma, \sigma \}^n$ to $\mathbf{x} = B\mathbf{v} + \mathbf{e} \in \mathbb{R}^n$. If the parameters are generated correctly, then the closest lattice point in $\mathcal{L}(B)$ is exactly $B\mathbf{v}$.
+One of the earliest instances of such class of lattice trapdoor is proposed by Goldreich, GoldWasser, and Halevi in their 1997 paper \textit{"Public-key cryptosystem from lattice reduction problem"}. At a high level, the trapdoor is parameterized by three items: a "bad" basis $B$, a "good" basis $R$, and an error bound $\sigma$. In the forward direction, the function maps a pair of lattice coordinate $\mathbf{v} \in \mathbb{Z}^n$ and a small error vector $\mathbf{e} \leftarrow \{ -\sigma, \sigma \}^n$ to $\mathbf{x} = B\mathbf{v} + \mathbf{e} \in \mathbb{R}^n$. If the parameters are generated correctly, then the closest lattice point in $\mathcal{L}(B)$ is exactly $B\mathbf{v}$.
 
 Inverting the function involves recovering the integer coordinate $\mathbf{v}$ (or the error vector $\mathbf{e}$, since recovering one of them automatically gives you the other). However, the inversion is exactly the cloest vector problem (CVP), and should be hard if $B$ is a sufficiently bad basis. On the other hand, since $R$ is a good basis, finding the closest vector point should be "easy" if we have $R$.
 
@@ -10,14 +10,12 @@ From here, GGH '97 proposed a public-key cryptosystem as well as a digital signa
 \subsection{The trapdoor scheme}
 The GGH trapdoor scheme contains four components:
 
-1. Parameter generation  
-The main security parameter in this scheme is the number of dimensions $n$ of the lattice. In the original paper, the authors claimed $n \approx 150$ is sufficient for making inverting the function without the private basis hard and $n \approx 250$ should be a safe choice for the foreseeable future.
-2. Key generation  
-First generate the "good" basis $R \in \mathbb{R}^{n \times }$, then apply some (unimodular) transformation to $R$ to obtain the "bad" basis $B$. The error bound $\sigma > 0 \in \mathbb{R}$ is dependent on the choice of $R$ and the choice of "probability of inversion error" $\epsilon >= 0$, which will be discussed in a later section.
-3. Forward evaluation  
-$f_{B}(\mathbf{v}, \mathbf{e}) = B\mathbf{v} + \mathbf{e}$, where $\mathbf{v} \in \{-n, \ldots, n\}^n$ and $\mathbf{e} \in \{-\sigma, \sigma\}$. According to the authors, the choice of bounds for values of $\mathbf{v}$ is arbitrary and not a significant contributor to the overall security of the scheme.
-4. Inversion  
-Denote the output by $\mathbf{x} = f_{B}(\mathbf{v}, \mathbf{e})$, first attempt to recover the integer coordinate $\mathbf{v} \leftarrow B^{-1}R\lfloor R^{-1}\mathbf{x} \rceil$. From here it is trivial to recompute the lattice point $B\mathbf{v}$ and recover the error term $\mathbf{e} = \mathbf{x} - B\mathbf{v}$.
+\begin{enumerate}
+    \item \textbf{Parameter generation} The main security parameter in this scheme is the number of dimensions $n$ of the lattice. In the original paper, the authors claimed $n \approx 150$ is sufficient for making inverting the function without the private basis hard and $n \approx 250$ should be a safe choice for the foreseeable future.
+    \item \textbf{Key generation} First generate the "good" basis $R \in \mathbb{R}^{n \times }$, then apply some (unimodular) transformation to $R$ to obtain the "bad" basis $B$. The error bound $\sigma > 0 \in \mathbb{R}$ is dependent on the choice of $R$ and the choice of "probability of inversion error" $\epsilon >= 0$, which will be discussed in a later section.
+    \item \textbf{Forward evaluation} $f_{B}(\mathbf{v}, \mathbf{e}) = B\mathbf{v} + \mathbf{e}$, where $\mathbf{v} \in \{-n, \ldots, n\}^n$ and $\mathbf{e} \in \{-\sigma, \sigma\}$. According to the authors, the choice of bounds for values of $\mathbf{v}$ is arbitrary and not a significant contributor to the overall security of the scheme.
+    \item \textbf{Inversion} Denote the output by $\mathbf{x} = f_{B}(\mathbf{v}, \mathbf{e})$, first attempt to recover the integer coordinate $\mathbf{v} \leftarrow B^{-1}R\lfloor R^{-1}\mathbf{x} \rceil$. From here it is trivial to recompute the lattice point $B\mathbf{v}$ and recover the error term $\mathbf{e} = \mathbf{x} - B\mathbf{v}$.
+\end{enumerate}
 
 \subsection{Correctness of trapdoor inversion}
 Without the error term, the function $f_B: \mathbf{v} \mapsto B\mathbf{v}$ is trivially invertible with either choice of the basis. However, with a non-zero the error term, the quality of the basis makes a substantial difference in how much error can be added before the points can no longer be recovered.

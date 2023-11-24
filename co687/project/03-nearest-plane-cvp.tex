@@ -41,11 +41,15 @@ Babai's nearest plane algorithm, attributed to László Babai, is a recursive al
 
 The algorithm $\text{NearestPlane}(B, \mathbf{t})$ takes a set of basis $B = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n}]$ and a target vector $\mathbf{t}$, then performs the following procedure:
 
-1. If $B$ is an empty set of basis, return $\mathbf{0}$
-2. $B^\ast \leftarrow \text{GramSchmidt}(B)$
-3. $c \leftarrow \lfloor \frac{\langle\mathbf{t}, \mathbf{b}_n^\ast\rangle}{\langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle} \rceil$, where $\mathbf{b}_n^\ast$ is the last base vector in $B^\ast$
-4. $B' = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n-1}]$ is obtained by removing the last base vector from $B$
-5. return $c\mathbf{b}_n + \text{NearestPlane}(B', \mathbf{t} - c\mathbf{b}_n)$
+\begin{enumerate}
+    \item If $B$ is an empty set of basis, return $\mathbf{0}$
+    \item $B^\ast \leftarrow \text{GramSchmidt}(B)$
+    \item $c \leftarrow \lfloor \frac{\langle\mathbf{t}, \mathbf{b}_n^\ast\rangle}{\langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle} \rceil$, where $\mathbf{b}_n^\ast$ is the last base vector in $B^\ast$
+    \item $B' = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n-1}]$ is obtained by removing the last base vector from $B$
+    \item return $c\mathbf{b}_n + \text{NearestPlane}(B', \mathbf{t} - c\mathbf{b}_n)$
+\end{enumerate}
+
+
 
 Denote the output of this algorithm by $\mathbf{v}$, the key theorem about this algorithm is as follows:
 
