@@ -1,9 +1,9 @@
-# Nearest plane algorithm
+\section{Nearest plane algorithm}
 In this section we state the closest vector problem (CVP), which is a hard lattice problem that the GGH construction is based on. We will then discuss Babai's nearest plane algorithm, which can be used to approximate solutions to the CVP.
 
 Let $\mathcal{L}(B) \subseteq \mathbb{Z}^n$ be a full-rank lattice, and let $\mathbf{t} \in \mathbb{Z}^n$ be a target vector. The closest vector problem asks to find $\mathbf{v} \in \mathcal{L}(B)$ that minimizes $\Vert \mathbf{t} - \mathbf{v} \Vert$, where the norm is the Euclidean norm (over real numbers).
 
-## Fundamental regions
+\subsection{Fundamental regions}
 Before attempting the closest vector problem, we first introduce a highly relevant concept called the **fundamental region** of a lattice. A fundamental region $S$ is a subset of the (real) linear span of the basis such that it tiles the linear span of the basis and each tile contains exactly one lattice point. If we have a fundamental region $S$ defined, then each point in the linear span of the basis can be uniquely decomposed into the sum of a lattice point and a point in the fundamental region:
 
 $$
@@ -36,7 +36,7 @@ $$
 
 Because $B^\ast$ is an orthogonal basis, it's easy to see that the sphere centered at some lattice point $\mathbf{v} \in \mathcal{L}$ and whose radius is $\frac{1}{2}\min \Vert \mathbf{b}_i^\ast\Vert$ is entirely contained in the (shifted) fundamental region $\text{sphere} \subset \{\mathcal{C}(B^\ast) + \mathbf{v}\}$.
 
-## Babai's nearest plane algorithm
+\subsection{Babai's nearest plane algorithm}
 Babai's nearest plane algorithm, attributed to László Babai, is a recursive algorithm that can approximate the closest vector under a given basis to a target vector. More specifically, it returns a vector point $\mathbf{v}$ such that, if target vector is projected onto the orthogonalized basis, the projection is contained in $\mathbf{v} + \mathcal{C}(B^\ast)$. If the target vector is in the linear span of the basis, then the target vector itself is contained in $\mathbf{v} + \mathcal{C}(B^\ast)$.
 
 The algorithm $\text{NearestPlane}(B, \mathbf{t})$ takes a set of basis $B = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n}]$ and a target vector $\mathbf{t}$, then performs the following procedure:
