@@ -1,13 +1,8 @@
 # What's next
 
-- [ ] Read up on [LLL basis reduction](https://cseweb.ucsd.edu/classes/fa21/cse206A-a/LecLLL.pdf) and write it into the preliminaries
-- [ ] Read up on [dual lattice](https://cseweb.ucsd.edu/classes/fa21/cse206A-a/Lec3-Dual.pdf) and its relationship for CVP
-- [ ] Read up on Hermite normal form and write it into the preliminaries
-- [ ] Write a section on SIS and how it is related to lattices
-- [ ] Write up the GGH trapdoor construction
-    - [ ] Write up the encryption scheme
-    - [ ] Write up the signature scheme
-- [ ] Where time permits, read the details of the LL algorithm and write about it in section 2
+- [ ] Write a section on GGH trapdoor's application: pkcs and digital signature
+- [ ] Write a section on the LLL algorithm itself
+- [ ] Read up on "dual lattice"
 
 ## References
 - Application of Lattice trapdoor
