@@ -1,0 +1,234 @@
+\section{Hard lattice problems and best known solutions}
+We begin the discussion of hard lattice problems by defining two such problems. Unless otherwise specified, the Euclidean norm is used.
+
+\begin{definition}
+    Given a lattice $\mathcal{L}(B)$ spanned by basis $B$ and a norm $\Vert \cdot \Vert \rightarrow \mathbb{R}$, the \textbf{shortest vector problem} asks to find the shortest non-zero vector $\mathbf{v} \in \mathcal{L}(B)$
+\end{definition}
+
+The norm of the shortest non-zero vector is called the \textbf{minimum distance} and is denoted by $\lambda(\mathcal{L})$. Where the lattice is unambiguous we simply denote the minimum distance by $\lambda$.
+
+\begin{definition}
+    Given a lattice $\mathcal{L}(B)$, a norm, and some target vector $\mathbf{t}$ in the same vector space as the lattice, the \textbf{closest vector problem} asks to find a lattice point $\mathbf{v} \in \mathcal{L}$ that minimizes $\Vert \mathbf{t} - \mathbf{v}\Vert$
+\end{definition}
+
+There are two main parameters that affect the difficulty of SVP and CVP. The first is the number of dimensions $n$: the higher the number of dimension, the harder it is to find the shortest vector and/or the closest vector. The second is the orthogonality and/or the length of the basis. Intuitively, orthogonality and length are inversely related because the determinant of the lattice is invariant with respect to the choice of basis: higher orthogonality automatically implies shorter lengths. The more skewed the choice of basis, the more difficult it is to solve SVP/CVP.
+
+\subsection{Reduced lattice basis}
+At the time of this survey, the best algorithm for solving the (approximate) shortest vector problem is the LLL lattice basis reduction algorithm\cite{lenstra1982factoring}, attributed to Arjen Lenstra, Hendrik Lenstra, and László Lovász. The reduction algorithm transforms an input basis into an LLL-reduced form parameterized by a real number $\frac{1}{4} < \delta \leq 1$, where the first base vector of the reduced basis is an approximation of the shortest vector. Details of the actual algorithm for obtaining a reduced basis will be discussed in \ref{subsec:lllreduce}. Meanwhile, it is helpful to state the definition of the reduced basis and discuss its relationship to the shortest vector.
+
+\begin{definition}
+    A basis $B$ is $\delta$-LLL reduced if two conditions are satisfied
+    \begin{enumerate}
+    \item For all $j > i$, $\vert\mu_{j, i}\vert \leq \frac{1}{2}$
+    \item For all $1 \leq i \leq n-1$, $\delta\Vert \pi_i(\mathbf{b}_i)\Vert^2 \leq \Vert\pi_i(\mathbf{b}_{i+1})\Vert^2$
+\end{enumerate}
+\end{definition}
+
+The first condition will be discussed in details in \ref{subsec:nearestplane}. For now, we focus on the second condition, which gives us a description of how a reduced basis can be used to approximate the shortest vector.
+
+\begin{theorem}
+    If $B$ is $\delta$-LLL reduced basis, then
+    $$
+    \Vert \mathbf{b}_1 \Vert \leq \alpha^\frac{n-1}{2} \lambda
+    $$
+    where $\alpha = \frac{1}{\delta - \frac{1}{4}}$
+\end{theorem}
+
+In other words, the first base vector of a LLL-reduced basis is an approximation of the true shortest vector within an exponential factor.
+
+\subsection{Babai's nearest plane algorithm}\label{subsec:nearestplane}
+We denote the centered orthogonal parallelepiped as the following:
+
+\begin{definition}
+    Given basis $B$ and its Gram-Schmidt orthogonalization $B^\ast$, the \textbf{orthogonalized parallelepiped} is defined by
+
+    $$
+    \mathcal{C}(B^\ast) = \{
+        B^\ast \mathbf{x} \mid \mathbf{x} \in [-\frac{1}{2}, \frac{1}{2})^n
+    \}
+    $$
+\end{definition}
+
+Babai's nearest plane algorithm, attributed to László Babai, is a recursive algorithm that can approximate the closest vector under a given basis to a target vector. More specifically, it returns a vector point $\mathbf{v}$ such that, if target vector is projected onto the orthogonalized basis, the projection is contained in $\mathbf{v} + \mathcal{C}(B^\ast)$. If the target vector is in the linear span of the basis, then the target vector itself is contained in $\mathbf{v} + \mathcal{C}(B^\ast)$.
+
+\begin{algorithm}
+\caption{NearestPlane}
+\begin{algorithmic}[1]
+    \If{$B$ is empty}
+        \State return $\mathbf{0}$
+    \EndIf 
+    \State $B^\ast \leftarrow \text{GramSchmidt}(B)$
+    \State $c \leftarrow \lfloor \frac{\langle\mathbf{t}, \mathbf{b}_n^\ast\rangle}{\langle\mathbf{b}_n^\ast, \mathbf{b}_n^\ast\rangle} \rceil$, where $\mathbf{b}_n^\ast$ is the last base vector in $B^\ast$
+    \State return $c\mathbf{b}_n + \text{NearestPlane}([\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{n-1}], \mathbf{t} - c\mathbf{b}_n)$
+\end{algorithmic}
+\end{algorithm}
+
+
+\begin{theorem}
+    Given basis $B$ and target $\mathbf{t}$, denote the output of $\operatorname{NearestPlane}$ by $\mathbf{v} \leftarrow \operatorname{NearestPlane}(B, \mathbf{t})$, then for all $1 \leq i \leq n$:
+
+    $$
+    \frac{
+        \langle
+            \mathbf{t} - \mathbf{v}, \mathbf{b}_i^\ast
+        \rangle
+    }{
+        \langle
+            \mathbf{b}_i^\ast, \mathbf{b}_i^\ast
+        \rangle
+    } 
+    \in [-\frac{1}{2}, \frac{1}{2})
+        $$
+    \end{theorem}
+
+Intuitively, the inequality above states that the deviation of $\mathbf{t}$ from $\mathbf{v}$ is between $-\frac{1}{2}\mathbf{b}_i^\ast$ and $\frac{1}{2}\mathbf{b}_i^\ast$ in any of the chosen direction $\mathbf{b}_i^\ast$, which means that $\mathbf{t} - \mathbf{v}$ is indeed contained in the orthogonalized fundamental parallelpiped.
+
+Babai's nearest plane algorithm is an essential component to the LLL lattice basis reduction algorithm. Specifically, the nearest plane algorithm is used to reduce the size of the basis vector so the first condition of the reduced basis (shown below) can be satisfied:
+
+$$
+\forall j<i, \vert\mu_{i, j}\vert \leq \frac{1}{2}
+$$
+
+The size reduction algorithm, which we will denote by $\operatorname{SizeReduce}$, takes a basis $B$ and returns a size-reduced basis $B^\prime$ such that the condition above is true.
+
+\begin{algorithm}
+\caption{SizeReduce}
+\begin{algorithmic}[1]
+    \For{$i \in \{1, 2, \ldots, n\}$}
+        \State $\mathbf{v} \in \mathcal{L}([\mathbf{b}_1, \ldots, \mathbf{b}_{i-1}]) \leftarrow \operatorname{NearestPlane}([\mathbf{b}_1, \ldots, \mathbf{b}_{i-1}], \mathbf{b}_i - \mathbf{b}_i^\ast)$
+        \State $\mathbf{b}_i \leftarrow \mathbf{b}_i - \mathbf{v}$
+    \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Recall the result of the nearest plane algorithm we know that:
+
+$$
+\forall j < i,
+\frac{
+    \langle
+        \mathbf{b}_i - \mathbf{b}_i^\ast - \mathbf{v}, \mathbf{b}_j^\ast
+    \rangle
+}{
+    \langle 
+        \mathbf{b}_j^\ast, \mathbf{b}_j^\ast
+    \rangle
+} \in [-\frac{1}{2}, \frac{1}{2})
+$$
+
+Notice in the equation above, we have $\mathbf{b}_i^\ast \perp \mathbf{b}_j^\ast$ because $j < i$. We also have $\mathbf{b}_i - \mathbf{v}$ being the new value for $\mathbf{v}_i$ after the substitution. This means that after the substitution:
+
+$$
+\forall j < i,
+\frac{
+    \langle
+        \mathbf{b}_i, \mathbf{b}_j^\ast
+    \rangle
+}{
+    \langle
+        \mathbf{b}_j^\ast, \mathbf{b}_j^\ast
+    \rangle
+} \in [-\frac{1}{2}, \frac{1}{2})
+$$
+
+The LHS of the equation above is exactly $\mu_{i,j}$. Thus we have satisfied the first condition of $\delta$-LLL reduced basis. In addition, because $\mathbf{v} \in \mathcal{L}([\mathbf{b}_1, \ldots, \mathbf{b}_{i-1}])$, the substitution $\mathbf{b}_i \leftarrow \mathbf{b}_i - \mathbf{v}$ is equivalent to adding onto the substituted basis a linear combination of other base vectors, which does not change the lattice.
+
+%%%%% SECTION: LLL basis reduction algorithm %%%%%
+\subsection{The LLL basis reduction algorithm}\label{subsec:lllreduce}
+Applying the $\operatorname{SizeReduce}$ algorithm to a basis transforms it to satisfy the first condition of being $\delta$-LLL reduced. However, after the transformation, the second condition might not be satisfied everywhere, and we need to apply additional transformation to satisfy the second condition:
+
+$$
+\delta \Vert \pi_i(\mathbf{b}_i) \Vert^2 \leq \Vert \pi_i(\mathbf{b}_{i+1})\Vert^2
+$$
+
+It turns out that such transformation is rather simple: if there is some $i$ such that the condition above does not hold, then swapping $\mathbf{b}_i$ and $\mathbf{b}_{i+1}$ will make the pair satisfy the condition. To see that it works, denote the swapped basis vectors by $\mathbf{b}_i^\prime = \mathbf{b}_{i+1}$, $\mathbf{b}_{i+1}^\prime = \mathbf{b}_{i}$. First observe that the function $\pi_i: \mathbf{x} \mapsto \sum_{j\geq i}\frac{\langle \mathbf{x}, \mathbf{b}_j^\ast \rangle}{\langle \mathbf{b}_j^\ast, \mathbf{b}_j^\ast \rangle}\mathbf{b}_j^\ast$ is not changed after the swap because it is still projecting $\mathbf{x}$ onto the same set of orthogonal basis, and the set of orthogonal basis is unchanged by the swap.
+
+If the condition does not hold, then $\delta\Vert\pi_i(\mathbf{b}_i)\Vert^2 > \Vert\pi_i(\mathbf{b}_{i+1})\Vert^2$, and we have
+
+$$
+\begin{aligned}
+\delta \Vert\pi_i(\mathbf{b}_i^\prime)\Vert^2
+&= \delta \Vert\pi_i(\mathbf{b}_{i+1})\Vert^2 \\
+&< \delta \cdot \delta\Vert\pi_i(\mathbf{b}_i)\Vert^2 \\
+&\leq \Vert\pi_i(\mathbf{b}_i)\Vert^2 \\
+&= \Vert\pi_i(\mathbf{b}_{i+1}^\prime)\Vert^2
+\end{aligned}
+$$
+
+We know that swapping columns preserves the lattice, so we can define a second algorithm $\operatorname{ColumnSwap}$ that takes a basis $B$ and transforms it into a second basis of the same lattice that satisfies the second condition of $\delta$-LLL reduced basis:
+
+\begin{algorithm}
+\caption{ColumnSwap}
+\begin{algorithmic}[1]
+    \For{$i \in \{1, 2, \ldots, n-1\}$}
+        \If{$\delta\Vert\pi_i(\mathbf{b}_i)\Vert^2 > \Vert \pi_i(\mathbf{b}_{i+1}) \Vert^2$}
+            \State $\mathbf{b}_i \leftarrow \mathbf{b}_{i+1}$
+            \State $\mathbf{b}_{i+1} \leftarrow \mathbf{b}_{i}$
+        \EndIf
+    \EndFor
+\end{algorithmic}
+\end{algorithm}
+
+It's easy to see that $\operatorname{ColumnSwap}$ always terminates in $n$ iterations, and upon termination, the transformed basis satisfies the second condition of being $\delta$-LLL reduced. Unforutnately, now the first condition might not hold everywhere, so we need to apply $\operatorname{SizeReduce}$ again.
+
+Indeed, the LLL basis reduction algorithm repeatedly alternates between applying the two steps $\operatorname{SizeReduce}$ and $\operatorname{ColumnSwap}$ until the basis becomes $\delta$-LLL reduced. It's trivially true that if the algorithm terminates, the output is guaranteed to satisfy both conditions of being $\delta$-LLL reduced. It remains to show that, at least for $\delta < 1$, this algorithm terminates in polynomial time.
+
+\begin{algorithm}
+\caption{LLLReduce}
+\begin{algorithmic}[1]
+    \While{$B$ is not $\delta$-LLL reduced}
+        \State $B \leftarrow \operatorname{SizeReduce}(B)$
+        \State $B \leftarrow \operatorname{ColumnSwap}(B)$
+    \EndWhile
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}
+    For $\delta < 1$, reducing a basis to $\delta$-LLL reduced form takes polynomial time
+\end{theorem}
+\begin{proof}
+    To prove that $\operatorname{LLLReduce}$ will terminate in polynomial time, we define a positive integer quantity associated with a basis and show that each iteration of $\operatorname{SizeReduce}$ and $\operatorname{ColumnSwap}$ reduce this quantity by $\delta$.
+
+    Recall that although determinant is not defined for non-square matrix, it is defined for (sub)lattice generated by sub-basis $B_k = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_k] \in \mathbb{Z}^{n \times k}$ where $1 \leq k \leq n$:
+
+    $$
+    \det(\mathcal{L}(B_k)) = \prod_{i=1}^k \Vert \mathbf{b}_i^\ast \Vert = \sqrt{B_k^\intercal B_k}
+    $$
+
+    From the definition above we can see that the square of the determinant of a lattice generated by integer basis is an integer. 
+
+    We define the "potential" of a full-rank basis $B = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n]$ by the product of determinants of sub-lattices generated by sub-basis $B_1, B_2, \ldots, B_n$:
+
+    $$
+    \mathcal{D} = \prod_{k=1}^n \det(\mathcal{L}(B_k))^2
+    $$
+
+    $\mathcal{D}$, being a product of integers, is itself an integer.
+
+    First observe that in $\operatorname{SizeReduce}$, the basis vector is changed by subtracting a linear combination of basis vectors before the changed basis vector. This means that after $\operatorname{SizeReduce}$, each of $B_k$ for $1\leq k \leq n$ still generates the same lattice, and the determinant of that lattice remains unchanged. In other words, $\operatorname{SizeReduce}$ does not change the value of $\mathcal{D}$.
+
+    Second, for $k < i$, swapping column $\mathbf{b}_i$ with $\mathbf{b}_{i+1}$ does not affect the lattice generated by the partial basis $B_k$ because $B_k = \{\mathbf{b}_1, \ldots, \mathbf{b}_{i-1}\}$ does not contain the swapped columns anyways. On the other hand, for $k > i$, swapping column $\mathbf{b}_i$ with $\mathbf{b}_{i+1}$ also does not affect the lattice generated by the partial basis $B_k$ because it contains both of the swapped column, and swapping column preserves the lattice.
+
+    Therefore the only change to $\mathcal{D}$ when swapping $\mathbf{b}_i$ with $\mathbf{b}_{i+1}$ comes from the factor $\det(\mathcal{L}(B_i))$. Denote the potential of the basis $B$ after the swap by $\mathcal{D}^\prime$ then:
+    
+    $$
+    \frac{\mathcal{D}}{\mathcal{D}^\prime} = \frac{
+        \det(\mathcal{L}([\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{i-1}, \mathbf{b}_{i}]))^2
+    }{
+        \det(\mathcal{L}([\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_{i-1}, \mathbf{b}_{i+1}]))^2
+    } = \frac{\Vert\mathbf{b}_i^\ast\Vert^2}{\Vert\pi_i(\mathbf{b}_{i+1})\Vert^2}
+    = \frac{\Vert\pi_i(\mathbf{b}_{i})\Vert^2}{\Vert\pi_i(\mathbf{b}_{i+1})\Vert^2}
+    $$
+
+    Because we only swap when $\delta \Vert \pi_i(\mathbf{b}_i) \Vert^2 > \Vert \pi_i(\mathbf{b}_{i+1}) \Vert^2$, the quotient above satisfies:
+
+    $$
+    \frac{\mathcal{D}}{\mathcal{D}^\prime} 
+    = \frac{\Vert\pi_i(\mathbf{b}_{i})\Vert^2}{\Vert\pi_i(\mathbf{b}_{i+1})\Vert^2}
+    > \frac{1}{\delta}
+    $$
+
+    Which implies $\mathcal{D}^\prime < \delta \mathcal{D}$.
+
+    Notice that in the relationship above, the second condition of being $\delta$-LLL reduced is violated if and only if $\mathcal{D}^\prime < \delta\mathcal{D}$. This means that when $\mathcal{D}^\prime \geq \delta\mathcal{D}$, the second condition will hold. Indeed, when the potential converges, the algorithm terminates, and since each iteration reduces the potential by $\delta$, we can deduce that the algorithm will terminate in $O(\log_{\frac{1}{\delta}}\mathcal{D})$ time.
+\end{proof}
