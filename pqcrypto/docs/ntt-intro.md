@@ -127,7 +127,7 @@ Let $R = \mathbb{Z}_q[x] / \langle x^n + 1 \rangle$ where $q$ is a prime number,
 
 The NTT transformation and inversion in negative-wrapped convolution follows similar structure but with some additional terms:
 
-$$
+> $$
 \begin{aligned}
 \text{NTT}^\phi(\mathbf{a}) &= \text{NTT}(\langle \Phi, \mathbf{a} \rangle) \\
 \text{INTT}^\phi(\hat{\mathbf{a}}) &= \langle \Phi^{-1}, \text{INTT}(\hat{\mathbf{a}}) \rangle
