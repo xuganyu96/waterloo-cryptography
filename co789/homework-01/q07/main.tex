@@ -1,0 +1,31 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Q7}
+We can set one of the base vectors to be extremely short and all other base vectors extremely long. For ease of constructions we will build orthogonal basis.
+
+Denote the columns of the identity matrix $I_n \in \mathbb{R}^{n \times n}$ by $I = [\mathbf{e}_1, \mathbf{e}_2, \ldots, \mathbf{e}_n]$.
+
+Let $\mathcal{L}(\{\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n\}) \subset \mathbb{R}^n$ be spanned by the basis $\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n$, where $\mathbf{b}_1 = \mathbf{e}_1$, and $\mathbf{b}_i = 3R\mathbf{e}_i$ for $i > 1$. Finally, set $\mathbf{v} = (0, 1.1R, 0, 0, \ldots, 0)$.
+
+It is easy to see that $\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n$ form an orthogonal basis. The shortest vector in $\mathcal{L}$ is $\mathbf{b}_1$, so $\lambda_1(\mathcal{L}) = 1$. The closest lattice point to $\mathbf{v}$ is $\mathbf{0}$, so the distance between $\mathbf{v}$ and $\mathcal{L}$ is $\norm{\mathcal{L} - \mathbf{v}} = 1.1R > R$
+
+
+\end{document}

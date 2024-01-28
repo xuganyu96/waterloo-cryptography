@@ -1,0 +1,39 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+% For code
+\usepackage{listings}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Q8}
+Recall that the decryption is computed with the following routine:
+
+$$
+\begin{aligned}
+D(\text{sk}, (\mathbf{c}_1, c_2))
+&= c_2 - \mathbf{c}_1 \cdot \mathbf{s} \\
+&= ({\mathbf{s}^\prime}^\intercal\mathbf{e} - {\mathbf{e}^\prime}^\intercal\mathbf{s}) + e^{\prime\prime} + m\round{\frac{q}{2}}
+\end{aligned}
+$$
+
+Where $\mathbf{s}, \mathbf{s}^\prime$ are coordinate-wise drawn from the secret distribution and $\mathbf{e}, \mathbf{e}^\prime, e^{\prime\prime}$ are coordinate-wise drawn from the error distribution.
+
+According to the decryption routine, a decryption error occurs if and only if the "noise" $({\mathbf{s}^\prime}^\intercal\mathbf{e} - {\mathbf{e}^\prime}^\intercal\mathbf{s}) + e^{\prime\prime}$ exceeds $\round{\frac{q}{4}}$. So to find a modulus that guarantees correct decryption all the time, we need to find the upper bound of noise.
+
+With (baby) Kyber-512, $\chi_s = \mathcal{B}(n=6, p=0.5), \chi_e = \mathcal{B}(n=4, p=0.5)$. Noise is maximized when all entries of $\mathbf{s}, \mathbf{e}$ reach the extremes of the support of their respective distributions. For example, with $\mathbf{s} = \mathbf{s}^\prime = (3, 3, \ldots, 3)$, $\mathbf{e} = (2, 2, \ldots, 2)$, $\mathbf{e}^\prime = (-2, -2, \ldots, -2)$, $e^{\prime\prime} = 2$, the noise term evaluates to $(6 \cdot 512 + 6 \cdot 512) + 2 = 6146$. The smallest prime $q$ such that $\round{\frac{q}{4}} \geq 6146$ is $24593$.
+
+
+\end{document}

@@ -1,0 +1,72 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Q4}
+Using the Kyber described in the definition sheet, the LWE parameters are as follows: $n = m$, $q = 3329$, $\chi_s = \mathcal{B}(n=6, p=0.5)$, $\chi_e = \mathcal{B}(n=4, p=0.5)$, where $\mathcal{B}(n, p)$ denotes the centered binomial distributions.
+
+Since $\mathbf{s} \leftarrow \chi_s^{n}$ is independently sampled from identical distributions, we can describe $\norm{\mathbf{s}}^2$ as the sum of I.I.D. random variables:
+
+$$
+\norm{\mathbf{s}}^2 = \sum_{i=1}^{n} S_i^2
+$$
+
+Therefore:
+
+$$
+E[\norm{\mathbf{s}}^2] = E\bigg[\sum_{i=1}^{n} S_i^2\bigg] = \sum_{i=1}^{n}E[S_i^2]
+$$
+
+Because $S_i$ follows the \textbf{centered} binomial distribution, $E[S_i] = 0$, so $E[S_i^2] = \var{S_i}$. On the other hand, the variance of the centered binomial distribution is identical to that of the corresponding binomial distribution: $\var{S_i} = 6 \cdot p(1-p) = \frac{3}{2}$. This is true because shifting a random variable by a constant does not change its variability.
+
+Putting everything together:
+
+$$
+E[\norm{\mathbf{s}}^2] = \sum_{i=1}^{n}E[S_i^2] = \frac{3}{2} n
+$$
+
+On the other hand, for calculating the variance of $\norm{\mathbf{s}}^2$, we take advantage of the fact that the entries of $\mathbf{s}$ are independently drawn, and the variance of sum of independent random variables is the sum of variances:
+
+$$
+\begin{aligned}
+\var{\norm{s}^2} &= \var{\sum_{i=1}^n S_i^2} \\
+&= \sum_{i=1}^n \var{S_i^2} \\
+&= \sum_{i=1}^n (E[S_i^4] - E[S_i^2]^2) \\
+&= \sum_{i=1}^n \bigg(
+    (\sum_{j=-3}^3(j^4 \cdot \binom{6}{j} \cdot 2^{-6}) 
+    - (\frac{3}{2})^2 
+\bigg) \\
+&= \sum_{i=1}^n \bigg( 6  - \frac{9}{4} \bigg) \\
+&= \frac{15}{4}n
+\end{aligned}
+$$
+
+Replacing the secret distribution with the error distribution, we can compute the expectation and variance of the norm square of the error term in similar fashion. In conclusion:
+
+$$
+\begin{aligned}
+E[\norm{\mathbf{s}}^2] &= \frac{3}{2} n \\
+\var{\norm{s}^2} &= \frac{15}{4}n \\
+E[\norm{\mathbf{e}}^2] &= n \\
+\var{\norm{e}^2} &= \frac{3}{2}n
+\end{aligned}
+$$
+
+
+\end{document}

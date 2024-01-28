@@ -1,0 +1,33 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Q9}
+Let $(A, \mathbf{b}) \leftarrow \operatorname{LWE}(n, n, q, \chi_e, \chi_s)$. In other words, $A$ is uniformly randomly sampled from all full-rank matrices $\mathbb{F}_q^{n \times n}$, $\mathbf{s} \leftarrow \chi_e^n$, $\mathbf{e} \leftarrow \chi_s^n$, and $\mathbf{b} \leftarrow A\mathbf{s} + \mathbf{e}$.
+
+I claim that matrix inversion $A \mapsto A^{-1}$ on the set of full-rank matrices is a bijection. This is true because the inverse of two distinct matrices is necessarily distinct (injectivity), and every full-rank matrix is the inverse of its inverse (surjectivity).
+
+Because matrix inversion is a bijection from the set of invertible matrices onto itself, if $A$ is uniformly sampled from all full-rank matrices $\mathbb{F}_q^{n \times n}$, then $A^{-1}$ is also a uniformly randomly sampled matrix from the set all full-rank matrices.
+
+Notice that $A^{-1}\mathbf{b} = A^{-1}A\mathbf{s} + \mathbf{e} = A^{-1}\mathbf{e} + \mathbf{s}$. Since $\mathbf{e}$ is sampled from the secret distribution and $\mathbf{s}$ is sampled from the error distribution, $A^{-1}$ is a uniformly random sample, $(A^{-1}, A^{-1}\mathbf{b}) = (A^{-1}, A^{-1}\mathbf{e} + \mathbf{s})$ is a sample from $\operatorname{LWE}(n, n, q, \chi_s, \chi_e)$. If there exists an oracle for $\operatorname{LWE}(n, n, q, \chi_s, \chi_e)$, then this oracle can recover $\mathbf{e}$, and from here we can recover $\mathbf{s}$ in $\operatorname{LWE}(n, n, q, \chi_e, \chi_s)$.
+
+The argument above did not assume anything specific to $\chi_s$ or $\chi_e$, so they can be swapped, and we will arrive at the inverse conclusion that $\operatorname{LWE}(n, n, q, \chi_s, \chi_e)$ reduces to $\operatorname{LWE}(n, n, q, \chi_e, \chi_s)$, as well. Therefore, the two problems are equivalent.
+
+
+\end{document}

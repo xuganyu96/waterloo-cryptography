@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Q6}
+\subsection*{(1)}
+Let $X \in \mathcal{B}(n, p)$ be a random variable that follows binomial distribution. Recall from the definition of a binomial distribution that $X = I_1 + I_2 + \ldots + I_n$ where each of $I_i$ is an independent coin toss with PMF:
+
+$$
+\begin{cases}
+P(I_i=1) = p \\
+P(I_i=0) = 1-p
+\end{cases}
+$$
+
+Let $X_1 \in \mathcal{B}(n_1, p), X_2 \in \mathcal{B}(n_2, p)$ be two independent random variables following binomial distributions, then:
+
+$$
+\begin{aligned}
+X_1 &= \sum_{i=1}^{n_1} I_i \\
+X_2 &= \sum_{i=n_1 + 1}^{n_1 + n_2} I_i \\
+\end{aligned}
+$$
+
+Therefore $X_1 + X_2 = \sum_{i=1}^{n_1 + n_2} I_i$, which is a binomial distribution $\mathcal{B}(n_1 + n_2, p)$.
+
+Recall that centered binomial distribution is defined by subtracting the corresponding binomial distribution by a constant (the expectation of said binomial distribution): $C_i = X_i - E(X_i)$. Therefore, given centered binomial distributions $C_1 = X_1 - E[X_1], C_2 = X_2 - E[X_2]$:
+
+$$
+\begin{aligned}
+C_1 + C_2 &= X_1 + X_2 - E[X_1] - E[X_2] \\
+&= (X_1 + X_2) - E[X_1 + X_2]
+\end{aligned}
+$$
+
+From the results above we know that because $X_1, X_2$ are independent binomial distributions, $X_1 + X_2$ follows binomial distribution $\mathcal{B}(n_1 + n_2, p)$, thus $C_1 + C_2$ follows centered binomial distribution $\mathcal{B}(n_1 + n_2, p)$.
+
+\subsection*{(2)}
+From part (a) we know that the sum of $k$ i.i.d. random variables following binomial $\mathcal{B}(n, p)$ is a random variable following binomial $\mathcal{B}(kn, p)$.
+
+Let $I^m = \{0, 1\}^m$ denote the set of bit-masks with length $m$ and $K \subseteq I$ denote the subset of vectors with exactly $k$ entries being $1$, then $\vert K \vert = \binom{m}{k}$. Thus we iterate through all possible values in $\mathbf{k} \in K$ and compute the inner product $\mathbf{e}^\intercal \mathbf{k}$. Since $\mathbf{k}$ has exactly $k$ entries being 1 and $\mathbf{e}$ contains $m$ independent samples from centered binomial $(n, p)$, $\mathbf{e}^\intercal\mathbf{k}$ is the sum of $k$ i.i.d. centered binomial with parameters $(kn, p)$
+
+
+\end{document}

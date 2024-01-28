@@ -1,0 +1,88 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Q10}
+Recall from textbook LWE the decryption routine:
+
+$$
+\begin{aligned}
+D(\text{sk}, (\mathbf{c}_1, c_2))
+&= c_2 - \mathbf{c}_1\mathbf{s} \\
+&= (\mathbf{s}_1^\intercal\mathbf{b} + e^\prime + m\round{\frac{q}{2}}) 
+    - (\mathbf{s}_1^\intercal A\mathbf{s} + \mathbf{e}_1^\intercal\mathbf{s}) \\
+&= (\mathbf{s}_1^\intercal(A\mathbf{s} + \mathbf{e}) + e^\prime + m\round{\frac{q}{2}}) 
+    - (\mathbf{s}_1^\intercal A\mathbf{s} + \mathbf{e}_1^\intercal\mathbf{s}) \\
+&= \mathbf{s}_1^\intercal\mathbf{e} + e^\prime + m\round{\frac{q}{2}} - \mathbf{e}_1^\intercal\mathbf{s} \\
+&= (\mathbf{s}_1^\intercal\mathbf{e} - \mathbf{e}_1^\intercal\mathbf{s}) + e^\prime + m\round{\frac{q}{2}}
+\end{aligned}
+$$
+
+Also recall the definition of the rounding operator: $\round{a} = a + \delta$ for some $-\frac{1}{2} \leq \delta < \frac{1}{2}$.
+
+\subsection*{(1)}
+Where $\mathbf{e}_1$ is maliciously set to all zeros except for the i-th component, $\mathbf{e}_1^\intercal \mathbf{s}$ evaluates to $s_i \cdot \round{\frac{q}{2}}$, where $s_i$ is the i-th component of the LWE secret $\mathbf{s}$.
+
+If $s_i = 2k$ is even, then
+
+$$
+\begin{aligned}
+D(\text{sk}, (\mathbf{c}_1, c_2)) 
+&= (\mathbf{s}_1^\intercal\mathbf{e} - \mathbf{e}_1^\intercal\mathbf{s}) + e^\prime + m\round{\frac{q}{2}} \\
+&= \mathbf{s}_1^\intercal\mathbf{e} + e^\prime - 2k(\frac{q}{2} + \delta) + m\round{\frac{q}{2}} \\
+&\equiv  \mathbf{s}_1^\intercal\mathbf{e} + e^\prime - 2k\delta + m\round{\frac{q}{2}} \\
+\end{aligned}
+$$
+
+Thus, where $k$ is sufficiently small (corresponding to $s_i$ being small), $\mathbf{s}_1^\intercal\mathbf{e} + e^\prime + 2k\delta$ has a high probability of being less than $\frac{q}{4}$, so the ciphertext will be correctly decrypted.
+
+If $s_i = 2k + 1$ is odd, then
+
+$$
+\begin{aligned}
+D(\text{sk}, (\mathbf{c}_1, c_2)) 
+&= (\mathbf{s}_1^\intercal\mathbf{e} - \mathbf{e}_1^\intercal\mathbf{s}) + e^\prime + m\round{\frac{q}{2}} \\
+&= \mathbf{s}_1^\intercal\mathbf{e} + e^\prime + (2k + 1)\round{\frac{q}{2}} + m\round{\frac{q}{2}} \\
+&\equiv  \mathbf{s}_1^\intercal\mathbf{e} + e^\prime + 2k\delta + \round{\frac{q}{2}} + m\round{\frac{q}{2}} \\
+\end{aligned}
+$$
+
+Notice the additional $\round{\frac{q}{2}}$ term in the R.H.S., which will cause decryption to be incorrect with high probability. Thus, with high probability, decryption will be correct if and only if $s_i$ is even.
+
+\subsection*{(2)}
+Eve can recover the parity of all entries of the secret $\mathbf{s} \in \chi_s^n$ by preparing $n$ emails $\{(\mathbf{c}_{(i, 1)}, c_{(i, 2)})\}_{i=1}^{n}$ where $(\mathbf{c}_{(i, 1)}, c_{(i, 2)})$ is generated using the procedure described in part (1): $\mathbf{e}_{(i, 1)}$ is all 0's except for the i-th entry, which is set to $\round{\frac{q}{2}}$. For each of these $n$ emails, Eve sends it to Alice's server and receives the auto-response. The quoted email in the auto-response is checked against the original email: if they are identical, then Alice's server correctly decrypted Eve's email, so the corresponding entry in $\mathbf{s}$ is even; otherwise, the corresponding entry in $\mathbf{s}$ is odd.
+
+\subsection*{(3)}
+We will describe an algorithm for recovering the value of a single component of the secret key $\mathbf{s}$. From here, the algorithm can be repeated $n$ times to recover the value of all components of the secret key. If the algorithm for recovering a single value is efficient, then repeating it $n$ times is also efficient.
+
+Consider the ciphertext $(\mathbf{c}_1, c_2)$ where all entries of $\mathbf{c}_1$ is set to 0 except for the i-th entry, which we denote by $\mathbf{c}_{(1, i)}$. Recall from the decryption procedure the fact that decryption outputs $0$ if and only if $-\round{\frac{q}{4}} \leq m^\prime \leq \round{\frac{q}{4}}$, which is equivalent to:
+
+$$
+-\round{\frac{q}{4}} + c_2 \leq c_{(1, i)} \cdot s_i \leq \round{\frac{q}{4}} + c_2
+$$
+
+Where $s_i$ is the i-th entry of the secret $\mathbf{s}$.
+
+In other words, we can check whether $s_i$ falls within a certain range of values given some values of $c_2$ and $c_{(1, i)}$. In addition, changing the value of $c_2$ will translate the range, while changing the value of $c_{(1, i)}$ will scale the range. Thus, we can perform a binary search by adjusting the values of $c_2, c_{(1, i)}$ and pinpoint the value of $s_i$ in $O(\log{q})$ steps.
+
+\subsection*{(4)}
+Converting textbook LWE to be resistant to chosen-ciphertext attack is non-trivial. In Kyber/Dilithium a tweaked version of Fujisaki-Okamoto transformation is applied to the textbook LWE to obtain a CCA2-secure cryptosystem. Due to time constraint, the details will not be covered in this write-up.
+
+
+\end{document}
