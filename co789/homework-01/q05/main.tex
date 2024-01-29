@@ -39,6 +39,8 @@ $$
 Therefore we have $A\mathbb{Z}^{n} + q\mathbb{Z}^m \subseteq A^\prime\mathbb{Z}^{n-1} + q\mathbb{Z}^m$, and the two lattices are indeed equal.
 
 \subsection*{(2)}
+For the remainder of this problem, we assume that full-rank LWE with parameters $(m, n, q, U_s, \chi_e)$ exist, which means that $n \leq m$.
+
 Let $(A, \mathbf{b})$ be a sample from generic (aka potentially not full-rank) $\text{LWE}(m, n, q, U_s, \chi_e)$. Without loss of generality, assume that $A = [A_1 \mid A_2] \in \mathbb{Z}_q^{m \times (n_1 + n_2)}$ where $A_1$ is full-rank, and $A_2 = A_1B$ for some non-zero $B \in \mathbb{Z}_q^{n_1 \times n_2}$. Denote the secret by $\mathbf{s} = [\mathbf{s}_1 \mid \mathbf{s}_2]$ where $\mathbf{s}_1 \leftarrow \chi_s^{n_1}, \mathbf{s}_2 \leftarrow \chi_s^{n_2}$, then:
 
 $$
@@ -50,9 +52,8 @@ $$
 \end{aligned}
 $$
 
-Because secrets are sampled from a uniform distribution, $\mathbf{s}_1 + B\mathbf{s}_2$ is uniformly random. Therefore $(A_1, \mathbf{b})$ is a valid sample from full-rank $\text{LWE}(m, n, q, U_s, \chi_e)$. We can thus feed $(A_1, \mathbf{b})$ to a full-rank LWE oracle, who will output some $\mathbf{s}^\prime$. Assuming that the full-rank LWE problem has unique solution, we know $\mathbf{s}^\prime = \mathbf{s}_1 + B\mathbf{s}_2$
+we can discard the linearly dependent columns of $A$ and feed the truncated sample $(A_1, \mathbf{b})$ into the full-rank LWE oracle. If the corresponding full-rank Search-LWE has unique solution denoted by $\mathbf{s}^\prime$, then it must be that $\mathbf{b} - A_1\mathbf{s}^\prime = \mathbf{e}$, where $\mathbf{e}$ is exactly the error term from the original Search-LWE instance $(A, \mathbf{b})$.
 
-% TODO: how to recover s_1, s_2 from s_1 + Bs_2?
-
+With the error term recovered, the Search-LWE instance becomes solving noiseless linear equations. Because $A$ is not necessarily full-rank, there may be more than one solutions, but since the secret is uniformly randomly sampled, each solution is equally likely the true secret. I claim that this is the best we can do in terms of solving Search-LWE for non-full-rank $A$.
 
 \end{document}
