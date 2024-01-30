@@ -35,5 +35,8 @@ According to the decryption routine, a decryption error occurs if and only if th
 
 With (baby) Kyber-512, $\chi_s = \mathcal{B}(n=6, p=0.5), \chi_e = \mathcal{B}(n=4, p=0.5)$. Noise is maximized when all entries of $\mathbf{s}, \mathbf{e}$ reach the extremes of the support of their respective distributions. For example, with $\mathbf{s} = \mathbf{s}^\prime = (3, 3, \ldots, 3)$, $\mathbf{e} = (2, 2, \ldots, 2)$, $\mathbf{e}^\prime = (-2, -2, \ldots, -2)$, $e^{\prime\prime} = 2$, the noise term evaluates to $(6 \cdot 512 + 6 \cdot 512) + 2 = 6146$. The smallest prime $q$ such that $\round{\frac{q}{4}} \geq 6146$ is $24593$.
 
+P.S. the smallest odd $q$ such that $\round{\frac{q}{4}} \geq 6146$ is $24583$
+
+P.S. the smallest integer $q$ such that $\round{\frac{q}{4}} \geq 6146$ is $24582$
 
 \end{document}

@@ -41,7 +41,7 @@ The result is {0.017725703977230414}.
 
 \subsection*{(2)}
 I claim without proof that the most likely error $\mathbf{s} \leftarrow \chi_e^m$, is obtained by sampling the most likely value for each of the entry in. Assuming individual entries of $\mathbf{s}$ are independently sampled from identical distribution $\chi_e$ (a centered binomial distribution), the most likely value for a single entry is $0$. Therefore, the most likely secret is $\mathbf{s} = \mathbf{0} \in \mathbb{F}_q^n$.
-https://www.overleaf.com/project/65a54df4dabb2a4ef8fbbc0c
+
 The probability of drawing $\mathbf{0} \leftarrow \mathcal{B}(6, \frac{1}{2})$ is the product of drawing 512 $0$'s:
 
 $$
@@ -61,7 +61,7 @@ In similar fashion, it can be computed that the probability of drawing $1$ from 
 
 \subsection*{(4)}
 \subsubsection*{(a)}
-A guess $\hat{\mathbf{s}} \leftarrow \mathbb{F}_q^n$ is correct if the corresponding error term $\hat{\mathbf{e}} \leftarrow \mathbf{b} - A\hat{\mathbf{s}}$ is bounded by the centered binomial distribution: $\hat{\mathbf{e}} \in \{-3, -2, \ldots, 2, 3\}^n$.
+A guess $\hat{\mathbf{s}} \leftarrow \mathbb{F}_q^n$ is correct if the corresponding error term $\hat{\mathbf{e}} \leftarrow (\mathbf{b} - A\hat{\mathbf{s}}) \mod q$ is bounded by the centered binomial distribution: $\hat{\mathbf{e}} \in \{-3, -2, \ldots, 2, 3\}^n$.
 
 \subsubsection*{(b)}
 The total number of distinct keys with 160 entries being 0, 120 entries being -1, 48 entries being -2, 8 entries being -3, ... is as follows:

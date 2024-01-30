@@ -39,7 +39,7 @@ $$
 Therefore we have $A\mathbb{Z}^{n} + q\mathbb{Z}^m \subseteq A^\prime\mathbb{Z}^{n-1} + q\mathbb{Z}^m$, and the two lattices are indeed equal.
 
 \subsection*{(2)}
-For the remainder of this problem, we assume that full-rank LWE with parameters $(m, n, q, U_s, \chi_e)$ exist, which means that $n \leq m$.
+For the remainder of this problem, we assume that full-rank LWE with parameters $(m, n, q, U_s, \chi_e)$ exist, which means that $n \leq m$. To differentiate full-rank LWE with possibly-not-full-rank LWE, we denote full-rank LWE with $\operatorname{LWE}^\ast$ and possibly-not-full-rank LWE.
 
 Let $(A, \mathbf{b})$ be a sample from generic (aka potentially not full-rank) $\text{LWE}(m, n, q, U_s, \chi_e)$. Without loss of generality, assume that $A = [A_1 \mid A_2] \in \mathbb{Z}_q^{m \times (n_1 + n_2)}$ where $A_1$ is full-rank, and $A_2 = A_1B$ for some non-zero $B \in \mathbb{Z}_q^{n_1 \times n_2}$. Denote the secret by $\mathbf{s} = [\mathbf{s}_1 \mid \mathbf{s}_2]$ where $\mathbf{s}_1 \leftarrow \chi_s^{n_1}, \mathbf{s}_2 \leftarrow \chi_s^{n_2}$, then:
 
@@ -52,8 +52,12 @@ $$
 \end{aligned}
 $$
 
-we can discard the linearly dependent columns of $A$ and feed the truncated sample $(A_1, \mathbf{b})$ into the full-rank LWE oracle. If the corresponding full-rank Search-LWE has unique solution denoted by $\mathbf{s}^\prime$, then it must be that $\mathbf{b} - A_1\mathbf{s}^\prime = \mathbf{e}$, where $\mathbf{e}$ is exactly the error term from the original Search-LWE instance $(A, \mathbf{b})$.
+Since the secret is sampled from a uniformly random distribution, $\mathbf{s}_1$ and $\mathbf{s}_2$ are both uniformly random. Therefore, $\mathbf{s}_1 + B\mathbf{s}_2$ is also uniformly random. This means that $(A_1, \mathbf{b})$ is a valid sample from $\operatorname{LWE}^\ast(m, n_1, q, U_s, \chi_e)$ where $n_1 < n$. Assuming that there is a unique solution to $(A_1, \mathbf{b})$, if we can solve this instance of full-rank LWE, then the solution must be $\mathbf{s}^\prime$ such that $\mathbf{b} - A_1\mathbf{s}^\prime = \mathbf{e}$ is exactly the error term of the original $(A, \mathbf{b})$. With the error term recovered, the LWE problem $(A, \mathbf{b})$ becomes solving linear equations, which can be efficiently computed using Gaussian eliminations.
 
-With the error term recovered, the Search-LWE instance becomes solving noiseless linear equations. Because $A$ is not necessarily full-rank, there may be more than one solutions, but since the secret is uniformly randomly sampled, each solution is equally likely the true secret. I claim that this is the best we can do in terms of solving Search-LWE for non-full-rank $A$.
+It remains to show that given an oracle that solves full-rank LWE of a higher dimension $n$, we can solve full-rank LWE of a lower dimension $n_1 < n$.
+
+Given $(A_1, \mathbf{b})$ where $A \in \mathbb{Z}_q^{m \times n_1}$ is full-rank, I claim without proof that there exists an efficient algorithm that can output a vector $\mathbf{a}^\ast \in \mathbb{Z}_q^m$ such that $[A \;\vert\; \mathbf{a}]$ is still full-rank (see problem 1). Using this algorithm, we can augment $A_1$ into a full-rank matrix with $n$ columns $A^\prime = [ A_1 \;\vert\; A_2^\prime ]$. We can sample $\mathbf{s}_2^\prime$ from $U_s$ and compute $\mathbf{b}^\prime = \mathbf{b} + A_2^\prime\mathbf{s}_2^\prime$, then $(A^\prime, \mathbf{b}^\prime)$ is a valid instance of $\operatorname{LWE}^\ast(m, n, q, U_s, \chi_e)$. Assuming that $(A^\prime, \mathbf{b}^\prime)$ has unique solution, then the solution must be $\mathbf{s}_1 \;\vert\; \mathbf{s}_2^\prime$, and we can obtain $\mathbf{s}_1$, which is the solution to $(A_1, \mathbf{b})$. Thus we have solved full-rank LWE of a lower dimension.
+
+P.S. the second reduction is very similar to the reduction in which an oracle for higher dimension LWE (not necessarily full-rank) can be used to solve lower dimension LWE by augmenting the lower dimension LWE instance. The only difference is that augmenting the lower dimension instance requires sampling linearly independent columns instead of sampling random columns.
 
 \end{document}
