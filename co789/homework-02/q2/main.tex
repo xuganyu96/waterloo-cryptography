@@ -1,0 +1,85 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Question 2}
+\subsection*{(1)}
+First, notice that for the given shortest vector $\mathbf{v} \in \mathcal{L}$ and base vector $\mathbf{b}_i$, $\mathbf{v} + \mathbf{b}_i \in \mathcal{L}(B^\prime)$. This is true because:
+
+$$
+\begin{aligned}
+\mathbf{v} + \mathbf{b}_i
+&= \mathbf{b}_1a_1 + \mathbf{b}_2a_2 + \ldots + \mathbf{b}_i(a_i + 1) + \ldots + \mathbf{b}_na_n \\
+&= \mathbf{b}_1a_1 + \mathbf{b}_2a_2 + \ldots + \mathbf{b}_i(2k + 1 + 1) + \ldots + \mathbf{b}_na_n \\
+&= \mathbf{b}_1a_1 + \mathbf{b}_2a_2 + \ldots + 2\mathbf{b}_i(k + 1) + \ldots + \mathbf{b}_na_n
+\end{aligned}
+$$
+
+Denote the output of $\operatorname{CVP}_\gamma(B^\prime, \mathbf{b}_i)$ by $\mathbf{u}$, then by the definition of $\gamma$-CVP:
+
+$$
+\begin{aligned}
+\norm{\mathbf{u} - \mathbf{b}_i} 
+&\leq \gamma \min_{\mathbf{x} \in \mathcal{L}(B^\prime)}\norm{\mathbf{b}_i - \mathbf{x}} \\
+& \leq \gamma \norm{\mathbf{b}_i - (\mathbf{v} + \mathbf{b}_i)} \\
+&= \gamma \norm{\mathbf{v}} = \gamma \lambda_1(\mathcal{L}(B)) 
+\end{aligned}
+$$
+
+In other words, $\mathbf{u} - \mathbf{b}_i$ is a solution to $\operatorname{SVP}_\gamma(B)$
+
+\subsection*{(2)}
+Let $B$ be the basis of a lattice for which we want to solve $\operatorname{SVP}_\gamma(B)$.
+
+We can modify $B$ by replacing one of its base vector $\mathbf{b}_i$ with $2\mathbf{b}_i$. For a chosen $i$, denote the modified basis by $B_i$. In other words:
+
+$$
+B_i = \{
+    \mathbf{b}_1, \mathbf{b}_2, \ldots, 2 \mathbf{b}_i, \ldots, \mathbf{b}_n
+\}
+$$
+
+With a $\operatorname{CVP}_\gamma$ oracle, we can solve $\operatorname{CVP}_\gamma(B_i, \mathbf{b}_i)$. Denote the output by $\mathbf{w}_i$. It's easy to see that $\mathbf{w}_i - \mathbf{b}_i \in \mathcal{L}(B)$ because $B_i$ generates a sub-lattice of $\mathcal{L}(B)$.
+
+Notice that if $\mathbf{v} = \sum_{i=1}^n a_i\mathbf{b}_i \in \mathcal{L}(B)$ is a shortest lattice point, then at least one of the coefficient $a_i$ must be odd. This is true because if all of coefficients are even, then $\frac{1}{2}\mathbf{v}$ is necessarily a shorter vector than $\mathbf{v}$, creating a contradiction.
+
+Therefore, for at least one such $i \in \{1, 2, \ldots, n\}$, $\mathbf{u}_i - \mathbf{b}_i$ falls into the scenario described in part (1), and is thus a solution to $\operatorname{SVP}_\gamma(B)$. Any shorter $\mathbf{u}_j - \mathbf{b}_j$ will also suffice.
+
+\begin{algorithm}
+\caption{Solve $\gamma$-SVP with $\gamma$-CVP oracle}\label{alg:cap}
+\begin{algorithmic}
+\State $\mathbf{v} \leftarrow \mathbf{b}_1$ \Comment{Start with some arbitrary lattice point}
+
+\For{$i \in \{1, 2, \ldots, n\}$}
+    \State $B_i \leftarrow $ replacing $\mathbf{b}_i$ with $2\mathbf{b}_i$
+    \State $\mathbf{u}_i \leftarrow \operatorname{CVP}_\gamma(B_i, \mathbf{b}_i)$
+    \If{$\mathbf{u}_i - \mathbf{b}_i$ is shorter than $\mathbf{v}$}
+        \State $\mathbf{v} \leftarrow \mathbf{u}_i - \mathbf{b}_i$
+    \EndIf
+\EndFor
+
+\Return $\mathbf{v}$
+
+\end{algorithmic}
+\end{algorithm}
+
+
+\end{document}

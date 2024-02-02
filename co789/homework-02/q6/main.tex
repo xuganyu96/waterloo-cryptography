@@ -1,0 +1,42 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Question 6}
+\subsection*{(a)}
+We denote a polynomial with degree $\phi(n) - 1$ by $f(x) = f_0 + f_1x + \ldots + f_{\phi(n)-1}x^{\phi(n)-1}$. It is trivially true that if $f(x) = g(x)$, then $f(\zeta_i) = g(\zeta_i)$ for all $1 \leq i \leq \phi(n)$.
+
+On the other hand, if for two polynomials $f, g$ with degree $\phi(n) - 1$, their NTT representations are exactly identical, then for all $1 \leq i \leq \phi(n)$:
+
+$$
+f(\zeta_i) = g(\zeta_i)
+$$
+
+Define $h(x) = f(x) - g(x)$, then $\zeta_1, \zeta_2, \ldots, \zeta_{\phi(n)}$ are distinct roots of $h(x)$. This means that $h(x)$ must have form:
+
+$$
+h(x) = h^\prime(x)(x - \zeta_1)(x - \zeta_2) \ldots (x - \zeta_{\phi(n)})
+$$
+
+Because $f(x), g(x)$ both have degree $\phi(n) - 1$, the degree of $f(x) - g(x)$ cannot be more than $\phi(n) - 1$. Therefore, $h(x)$ must be $0$, because otherwise it must have degree of at least $\phi(n)$. $\blacksquare$
+
+\subsection*{(b)}
+
+
+\end{document}

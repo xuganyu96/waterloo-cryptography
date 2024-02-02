@@ -1,0 +1,46 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Question 4}
+
+\subsection*{(a)}
+By the definition of the (quotient) ring $R_q = \mathbb{Z}_q[x] / \langle p(x) \rangle$ we know that:
+
+\begin{equation}
+    a(x)s(x) + e(x) = p(x)g(x) + b(x)
+\end{equation}
+
+Where $g(x)$ is some polynomial in $\mathbb{Z}_q[x]$.
+
+Where $\omega$ is a root of $p(x)$, evaluating equation (1) at $x = \omega$ is as follows:
+
+$$
+a(\omega)s(\omega) + e(\omega) = 0 \cdot g(\omega) + b(\omega) = b(\omega)
+$$
+
+$\blacksquare$
+
+\subsection*{(b)}
+From equation (1) we know that $a(\omega)s(\omega) + e(\omega) = b(\omega)$ if and only if $p(\omega)g(\omega) = 0$. Where $\omega$ is not a root of $p(x)$, the equality holds if and only if $g(\omega) = 0$.
+
+While $g(\omega) = 0$ does not hold in general, in specific cases it can still happen. For example, if the sum of degrees of $a(x)$ and $s(x)$ is less than the degree of $p(x)$, then $g(x) = 0$ (aka $b(x)$ does not need to be reduced modulus $p(x)$).
+
+
+\end{document}

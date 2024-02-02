@@ -1,0 +1,65 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Question 1}
+Recall the Gram-Schmidt orthogonalization algorithm:
+
+$$
+\mathbf{b}_i^\ast = \mathbf{b}_i - \sum_{j<i} \mu_{i,j} \mathbf{b}_j^\ast
+$$
+
+where $\mu_{i, j} = \frac{\langle \mathbf{b}_i, \mathbf{b}_j^\ast \rangle}{\langle \mathbf{b}_j^\ast, \mathbf{b}_j^\ast\rangle}$. Re-arranging the procedure gives us a decomposition of the original base vector by the orthogonalized vector:
+
+$$
+\mathbf{b}_i = \mathbf{b}_i^\ast + \sum_{j<i}\mu_{i,j}\mathbf{b}_j^\ast
+$$
+
+Because $\mathbf{b}_i \bot \mathbf{b}_j$ when $i \neq j$, it is easy to see that for any $j > i$, $\mathbf{b}_j^\ast \bot \mathbf{b}_i$. This is true because $\mathbf{b}_i$ is a linear combination of orthogonalized base vector with index less than or equal to $i$, all such base vectors are orthogonal to $\mathbf{b}_j^\ast$ as is its linear combination.
+
+Let $B = [\mathbf{b}_1, \mathbf{b}_2, \ldots, \mathbf{b}_n]$ be the basis of the lattice $\mathcal{L}$ and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be its orthogonalization. For each $\mathbf{v} \in \mathcal{L}$ lattice point, there exists a unique $\mathbf{x} \in \mathbb{Z}^n$ such that $\mathbf{v} = B\mathbf{x}$.
+
+Because $\mathbf{x}$ has finite number of entries, there exists a maximal index $k \in \{1, 2, \ldots, n\}$ such that $x_k$ is non-zero (in other words, $x_l = 0$ for all $l > k$). Observe the inner product between $\mathbf{v}$ and $\mathbf{b}_k^\ast$:
+
+$$
+\begin{aligned}
+\langle \mathbf{v}, \mathbf{b}_k^\ast \rangle
+&= \langle B\mathbf{x}, \mathbf{b}_k^\ast\rangle \\
+&= \langle x_k\mathbf{b}_k, \mathbf{b}_k^\ast \rangle \\
+&= x_k \norm{\mathbf{b}_k^\ast}^2
+\end{aligned}
+$$
+
+By Cauchy-Schwarz inequality we know that:
+
+$$
+\norm{\mathbf{v}}^2 \cdot \norm{\mathbf{b}_k^\ast}^2 
+\geq \langle \mathbf{v}, \mathbf{b}_k^\ast \rangle^2 
+= x_k^2 \norm{\mathbf{b}_k^\ast}^4
+$$
+
+Because $x_k$ is non-zero and an integer, $x_k^2 \geq 1$. Re-arranging the inequality gives us:
+
+$$
+\norm{\mathbf{v}} \geq \norm{\mathbf{b}_k^\ast}
+$$
+
+In other words, for each lattice point $\mathbf{v} \in \mathcal{L}$, there exists some orthogonalized base vector $\mathbf{b}_k^\ast$ that is at most as long as $\mathbf{v}$. Therefore, the shortest lattice point is at least as long as the shortest orthogonalized base vector. $\blacksquare$
+
+\end{document}

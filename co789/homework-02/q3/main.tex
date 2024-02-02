@@ -1,0 +1,55 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% For code
+\usepackage{listings}
+
+
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+\title{CO 789, Homework 1}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Fall 2023}
+
+\begin{document}
+% Title is not required when submitting to Crowdmark
+% \maketitle
+
+\section*{Question 3}
+First, the result of the multiplication in the quotient ring is as follows:
+
+\begin{equation}
+    (a_1 + a_2x)(b_1 + b_2x) \equiv (a_1b_1 + a_2b_2\zeta) + (a_1b_2 + a_2b_1)x \mod x^2 - \zeta
+\end{equation}
+
+Using schoolbook multiplication, the R.H.S. from above requires 5 multiplication. Using Karatsuba we can compute $a_1b_2 + a_2b_1$ using only one multiplication (but at the expense at more addition/subtraction):
+
+\begin{equation}
+    a_1b_2 + a_2b_1 = (a_1 + a_2)(b_1 + b_2) - a_1b_1 - a_2b_2
+\end{equation}
+
+The R.H.S. of equation (2) only takes one multiplication because $a_1b_1$ and $a_2b_2$ have already been computed from previous steps of schoolbook multiplication.
+
+Putting everything together:
+
+\begin{algorithm}
+\caption{Karatsuba-ish monomial multiplication}\label{alg:cap}
+\begin{algorithmic}
+    
+    \State Start with $a_1 + a_2x$ and $b_1 + b_2x$
+    \State $c_1 \leftarrow a_1 b_1$ \Comment first multiplication
+    \State $c_3 \leftarrow a_2b_2$ \Comment second multiplication
+    \State $c_2 \leftarrow (a_1 + a_2)(b_1 + b_2) - c_1 - c_3$ \Comment third multiplication
+    \State $c_3 \leftarrow c_3 \zeta$ \Comment fourth multiplication
+
+\Return $(c_1 + c_3) + c_2x$
+
+\end{algorithmic}
+\end{algorithm}
+
+\end{document}
