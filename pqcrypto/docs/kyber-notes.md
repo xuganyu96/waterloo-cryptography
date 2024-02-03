@@ -79,6 +79,9 @@ Each entry polynomial of the matrix is generated independently from the Keccak o
 
 In other words, when `poly` type is used to encode NTT representation, the values need to be cast into `uint16_t` first before the representation makes sense.
 
+## Compression
+Ciphertext compression is implemented in [this way](https://github.com/pq-crystals/kyber/commit/272125f) because the original implementation contains division on secret information by `KYBER_Q` that leaves open a timing vulnerability.
+
 # Appendix
 ## A: Using a debugger
 For how complex the reference implementation is, using a debugger is tremendously helpful. MacOS' developer toolchain comes with `lldb` out of the box, so we will use that.
