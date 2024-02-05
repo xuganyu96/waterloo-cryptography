@@ -1,7 +1,38 @@
----
-title: Kyber's reference implementation
----
 IND-CCA2 security for Kyber is achieved by applying (a tweaked version of) Fujiaski-Okamoto transformation to an IND-CPA secure version of Kyber. As a result, much of the IND-CCA2 keygen, encryption, and decryption routines are based on IND-CPA implementation, so we will understand the IND-CPA implementation before moving onto the Fujisaki-Okamoto transformation.
+
+## Generating seeds
+For IND-CPA keygen, two 32-byte seeds are used for generating the public matrix $A$ and the secret/error vectors respectively (note that the secret vector and the error vector are generated using the same seed, but with different nonce).
+
+In `indcpa_keypair`, 32 bytes of randomness is first extracted from `/dev/urandom`, then fed into SHA3-512 to expand into 64 bytes of hash value, where the first half is used for generating $A$ and the second half used to generate $\mathbf{s}$ and $\mathbf{e}$.
+
+Using Python's `hashlib` it can be confirmed that `hash_g`, in the instantiation of Kyber-512, is SHA3-512:
+
+```python
+from hashlib import sha3_512
+captured_ios = [
+    (
+        "2cf85ad21abde69bac39050ce255ad97325693cc37c840ba9c1ff3176ee37a34",
+        "876f8d3100f58abfbc4e145598d60c4d69940da68598b807b88bec36464e44e6"\
+        "8dd8674c4f2e49364eafd2aee3e08f9eafffa92bc321dd308753406de74f138e"
+    ),
+    (
+        "e4c0637be7e50ffdc8d62e16a5652870e362bf652dd8eed3db8095738ddc97fa",
+        "4960858da2496921c1f61279d41071b977282c707d3285cffdf310da249f1f7f"\
+        "33fa9789d865bbf494287e24931fab862aa3837a37c6d672afc6c926b3735aa7"
+    ),
+    (
+        "a106dfebe2c5de127e6d831c04b221064f41839b7b1bf6ef022ce8acd57724ad",
+        "687141e50e8c5b981a945830d456448dd527bea13afed0faf50056d8f1143e1c"\
+        "35f8ec393394a91d41808fe11c52ed3be59705bcd030ba25d1b029cf7bc87357"
+    )
+]
+
+for data, expected_digest in captured_ios:
+    hash = sha3_512()
+    hash.update(bytes.fromhex(data))
+    assert hash.hexdigest() == expected_digest
+```
+
 
 ## Public key and secret key types
 The output of `indcpa.c::indcpa_keypair` is the key pair: public key and secret key.
