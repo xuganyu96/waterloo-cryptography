@@ -1,25 +1,7 @@
 ---
 title: Kyber's reference implementation
 ---
-
-- [Appendix](#appendix)
-    - [Using a debugger](#a-using-a-debugger)
-
-# Generating key pair
-The IND-CCA2 key generation 
-
-These are the steps of `indcpa_key` from `indcpa.c`:
-- `gen_a`
-    - `gen_a(A, B)` is an alias for calling `gen_matrix(A, B, 0)`, which is to generate the matrix $A$ without transposing
-    - With the reference (modern) implementation of Kyber, Keccak is used for the XOF (extensible output function). Keccak follows the sponge design, where `xof_absorb` takes possibly random inputs to update the internal state, and `xof_squeezeblocks` outputs outputs cryptographic-strength random bits
-- `poly_getnoise_eta1`
-- `polyvec_ntt`
-- `polyvec_basemul_acc_motgomery`
-- `polytomont`
-- `polyvec_add`
-- `polyvec_reduce`
-- `pack_sk`
-- `pack_pk`
+IND-CCA2 security for Kyber is achieved by applying (a tweaked version of) Fujiaski-Okamoto transformation to an IND-CPA secure version of Kyber. As a result, much of the IND-CCA2 keygen, encryption, and decryption routines are based on IND-CPA implementation, so we will understand the IND-CPA implementation before moving onto the Fujisaki-Okamoto transformation.
 
 ## Public key and secret key types
 The output of `indcpa.c::indcpa_keypair` is the key pair: public key and secret key.
@@ -55,6 +37,13 @@ struct KyberSecretKey<const K: usize> {
 ```
 
 The public key's size is `KYBER_K * KYBER_POLYBYTES + KYBER_SYMBYTES` where `KYBER_POLYBYTES` is always 384 (256 coefficients each taking 12 bits to encode) and `KYBER_SYMBYTES` is always 32. This means that the public key contains the seed for the matrix $A \in R_q^{k \times k}$ and the actual values for $\mathbf{b} \in R_q^k$.
+
+## Centered binomial distribution
+Consider the random variable that is the difference between two fair coin tosses $X = I_1 - I_2$. The probability of getting $\pm 1$ is $\frac{1}{4}$ and the probability of getting 0 is $\frac{1}{2}$.
+
+This means that $X$ actually follows the centered binomial distribution $\mathcal{B}(n=2, p=\frac{1}{2})$. As a result, the sum of $\eta$ of i.i.d. of $X_i = I_{i, 1} - I_{i, 2}$ follows the centered binomial distribution $\mathcal{B}(n=2\eta, p=\frac{1}{2})$. This is the basis on which Kyber samples from the desired centered binomial distribution
+
+But does it generalize to any $p$?
 
 ## Generating the sample matrix
 The LWE matrix $A$ in the public key is generated from a 32-byte seed. The value of the seed itself is randomly derived (in the reference implementation it is derived from `/dev/urandom`).
