@@ -37,6 +37,18 @@ $$
 Because $f(x), g(x)$ both have degree $\phi(n) - 1$, the degree of $f(x) - g(x)$ cannot be more than $\phi(n) - 1$. Therefore, $h(x)$ must be $0$, because otherwise it must have degree of at least $\phi(n)$. $\blacksquare$
 
 \subsection*{(b)}
-Go to office hour
+Recall the NTT transformation described in part (1): $\operatorname{NTT}(f) \mapsto (f(\zeta_1), f(\zeta_2), \ldots, f(\zeta_{\phi(n)}))$. From here we know:
+
+$$
+\begin{aligned}
+\operatorname{NTT}(f \cdot g) 
+&= ((f \cdot g)(\zeta_1), (f \cdot g)(\zeta_2), \ldots, (f \cdot g)(\zeta_{\phi(n)})) \\
+&= (f(\zeta_1) \cdot g(\zeta_1), f(\zeta_2) \cdot g(\zeta_2), \ldots, f(\zeta_{\phi(n)}) \cdot g(\zeta_{\phi(n)})) \\
+&= (f(\zeta_1), f(\zeta_2), \ldots, f(\zeta_{\phi(n)})) \circ (g(\zeta_1), g(\zeta_2), \ldots, g(\zeta_{\phi(n)})) \\
+&= \operatorname{f} \circ \operatorname{g}
+\end{aligned}
+$$
+
+$\blacksquare$
 
 \end{document}
