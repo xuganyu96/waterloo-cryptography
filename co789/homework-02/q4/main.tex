@@ -40,7 +40,9 @@ $\blacksquare$
 \subsection*{(b)}
 From equation (1) we know that $a(\omega)s(\omega) + e(\omega) = b(\omega)$ if and only if $p(\omega)g(\omega) = 0$. Where $\omega$ is not a root of $p(x)$, the equality holds if and only if $g(\omega) = 0$.
 
-While $g(\omega) = 0$ does not hold in general, in specific cases it can still happen. For example, if the sum of degrees of $a(x)$ and $s(x)$ is less than the degree of $p(x)$, then $g(x) = 0$ (aka $b(x)$ does not need to be reduced modulus $p(x)$).
+Because $a(x), s(x), e(x) \in R_q$ are all polynomials of degree (up to) $d-1$, and $p(x)$ is a polynomial of degree $d$, the degree of $g(x)$ cannot be more than $2 \cdot (d - 1) - d = d - 2$. By the fundamental theorem of algebra we know that $g(x)$ cannot have more than $d-2$ roots in $\mathbb{Z}_q$. Therefore, if $q > d-2$, then there exists $\omega \in \mathbb{Z}_q$ such that $\omega$ is not a root of $g(x)$, which means that $b(\omega) \neq a(\omega)s(\omega) + e(\omega)$.
+
+On the other hand, if the sum of degrees of $a(x)$ and $s(x)$ is less than the degree of $p(x)$, then $g(x) = 0$ (aka $b(x)$ does not need to be reduced modulus $p(x)$).
 
 
 \end{document}
