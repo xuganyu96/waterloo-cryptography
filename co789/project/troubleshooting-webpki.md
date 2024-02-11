@@ -26,3 +26,19 @@ Early data was not sent
 Verify return code: 0 (ok)
 ---
 ```
+
+# Root cause
+The reason why `openssl s_client` succeeded with handshake while the `rustls` simple client reports "invalid name" error is that `rustls` is very strict with its PKI-related implementation. Specifically, it rigorously checks the validity of the server certificate, including the fact that the server name (as obtained from the TCP connection) matches the subject names on the server certificate (in the case of server name being an IP address, `rustls` exclusively checks the server name against what's listed in `subject_alt_name`). See `rustls/webpki/server_verifier.rs::verify_server_cert` for the code that calls `verify_server_name`.
+
+The best fix is to provide the IP address as the alternative subject name. This can be done by providing an extension file to the `openssl` command when signing server's public key using CA's public key:
+
+```bash
+echo "subjectAltName=IP:127.0.0.1" > server.cfg
+openssl x509 -req \
+    -in server-req.pem \
+    -CA ca-cert.pem \
+    -CAkey ca-key.pem \
+    -CAcreateserial \
+    -out server-cert.pem \
+    -extfile server.cfg
+```
