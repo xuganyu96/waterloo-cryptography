@@ -24,3 +24,32 @@ After `ServerHello`, all messages will be encrypted (but with what?) From here:
 - Added supported signatures in `supported_signature_algorithms` in `ClientHello`; this signature is for `CertificateVerify`
 - ECDH key exchange is replaced with the KEM provided by Kyber: client generates key pair and sends the public key to the server in `ClientHello`; server sends back the encapsulated secret in `ServerHello`. The shared secret is passed to KDF to produce master secret and intermediate secrets
 - X.509 Certificates now need to be signed with post-quantum signatures
+
+Where is `supported_groups` in the `ClientHello`?
+- In `rustls:ClientConfig`
+- In `rustls::ClientConnection::new`
+
+in `rustls::ClientConfig`, `provider.kx_groups` includes:
+- `X25519`
+- `secp256r1`
+- `secp384r1`
+
+This seems to be the set of supported groups.
+
+`rustls::client::hs::emit_client_hello_for_retry` contains the high-level code that specified `supported_groups`:
+
+```rust
+let mut exts = vec![
+    ClientExtension::NamedGroups(
+        config
+            .provider
+            .kx_groups
+            .iter()
+            .map(|skxg| skxg.name())
+            .collect(),
+    ),
+    // ...
+];
+```
+
+Thanks to the abstraction of `rustls`'s cryptographic backend, adding `NamedGroups` is now handled by user's implementation of a `CryptoProvider`.
