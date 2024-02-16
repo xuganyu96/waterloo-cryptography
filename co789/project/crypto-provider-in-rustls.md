@@ -45,3 +45,12 @@ Unfortunately, in the default `rustls` server implementation, public key is quer
     - Called by `emit_server_hello`
 
 Post-quantum hybrid KEX: https://datatracker.ietf.org/doc/draft-tls-westerbaan-xyber768d00/
+
+# Need to pivot
+It turns out that `rustls` already has a [PR](https://github.com/rustls/rustls/pull/1785) for supporting the X25519-Kyber768 hybrid post-quantum key exchange. The PR seems to be complete and is waiting only for IETF to standardize the key exchange method before being finalized. This means that "being a first" is no longer a realistic goal. However, not all is lost: ther are still things that can be done.
+
+1. Continue working within the `rustls` system: I can still try to introduce other post-quantum KEM, and I can still introduce post-quantum digital signatures. I can also introduce CryptoProvider that is implemented using `liboqs-rust` instead of `aws-lc-rs`
+2. Work with an embedded Rust TLS library such as [embedded-tls](https://github.com/drogue-iot/embedded-tls). Note that in order to test an embedded client capable of doing PQ-TLS, I will need a server that is also capable of doing PQ-TLS, meaning that I will need to work on `rustls` anyways
+3. The entire PKI crates still have post-quantum migrations to do, too
+
+At this moment option 1 is more promising, although option 2 also ties into CommSec lab's interest, so I should consider it, too.
