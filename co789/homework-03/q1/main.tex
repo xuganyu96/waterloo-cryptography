@@ -9,6 +9,8 @@
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
 \newcommand{\norm}[1]{\Vert {#1} \Vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\indcpa}{\mathcal{A}_\text{IND-CPA}}
+\newcommand{\indcca}{\mathcal{A}_\text{IND-CCA}}
 
 \title{CO 789, Homework 1}
 \author{Ganyu (Bruce) Xu (g66xu)}
@@ -20,5 +22,12 @@
 
 \section*{Question 1}
 
+We show that IND-CCA security implies IND-CPA security by showing that if an IND-CPA adversary can win with non-negligible advantage, then it can be used to build an IND-CCA adversary who can win with non-negligible advantage.
+
+The key generation routines are identical between the IND-CPA and the IND-CCA game. When $\indcca$ receives the keypair, it directly passes it to $\indcpa$. $\indcpa$ can use the public key to perform encryption queries but does not submit any decryption queries.
+
+When $\indcpa$ generates the challenge plaintext $m_0, m_1$, $\indcca$ passes them to the IND-CCA challenger and receives the challenge ciphertext $c_b$. $\indcca$ passes $c_b$ to $\indcpa$ and receives the guess $b^\ast$ from $\indcpa$.
+
+Because both the IND-CPA and the IND-CCA games are played with identical keypairs, $\indcpa$'s guess is correct if and only if $b^\ast$ is equal to $b$. Therefore, $\indcca$'s advantage is equal to $\indcpa$'s advantage, meaning that if $\indcpa$ has non-negligible advantage, then $\indcca$ has non-negligble advantage.
 
 \end{document}

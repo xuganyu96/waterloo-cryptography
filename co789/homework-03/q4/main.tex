@@ -9,6 +9,7 @@
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
 \newcommand{\norm}[1]{\Vert {#1} \Vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\adv}{\mathcal{A}_\text{EF-CMA}}
 
 \title{CO 789, Homework 1}
 \author{Ganyu (Bruce) Xu (g66xu)}
@@ -18,7 +19,23 @@
 % Title is not required when submitting to Crowdmark
 % \maketitle
 
-\section*{Question 1}
+\section*{Question 4}
+\subsection*{(1)}
+We denote the augmented signature scheme's parameters and functions with a star to differentiate them from the parameters and routines of the input signature scheme.
 
+For key generation, set $\operatorname{sk}^\ast = (\operatorname{pk}, \operatorname{sk})$ and $\operatorname{pk}^\ast = H(\operatorname{pk})$, where $\operatorname{pk}, \operatorname{sk} \leftarrow \operatorname{KeyGen}$ is generated from the input signature scheme, and $H$ is the input collision-resistant hash function.
+
+For $\operatorname{Sign}^\ast(\operatorname{sk}^\ast, m)$, first compute $\sigma = \operatorname{Sign}(\operatorname{sk}, m)$ using the input signature scheme's signing routine, then output $\sigma^\ast = (\operatorname{pk}, \sigma)$ as the signature.
+
+For $\operatorname{Verify}^\ast(\operatorname{pk}^\ast, \sigma^\ast, m)$, first unpack the signature $(\hat{\operatorname{pk}}, \hat{\sigma}) = \sigma^\ast$ and check that $H(\hat{\operatorname{pk}})$ is equal to $\operatorname{pk}^\ast$. Then, run the input signature scheme's verification routine $\operatorname{Verify}(\hat{\operatorname{pk}}, \hat{\sigma}, m)$. The verification passes if and only if both checks pass.
+
+\subsection*{(2)}
+We show that the modified signature scheme is EUF-CMA by showing that if there exists an EF-CMA adversary for the modified scheme $\adv^\ast$, then we can build an EF-CMA adversary for the original scheme $\adv$ with equal advantage.
+
+In the EF-CMA game of the input scheme, key generation outputs the keypair $(\operatorname{pk}, \operatorname{sk})$. $\adv$ computes $\operatorname{pk}^\ast = H(\operatorname{pk})$ and passes $\operatorname{pk}^\ast$ to $\adv^\ast$.
+
+When $\adv^\ast$ queries the signature of some message $m_i$, $\adv$ queries the signature $\sigma_i$ of $m_i$ from the signing oracle for the input signature scheme. $\adv$ then gives $\sigma^\ast_i = (\operatorname{pk}, \sigma_i)$ back to $\adv^\ast$ as the answer to the query.
+
+When $\adv^\ast$ outputs the forgery $\hat{\sigma^\ast} = (\hat{\operatorname{pk}}, \hat{\sigma}, \hat{m})$, we claim that $\hat{\operatorname{pk}} = \operatorname{pk}$, because otherwise we will have found collision $\hat{\operatorname{pk}} \neq \operatorname{pk}$ such that $H(\hat{\operatorname{pk}}) = H(\operatorname{pk})$. Thus $\adv^\ast$ is valid if and only if $\hat{\sigma}, \hat{m}$ pass the verification of the original signature scheme. Therefore, $\adv$ has the same advantage as $\adv^\ast$.
 
 \end{document}

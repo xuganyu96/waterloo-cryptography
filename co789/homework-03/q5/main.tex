@@ -18,7 +18,36 @@
 % Title is not required when submitting to Crowdmark
 % \maketitle
 
-\section*{Question 1}
+\section*{Question 5}
 
+\subsection*{1}
+For a given message $m$, we can forge a signature under the public key $(A, \mathbf{t})$ using the following procedure:
+
+\begin{enumerate}
+    \item Sample $\mathbf{y} \leftarrow \chi_y$ 
+    \item Compute $\mathbf{w} \leftarrow A\mathbf{y}$
+    \item Compute $c \leftarrow H(\mathbf{w}, \mathbf{t})$
+    \item Give $(A, \mathbf{w} + c\mathbf{t})$ to the $\operatorname{module-ISIS}(k, l, q, p(x), \gamma_1 - np\tau)$ solver, which returns some $\mathbf{z}$
+    \item Output $\sigma = (\mathbf{w}, c, \mathbf{z})$
+\end{enumerate}
+
+$\sigma$ is a valid forgery because $\mathbf{z}$ as a solution to the $\operatorname{module-ISIS}(k, l, q, p(x), \gamma_1 - np\tau)$ problem satisfies the verification conditions:
+
+\begin{enumerate}
+    \item $\norm{\mathbf{z}}_\infty \leq \gamma_1 - np\tau$
+    \item $A\mathbf{z} = \mathbf{w} + c\mathbf{t}$
+\end{enumerate}
+
+\subsection*{2}
+The key recovery attack is as follows:
+
+\begin{enumerate}
+    \item Sample some random message $m$
+    \item Query the signature of $m$, which is $(\mathbf{w}, c, \mathbf{z})$
+    \item Give $(A, \mathbf{w})$ to $\operatorname{module-ISIS}(k, l, q, p(x), \gamma_1)$ solver, which returns some $\mathbf{y}$
+    \item Compute $\mathbf{s} = c^{-1}(\mathbf{z} - \mathbf{y})$. $\mathbf{s}$ is the secret key
+\end{enumerate}
+
+This procesure works because for the queried signature to be valid, it must satisfy $\mathbf{z} = \mathbf{y} + c\mathbf{s}$, meaning that if we can recover $\mathbf{y}$, then we can recover $\mathbf{s}$. In this instance, a valid $\mathbf{y}$ is recovered using the solver on $A\mathbf{y} = \mathbf{w}$.
 
 \end{document}
