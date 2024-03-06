@@ -54,8 +54,20 @@ $$
 It's possible that $\operatorname{adv}_1 - \operatorname{adv}_3$ is non-negligible, so $\operatorname{adv}_0$ might be non-negligible, thus breaking IND-CPA security of the modified encryption routine.
 
 \subsection*{(2)}
-Observe that when $m = \mathbf{0} \in R_{\{0,1\}}$, $c_2 = \mathbf{r}^\intercal \mathbf{b}$ is divisible by $\mathbf{b}$. On the other hand, if $m$ is non-zero, then with very high probability, $c_2$ will not be divisible by $\mathbf{b}$.
+When the second error term $e^{\prime\prime}$ is omitted, in the IND-CPA RLWE encryption scheme, the second part of each ciphertext is:
 
-Thus, an IND-CPA can challenge plaintexts as follows: $m_0 = \mathbf{0}$, $m_1$ is some arbitrary non-zero polynomial. Upon receiving the challenge ciphertext $c^\ast$, check if $c_2$ is divisible by $\mathbf{b}$ (which is part of the public key and hence accessible). If yes, then $c^\ast$ is the encryption of $m_0$; otherwise $c^\ast$ is the encryption of $m_1$.
+$$
+c_2 = rb + m \round{\frac{q}{2}}
+$$
+
+Assuming that $b$ is an invertible polynomial in $R_q = \mathbb{Z}_q / \langle p(x) \rangle$, an adversary who knows $m$ can recover $r$:
+
+$$
+r = (c_2 - m \round{\frac{q}{2}})b^{-1}
+$$
+
+Where $m = 0$ is the zero polynomial, then $c_2b^{-1} = r$ must have small coefficients. On the other hand, assuming that decisional RLWE holds, $b$ is computationally indistinguishable from truly random, which implies that $b^{-1}$ is also computationally indistinguishable from truly random. Therefore, it is safe to assume that it is easy to find some $m \in R_{\{0, 1\}}$ such that $m\round{\frac{q}{2}}b^{-1}$ has coefficients that are outside the bound of the secret distribution $\chi_s$.
+
+From here, the IND-CPA adversary proceeds as follows. Pick $m_0 = 0$, and $m_1$ such that $m_1 \round{\frac{q}{2}}b^{-1}$ has large coefficients. Upon receving the challenge ciphertext $c^\ast  =(c_1^\ast, c_2^\ast)$, compute $c_2^\ast b^{-1}$. Where $m_0$ is chosen by the challenger, $c_2^\ast b^{-1}$ will have small coefficients. Where $m_1$ is chosen by the challenger, then $c_2^\ast b^{-1}$ will have large coefficients.
 
 \end{document}

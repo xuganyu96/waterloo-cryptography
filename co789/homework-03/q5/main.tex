@@ -2,52 +2,126 @@
 \usepackage[margin=1in,letterpaper]{geometry}
 \usepackage{amsmath,amsfonts,amssymb,amsthm}
 
-% For code
+% For source code
 \usepackage{listings}
 
+% Algorithms and pseudocode
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
+% Common shortcuts
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
 \newcommand{\norm}[1]{\Vert {#1} \Vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
 
 \title{CO 789, Homework 1}
 \author{Ganyu (Bruce) Xu (g66xu)}
 \date{Fall 2023}
 
 \begin{document}
-% Title is not required when submitting to Crowdmark
+%%%% TITLE %%%%%
 % \maketitle
 
 \section*{Question 5}
+Recall from lecture notes the proto-Dilithium:
 
-\subsection*{1}
-For a given message $m$, we can forge a signature under the public key $(A, \mathbf{t})$ using the following procedure:
+\begin{algorithm}
+\caption{proto-Dilithium KeyGen}
+\begin{algorithmic}[1]
+    \Require $k, l \in \mathbb{Z}$, polynomial ring $R_q$, secret distribution $\chi_s = \mathcal{B}(n, p)$, $y$ distribution $\chi_y = R_{[-\gamma, \gamma]}$, and hash function $H$ that hashes from the message space to $R_{0,1}$ with exactly $\tau$ coefficients being ones
 
-\begin{enumerate}
-    \item Sample $\mathbf{y} \leftarrow \chi_y$ 
-    \item Compute $\mathbf{w} \leftarrow A\mathbf{y}$
-    \item Compute $c \leftarrow H(\mathbf{w}, \mathbf{t})$
-    \item Give $(A, \mathbf{w} + c\mathbf{t})$ to the $\operatorname{module-ISIS}(k, l, q, p(x), \gamma_1 - np\tau)$ solver, which returns some $\mathbf{z}$
-    \item Output $\sigma = (\mathbf{w}, c, \mathbf{z})$
-\end{enumerate}
+    \State $\mathbf{s} \leftarrow \chi_s^l$
+    \State $A \leftarrow R_q^{k \times l}$
+    \State $\mathbf{t} \leftarrow A\mathbf{s}$
 
-$\sigma$ is a valid forgery because $\mathbf{z}$ as a solution to the $\operatorname{module-ISIS}(k, l, q, p(x), \gamma_1 - np\tau)$ problem satisfies the verification conditions:
+    \Return $\text{sk} \leftarrow \mathbf{s}, \text{pk} \leftarrow (A, \mathbf{t})$
+\end{algorithmic}
+\end{algorithm}
 
-\begin{enumerate}
-    \item $\norm{\mathbf{z}}_\infty \leq \gamma_1 - np\tau$
-    \item $A\mathbf{z} = \mathbf{w} + c\mathbf{t}$
-\end{enumerate}
+\begin{algorithm}
+    \caption{Dilithium.Sign}
+    \begin{algorithmic}[1]
+        \Require $\text{pk}, \text{sk}, m$
+        \State $\sigma \leftarrow \bot$
+        \While{$\sigma = \bot$}
+            \State $\mathbf{y} \leftarrow \chi_y^l, \mathbf{w} \leftarrow A\mathbf{y}$
+            \State $c \leftarrow H(m)$
+            \State $\mathbf{z} \leftarrow \mathbf{y} + c \cdot \mathbf{s}$
+            \If{$\norm{\mathbf{z}}_\infty \geq \gamma - np\tau$}
+                \State $\sigma \leftarrow \bot$
+            \Else
+                \State $\sigma \leftarrow (\mathbf{z}, c, \mathbf{w})$
+            \EndIf
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
 
-\subsection*{2}
-The key recovery attack is as follows:
+\begin{algorithm}
+    \caption{Dilithium.Verify}
+    \begin{algorithmic}[1]
+        \Require $\text{pk}, m, \sigma$
+        \State assert $\norm{\mathbf{z}}_\infty < \gamma - np\tau$
+        \State assert $A\mathbf{z} = \mathbf{w} + c \mathbf{t}$ 
+    \end{algorithmic}
+\end{algorithm}
 
-\begin{enumerate}
-    \item Sample some random message $m$
-    \item Query the signature of $m$, which is $(\mathbf{w}, c, \mathbf{z})$
-    \item Give $(A, \mathbf{w})$ to $\operatorname{module-ISIS}(k, l, q, p(x), \gamma_1)$ solver, which returns some $\mathbf{y}$
-    \item Compute $\mathbf{s} = c^{-1}(\mathbf{z} - \mathbf{y})$. $\mathbf{s}$ is the secret key
-\end{enumerate}
+\subsection*{(1)}
+Observe that $A, \mathbf{t}$ are both public information. In addition, any adversary can sample $\mathbf{y} \leftarrow \chi_y$ on its own, and produce a valid $\mathbf{w}$. For any chosen message $m$, an adversary can sample $\mathbf{w}$  and compute $c \leftarrow H(\mathbf{w}, m)$, then pass $(A, \mathbf{w} + c \mathbf{t})$ to the provided module-ISIS solver. The output from this solver, denoted by $\mathbf{z}$, is such that
 
-This procesure works because for the queried signature to be valid, it must satisfy $\mathbf{z} = \mathbf{y} + c\mathbf{s}$, meaning that if we can recover $\mathbf{y}$, then we can recover $\mathbf{s}$. In this instance, a valid $\mathbf{y}$ is recovered using the solver on $A\mathbf{y} = \mathbf{w}$.
+$$
+\begin{cases}
+    A\mathbf{z} = \mathbf{w} + c\mathbf{t} \\
+    \norm{\mathbf{z}}_\infty < \gamma - np\tau
+\end{cases}
+$$
+
+In other words, $(m, (\mathbf{w}, c, \mathbf{z}))$ will pass the verification for the challenge keypair, making it a valid forgery.
+
+\subsection*{(2)}
+Knowing that $\mathbf{y}$'s infinity norm is bounded by $\gamma$, we can use the given module-ISIS solver to recover $\mathbf{y}$ from the relation $\mathbf{w} = A \mathbf{y}$. Once $\mathbf{y}$ is recovered, it is possible to recover the secret key $\mathbf{s}$ using the relation $\mathbf{z} = \mathbf{y} + c \mathbf{s}$.
+
+Note that because $A$ is wide, $A\mathbf{y} = \mathbf{w}$ might not have unique solution. We can speculate the condition on which solutions are unique. One sufficient condition is that the linear mapping is injective, which requires that the domain is smaller than the co-domain. The domain of the linear mapping is $R_{[-\gamma, \gamma]}^l$ ($l$ polynomials of degree $n$ each having coefficients in the range $[-\gamma, \gamma]$), whose size is approximately:
+
+$$
+\vert R_{[-\gamma, \gamma]}^l \vert = (2\gamma + 1)^{ln}
+$$
+
+On the other hand, there is no restriction on $\mathbf{w} \in R_q^k$:
+
+$$
+\vert R_q^k \vert = q^{nk}
+$$
+
+For the linear mapping to be injective, $\vert R_{[-\gamma, \gamma]}^l \vert < \vert R_q^k \vert$, which results in a bound on $\gamma$:
+
+$$
+\gamma < \frac{1}{2}(q^\frac{k}{l} - 1)
+$$
+
+Finally, here is the key recovery attack:
+
+\begin{algorithm}
+    \caption{Key-recovery attack under CMA}
+    \begin{algorithmic}[1]
+        \Require $\text{pk}$, module-ISIS solver
+        \State Generate random message $m$, and query its signature $\sigma = (\mathbf{w}, c, \mathbf{z})$
+        \State Use module-ISIS solver to solve for $\mathbf{y}$ in $A\mathbf{y} = \mathbf{w}$
+        \State Compute $\mathbf{s} \leftarrow (\mathbf{z} - \mathbf{y}) \cdot c^{-1}$
+
+    
+        \Return $\mathbf{s}$ is the secret key
+    \end{algorithmic}
+\end{algorithm}
 
 \end{document}
