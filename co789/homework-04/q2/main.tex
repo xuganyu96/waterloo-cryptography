@@ -31,40 +31,17 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 2}
+In SPX, each WOTS keypair $\text{WOTS}$ signs the root of child XMSS tree(s). If WOTS is replaced by some $k$-time signature scheme, then each leaf node in each XMSS tree can sign the roots of $k$ child XMSS tress. Fixing each XMSS tree to still have $2^t$ leaf notes, then each XMSS tree can have $k \cdot 2^t$ children. If the entire SPX hypertree has $d$ layers, then it can sign a total of $(k \cdot 2^t)^d$ messages.
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+From the lecture notes we know that for a target security level $\lambda$, we want:
 
-\begin{algorithm}
-\caption{Caption for the algorithm}\label{alg:cap}
-\begin{algorithmic}[1]  % [1] is for displaying line number
-    \Require This input, and that input
-    \State Make some statement with the "State" command
+$$
+(k \cdot 2^t)^d = 2^{2\lambda}
+$$
 
-    \For{Wrap for loop condition within the "For" command}
-    \EndFor
-
-    \While{Wrap while loop condition within "While" command}
-    \EndWhile
-
-    \If{Wrap if else in the "If" command}
-    \ElsIf{Another condition}
-    \Else
-    \EndIf
-
-    \Return Return the output using the "Return" command
-
-\end{algorithmic}
-\end{algorithm}
+Which solves to $d = \frac{2\lambda}{\log_2{k} + t}$. With larger $k$ (aka the signature scheme can sign more messages without losing security), \textbf{we need fewer layers in the hypertree to accomplish the same security level}. Since the signature, signing routine, and verification routine all iterate through all $d$ layers of the hypertree, \textbf{signature size, signing time, and verification time all decrease linearly as $d$ decreases}
 
 \end{document}

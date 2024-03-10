@@ -31,40 +31,45 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 3}
+Recall that the FORS scheme uses $k$ Merkle trees $T_1, T_2, \ldots, T_k$ each with $n$ leaf nodes. At signing $m$ is hashed into $1 \leq h_1, h_2, \ldots, h_k \leq n$, and the signature are the authentication paths $\sigma_j$ of $h_j$ in tree $T_j$ for $1 \leq j \leq k$. 
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+Let $\mathcal{A}$ denote a EF-CMA adversary. Suppose that $\mathcal{A}$ makes $N$ queries: $m_1, m_2, \ldots, m_N$, then the signing oracles will return the authentication paths for:
 
-\begin{algorithm}
-\caption{Caption for the algorithm}\label{alg:cap}
-\begin{algorithmic}[1]  % [1] is for displaying line number
-    \Require This input, and that input
-    \State Make some statement with the "State" command
+$$
+\begin{bmatrix}
+    h_{1, 1}, &h_{1, 2}, &\ldots, &h_{1, N}, &\text{from } T_1 \\
+    h_{2, 1}, &h_{2, 2}, &\ldots, &h_{2, N}, &\text{from } T_2 \\
+    \ldots \\
+    h_{k, 1}, &h_{k, 2}, &\ldots, &h_{k, N}, &\text{from } T_k \\
+\end{bmatrix}
+$$
 
-    \For{Wrap for loop condition within the "For" command}
-    \EndFor
+Let $m^\ast$ be some randomly chosen message, and $h_1^\ast, h_2^\ast, \ldots, h_k^\ast = H(m)$. $m^\ast$ is forgeable if the authentication paths in all $k$ trees are forgeable. An authentication path in tree $T_i$ is forgeable if any of $h_{i,1}, h_{i,2}, \ldots, h_{i, N}$ collides with $h_i^\ast$. Therefore:
 
-    \While{Wrap while loop condition within "While" command}
-    \EndWhile
+$$
+\begin{aligned}
+    P[\text{$T_i$ auth path forgeable}] 
+    &= 1 - P[\text{$T_i$ auth path unforgeable}] \\
+    &= 1 - P[h_{i,j} \neq h_i^\ast \text{ for all } 1 \leq j \leq N] \\
+    &= 1 - \prod_{j=1}^N P[h_{i,j} \neq h_i^\ast] \\
+    &= 1 - (1 - \frac{1}{n})^N
+\end{aligned}
+$$
 
-    \If{Wrap if else in the "If" command}
-    \ElsIf{Another condition}
-    \Else
-    \EndIf
+Where $P[h_{i,j} \neq h_i^\ast] = 1 - \frac{1}{n}$ because each hash $H(m)$ must be in the range $1, 2, \ldots, n$, and we assume that hash function to be an ideal pseudorandom function.
 
-    \Return Return the output using the "Return" command
+Finally:
 
-\end{algorithmic}
-\end{algorithm}
+$$
+\begin{aligned}
+P[\text{FORS forgeable}]
+&= P[\text{$T_i$  authentication path forgeable for all $1 \leq i \leq k$}] \\
+&= \prod_{i=1}^k P[\text{$T_i$ auth path forgeable}] \\
+&= (1 - (1 - \frac{1}{n})^N)^k
+\end{aligned}
+$$
 
 \end{document}

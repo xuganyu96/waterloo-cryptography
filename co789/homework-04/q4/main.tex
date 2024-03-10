@@ -31,40 +31,22 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 4}
+With a ternary Merkle tree (3MT for short), each piece of data being committed will have 2 sibling nodes at each layer in the 3MT. If the 3MT has $3^t$ leaf nodes, then the authentication paths will contain $2t$ hashes (compared to $t$ hashes in regular MT).
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+In the SPX hypertree, each layer produces one WOTS signature and one Merkle tree authentication path. If we use 3MT for SPX then:
 
-\begin{algorithm}
-\caption{Caption for the algorithm}\label{alg:cap}
-\begin{algorithmic}[1]  % [1] is for displaying line number
-    \Require This input, and that input
-    \State Make some statement with the "State" command
+$$
+\vert \sigma^\text{SPX} \vert = d(
+    \vert \sigma^\text{WOTS} \vert + 2t \vert H \vert
+) 
++ \vert \sigma^\text{FORS} \vert
+$$
 
-    \For{Wrap for loop condition within the "For" command}
-    \EndFor
+where $H$ is the hash function used in the Merkle tree.
 
-    \While{Wrap while loop condition within "While" command}
-    \EndWhile
-
-    \If{Wrap if else in the "If" command}
-    \ElsIf{Another condition}
-    \Else
-    \EndIf
-
-    \Return Return the output using the "Return" command
-
-\end{algorithmic}
-\end{algorithm}
+Note that if we use 3MT, then each XMSS will have $3^t$ leaf nodes, and the entire hypertree will be able to sign $3^{dt}$ distinct messages. With a fixed security level $\lambda$ and $t$, the value of $d$ will decreased, meaning that we will need fewer layers in the hypertree (so the signature size is not strictly increasing).
 
 \end{document}

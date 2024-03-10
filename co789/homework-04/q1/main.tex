@@ -31,40 +31,21 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 1}
+P.S. SPHINCS is surprisingly annoying to type. I will abbreviate it with SPX.
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+We first briefly recall the key generation and signing procedure of SPX. In SPX key generation, a secret seed is randomly sampled, and a root WOTS keypair $(\text{PK}^\text{WOTS}_\text{root}, \text{SK}^\text{WOTS}_\text{root})$ is pseudorandomly generated from the secret seed. The SPX public key is the hash of the root WOTS public key, and the SPX secret key is the secret seed.
 
-\begin{algorithm}
-\caption{Caption for the algorithm}\label{alg:cap}
-\begin{algorithmic}[1]  % [1] is for displaying line number
-    \Require This input, and that input
-    \State Make some statement with the "State" command
+When signing a message, a FORS keypair $(\text{PK}^\text{FORS}, \text{SK}^\text{FORS})$ is pseudorandomly generated based on the message and the seed. The message is signed by $\text{FORS}$. The $\text{FORS}$ public key is authenticated by a SPX hypertree (where each node is a XMDSS tree with $2^t$ WOTS keypairs). The SPX hypertree is finally authenticated using the root WOTS keypair by signing the root of the root XMSS tree in the SPX hypertree. The hyper tree is pseudorandomly generated using the secret seed alone so that under the same SPX keypair, the root WOTS keypair always signs the same value.
 
-    \For{Wrap for loop condition within the "For" command}
-    \EndFor
+If the hyper tree is pseudorandomly generated using BOTH the secret seed and the message, then for distinct messages, each XMSS tree in the hyper tree will be distinct, and the root WOTS keypair will sign the root of a distinct XMSS tree, meaning that the root WOTS keypair signs distinct messages. \textbf{Therefore, with each distinct query signature query, the security of the root WOTS keypair degrades}.
 
-    \While{Wrap while loop condition within "While" command}
-    \EndWhile
+\subsection*{A EF-CMA adversary}
 
-    \If{Wrap if else in the "If" command}
-    \ElsIf{Another condition}
-    \Else
-    \EndIf
+Let $\mathcal{A}$ denote an EF-CMA adversary against the modified SPX. It first makes a large number of distinct queries. For each query $(m_i, \sigma_i)$, the returned signature $\sigma_i$ contains a WOTS signature $\sigma_i^\text{WOTS}$ signed using the root WOTS keypair. $\mathcal{A}$ chooses a message $m^\ast$, then executes the $\text{SPX.KeyGen}()$ and $\text{SPX.Sign()}$ routine up to the point where the root of the root XMSS tree of the hyper tree has been computed, which we denote by $\text{root}(T_0^\ast)$.
 
-    \Return Return the output using the "Return" command
-
-\end{algorithmic}
-\end{algorithm}
+Because WOTS is a one-time signature, we know that with a large number of known signatures on distinct messages, the probability that $\mathcal{A}$ can forge a signature on $\text{root}(T_0^\ast)$ under the same keypair is non-negligible. Since $\mathcal{A}$ self-generated the FORS and the hypertree, all verification involving FORS and the hypertree will pass; if $\mathcal{A}$ can forge a signature under the true root WOTS keypair, then the entire verification will pass (we claim without proof that if $(\hat{m}, \hat{\sigma})$ is a valid forgery, then $\text{WOTS.PubKeyRegen}(\hat{m}, \hat{\sigma})$ will correctly recover the true $\text{PK}^\text{WOTS}$). Thus $\mathcal{A}$ has a non-negligible chance of successful forgery (and can quickly improve the probability of forgery by repeatedly sample different seeds).
 
 \end{document}
