@@ -1,0 +1,178 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Common shortcuts
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{A survey of IND-CCA constructions}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{CO 789, Winter 2024}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{The Fujisaki-Okamoto Transformation}
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} takes a IND-CPA public-key encryption scheme (PKE) and a few other cryptographic primitives of weaker security as inputs, and constructs a hybrid encryption scheme that achieves IND-CCA2 security.
+
+In the conference paper, the security reduction is performed under the random oracle model, and the security of the hybrid scheme degrades linearly with the number of hash queries and the number of decryption queries. On the other hand, this scheme is desirable for its simplicity, and the low requirements for the input primitives: the PKE only needs to be one-time one-way secure, and the symetric cipher only needs to be indistinguishable under one-time attack.
+
+% TODO: Need more introduction?
+
+\subsection{The hybrid scheme and security result}
+The hybrid encryption scheme contains three routines: key generation, encryption, and decryption. The input for the hybrid scheme includes a public-key encryption scheme $\text{KeyGen}^\text{asym}, E^\text{asym}, D^\text{asym}$, a symmetric encryption scheme $E^\text{sym}, D^\text{sym}$, and two hash functions $G: \mathcal{M}^\text{asym} \mapsto \mathcal{K}^\text{sym}, H: \mathcal{M}^\text{asym} \times \mathcal{C}^\text{sym} \mapsto \text{Coin}^\text{asym}$.
+
+\begin{algorithm}
+\caption{FO Key generation}\label{fo-key-gen}
+\begin{algorithmic}[1]  % [1] is for displaying line number
+    \State $
+        (\text{PK}^\text{asym}, \text{SK}^\text{asym}) 
+        \leftarrow \text{PKE.KeyGen}()
+    $
+    \State $
+        \text{PK}^\text{hy} \leftarrow \text{PK}^\text{asym},
+        \text{SK}^\text{hy} \leftarrow \text{SK}^\text{asym},
+    $
+
+    \Return $(\text{PK}^\text{hy}, \text{SK}^\text{hy})$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+\caption{FO Key encryption}\label{fo-key-enc}
+\begin{algorithmic}[1]  % [1] is for displaying line number
+    \Require $m \in \mathcal{M}^\text{sym}$
+    \State Sample from the PKE's message space $\sigma \leftsample \mathcal{M}^\text{asym}$
+    \State $a \leftarrow G(\sigma)$, $c \leftarrow E^\text{sym}_a(m)$
+    \State $h \leftarrow H(\sigma, c)$
+    \State $e \leftarrow E^\text{asym}(\text{PK}^\text{hy}, \sigma, h)$
+
+    \Return $(e, c)$
+\end{algorithmic}
+\end{algorithm}
+
+\pagebreak
+
+The decryption routine:
+
+\begin{algorithm}
+\caption{FO Key decryption}\label{fo-key-dec}
+\begin{algorithmic}[1]  % [1] is for displaying line number
+    \Require The ciphertext $(e, c)$
+
+    \State $
+        \hat{\sigma} \leftarrow D^\text{asym}(\text{SK}^\text{hy}, e)
+    $
+
+    \State $
+        \hat{h} \leftarrow H(\hat{\sigma}, c)
+    $
+
+    \State $
+        \hat{e} \leftarrow E^\text{asym}(\text{PK}^\text{hy})
+    $
+
+    \If{$\hat{e} \neq e$}
+        \State \Return $\bot$
+    \EndIf
+
+    \State $\hat{a} \leftarrow G(\hat{\sigma})$
+    \State $\hat{m} \leftarrow D^\text{sym}_{\hat{a}}(c)$
+    \State \Return $\hat{m}$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{theorem}\label{fo-security-theorem}
+    For all IND-CCA adversary $\mathcal{A}^\text{hy}$ against the hybrid encryption scheme with advantage $\epsilon^\text{hy}$, there exists a one-way one-time-encryption adversary against the public-key encryption scheme with advantage $\epsilon^\text{asym}$ and an one-time indistinguishability adversary against the symmetric encryption scheme with advantage $\epsilon^\text{sym}$ such that
+
+    \begin{equation*}
+        \epsilon^\text{hy} \leq q_\text{H}\epsilon^\text{asym} + \epsilon^\text{sym} + q_\text{D}2^{-\gamma}
+    \end{equation*}
+
+    where $\gamma$ is the spread of the public-key encryption scheme, $q_\text{H}$ is the total number of hash queries, and $q_\text{D}$ is the total number of decryption queries
+\end{theorem}
+
+\subsection{Proof of security result}
+Theorem \ref{fo-security-theorem} is proved using a sequence of games that involves $\mathcal{A}^\text{hy}$ as the main routine, and two games that involves $\mathcal{A}^\text{hy}$ as a sub-routine. The sequence of games is as follows:
+
+\begin{enumerate}
+    \item Game 0 is the standard IND-CCA2 game
+
+    \item Game 1 is identical to game 0, except that the decryption oracle $\mathcal{O}_D$ is modified. Instead of using the true secret key $\text{SK}^\text{hy}$ to decrypt the query $(e_q, c_q)$, the decryption oracle checks the tape of hash function $H$ for the existence of hash query $(\sigma_H, c_H, h_H)$ such that $c_q = c_H$ and $e_q = E^\text{asym}(\text{PK}^\text{asym}, \sigma_H, h_H)$. If such a query exists, then $\mathcal{O}_D$ uses $\sigma_H$ to derive the symmetric key $a_q \leftarrow G(\sigma_H)$ and decrypt the queried ciphertext $c_q$. If no such query exists, then $\mathcal{O}_D$ will reject the queried ciphertext and output a decryption error. It is worth noting that this modified decryption oracle does not require the hybrid secret key $\text{SK}^\text{hy}$ to process decryption queries.
+
+    \item Game 2 is identical to game 1, except the routine of encrypting the challenge ciphertext is modified: $a^\ast \leftsample \mathcal{K}^\text{sym}$ is randomly sampled from the symmetric key space instead of being queried from $G$, and $h^\ast \leftsample \text{COIN}^\text{asym}$ is randomly sampled from the asymmetric coin space instead of being queried from $H$.
+\end{enumerate}
+
+Let $S_0, S_1, S_2$ denote the event that $\mathcal{A}^\text{hy}$ wins game 0, game 1, and game 2, respectively.
+
+\begin{lemma}\label{fo-win0-win1}
+    Let $q_D$ denote the number of decryption queries, and $\gamma$ denote the spread of the PKE, then
+    \begin{equation*}
+        P[S_0] - P[S_1] \leq q_D 2^{-\gamma}
+    \end{equation*}
+\end{lemma}
+
+\begin{proof}
+    For each decryption query $(e_q, c_q)$, there are three mutually exclusive possibilities:
+
+    \begin{enumerate}
+        \item The queried ciphertext is \textbf{honest}, meaning that there is a matching record on the tape of the hash function $H$
+        \item There is no matching record on the tape of the hash function $H$, and the check in step 4 in algorithm \ref{fo-key-dec} will fail, outputing decryption error. Such a query is called \textbf{invalid}
+        \item There is no matching record on the tape of the hash function $H$, but the check in step 4 of algorithm \ref{fo-key-dec} will succeed. Such a query is called \textbf{almost valid}
+    \end{enumerate}
+
+    Observe that for both $S_0, S_1$:
+
+    $$
+    \begin{aligned}
+        P[S] &= P[S \cap \text{ all decryption queries are honest }] \\
+        &+ P[S \cap \text{ some decryption queries are dishonest, but none is almost valid }] \\
+        &+ P[S \cap \text{ at least one almost valid decryption queries }]
+    \end{aligned}
+    $$
+
+    When all decryption queries are honest, the decryption oracles will correctly decrypt the query in both game 0 and game 1. When all dishonest decryption queries are invalid, the decryption oracles will reject the query in both games. The only difference between the two games lies in how the decryption oracle processes almost valid decryption queries. Therefore:
+
+    $$
+    \begin{aligned}
+        &P[S_0] - P[S_1] \\
+        &= P[S_0 \cap \text{ at least one almost valid decryption queries }] \\
+        &- P[S_1 \cap \text{ at least one almost valid decryption queries }] \\
+        &\leq P[\text{ at least one almost valid decryption queries }]
+    \end{aligned}
+    $$
+
+    Let $(e, c)$ be some decryption query made without querying $H$, then in the true decryption routine, $\hat{h} \leftarrow H(\hat{\sigma}, c)$ will be a truly random coin, and $\hat{e} \leftarrow E^\text{asym}(\hat{\sigma}, \hat{h})$ will be a truly random ciphertext for the given public key and $\hat{\sigma}$. Since the the PKE has $\gamma$ spread, we know that $P[e = \hat{e}] = P[(e, c) \text{ is almost valid}] \leq 2^{-\gamma}$. Among $q_D$ decryption query, the probability of having at least one almost valid query is bounded by sum of probability of each decryption query being almost valid: $P[\text{ at least one almost valid query }] \leq q_D 2^{-\gamma}$.
+\end{proof}
+
+% TODO: bound the difference between S_1 and S_2
+% TODO: bound ask sigma
+% TODO: bound S_2
+
+\bibliographystyle{plain}
+\bibliography{./references.bib}
+
+
+\end{document}
