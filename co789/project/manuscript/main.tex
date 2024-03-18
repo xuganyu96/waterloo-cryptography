@@ -34,6 +34,10 @@
 %%%% TITLE %%%%%
 \maketitle
 
+\section{Introduction}
+
+\section{Preliminaries}
+
 \section{The Fujisaki-Okamoto Transformation}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} takes a IND-CPA public-key encryption scheme (PKE) and a few other cryptographic primitives of weaker security as inputs, and constructs a hybrid encryption scheme that achieves IND-CCA2 security.
 
@@ -56,7 +60,7 @@ The hybrid encryption scheme contains three routines: key generation, encryption
         \text{SK}^\text{hy} \leftarrow \text{SK}^\text{asym},
     $
 
-    \Return $(\text{PK}^\text{hy}, \text{SK}^\text{hy})$
+    \State \Return $(\text{PK}^\text{hy}, \text{SK}^\text{hy})$
 \end{algorithmic}
 \end{algorithm}
 
@@ -69,7 +73,7 @@ The hybrid encryption scheme contains three routines: key generation, encryption
     \State $h \leftarrow H(\sigma, c)$
     \State $e \leftarrow E^\text{asym}(\text{PK}^\text{hy}, \sigma, h)$
 
-    \Return $(e, c)$
+    \State \Return $(e, c)$
 \end{algorithmic}
 \end{algorithm}
 
@@ -117,13 +121,13 @@ The decryption routine:
 \subsection{Proof of security result}
 Theorem \ref{fo-security-theorem} is proved using a sequence of games that involves $\mathcal{A}^\text{hy}$ as the main routine, and two games that involves $\mathcal{A}^\text{hy}$ as a sub-routine. The sequence of games is as follows:
 
-\begin{enumerate}
+\begin{itemize}
     \item Game 0 is the standard IND-CCA2 game
 
     \item Game 1 is identical to game 0, except that the decryption oracle $\mathcal{O}_D$ is modified. Instead of using the true secret key $\text{SK}^\text{hy}$ to decrypt the query $(e_q, c_q)$, the decryption oracle checks the tape of hash function $H$ for the existence of hash query $(\sigma_H, c_H, h_H)$ such that $c_q = c_H$ and $e_q = E^\text{asym}(\text{PK}^\text{asym}, \sigma_H, h_H)$. If such a query exists, then $\mathcal{O}_D$ uses $\sigma_H$ to derive the symmetric key $a_q \leftarrow G(\sigma_H)$ and decrypt the queried ciphertext $c_q$. If no such query exists, then $\mathcal{O}_D$ will reject the queried ciphertext and output a decryption error. It is worth noting that this modified decryption oracle does not require the hybrid secret key $\text{SK}^\text{hy}$ to process decryption queries.
 
     \item Game 2 is identical to game 1, except the routine of encrypting the challenge ciphertext is modified: $a^\ast \leftsample \mathcal{K}^\text{sym}$ is randomly sampled from the symmetric key space instead of being queried from $G$, and $h^\ast \leftsample \text{COIN}^\text{asym}$ is randomly sampled from the asymmetric coin space instead of being queried from $H$.
-\end{enumerate}
+\end{itemize}
 
 Let $S_0, S_1, S_2$ denote the event that $\mathcal{A}^\text{hy}$ wins game 0, game 1, and game 2, respectively.
 
@@ -167,9 +171,72 @@ Let $S_0, S_1, S_2$ denote the event that $\mathcal{A}^\text{hy}$ wins game 0, g
     Let $(e, c)$ be some decryption query made without querying $H$, then in the true decryption routine, $\hat{h} \leftarrow H(\hat{\sigma}, c)$ will be a truly random coin, and $\hat{e} \leftarrow E^\text{asym}(\hat{\sigma}, \hat{h})$ will be a truly random ciphertext for the given public key and $\hat{\sigma}$. Since the the PKE has $\gamma$ spread, we know that $P[e = \hat{e}] = P[(e, c) \text{ is almost valid}] \leq 2^{-\gamma}$. Among $q_D$ decryption query, the probability of having at least one almost valid query is bounded by sum of probability of each decryption query being almost valid: $P[\text{ at least one almost valid query }] \leq q_D 2^{-\gamma}$.
 \end{proof}
 
-% TODO: bound the difference between S_1 and S_2
-% TODO: bound ask sigma
-% TODO: bound S_2
+If during the IND-CCA game, $\mathcal{A}^\text{hy}_\text{IND-CCA}$ never makes hash query that involves $\sigma^\ast$, then under the random oracle model, there is no difference between sampling $a^\ast, h^\ast$ randomly or pseudorandomly. On the other hand, if the adversary does make such a query, then there is an inconsistency between the challenge ciphertext and the results of such hash query. In other words, the difference between game 1 and game 2 is the even that the IND-CCA adversary makes such a hash query:
+
+\begin{lemma}
+    $$
+    P[S_1] - P[S_2] = P[\text{query}]
+    $$
+\end{lemma}
+
+Denote the challenge ciphertext in game 2 by $(e^\ast, c^\ast)$. Notice that $e^\ast$ is the encryption of a truly random $\sigma^\ast$ using a truly random coin $h^\ast$, while $c^\ast$ is the encryption of $m_b^\ast$ under a truly random key $a^\ast$. This allows a OW-CPA game for the PKE, and an IND-CPA game for the symmetric cipher to be perfectly simulated by some $\mathcal{A}^\text{asym}_\text{OW-CPA}$ and/or $\mathcal{A}^\text{sym}_\text{IND-CPA}$. Using this strategy, we can bound $P[S_2]$ and $P[\text{query}]$ using the advantage of some OW-CPA and/or IND-CPA adversaries.
+
+\begin{lemma}\label{fo-bound-s2}
+    For every IND-CCA adversary $A^\text{hy}_\text{IND-CCA}$, there exists an IND-OTE adversary against the underlying symmetric cipher $\mathcal{A}^\text{sym}_\text{IND-OTE}$ with advantage $\epsilon^\text{sym}_\text{IND-OTE}$ such that
+
+    $$
+    P[S_2] = \frac{1}{2} + \epsilon^\text{sym}_\text{IND-OTE}
+    $$
+\end{lemma}
+
+\begin{proof}
+    $\mathcal{A}^\text{sym}_\text{IND-OTE}$ can perfectly simulate the hybrid key generation $\text{PK}^\text{hy} = \text{PK}^\text{asym}, \text{SK}^\text{hy} = \text{SK}^\text{asym}$, the random oracles $G, H$, as well as the modified decryption oracle.
+    
+    When $\mathcal{A}^\text{hy}_\text{IND-CCA}$ submits the challenge plaintexts $(m_0, m_1)$, $\mathcal{A}^\text{sym}_\text{IND-OTE}$ passes them to the symmetric cipher challenger and receives the symmetric challenge ciphertext $c^\ast$. $\mathcal{A}^\text{sym}_\text{IND-OTE}$ then randomly samples $\sigma^\ast \leftsample \mathcal{M}^\text{asym}$ and $h^\ast \leftsample \text{COIN}^\text{asym}$ and computes $e^\ast \leftarrow E^\text{asym}(\text{PK}^\text{asym}, \sigma^\ast, h^\ast)$. $(e^\ast, c^\ast)$ is given to $\mathcal{A}^\text{hy}_\text{IND-CCA}$ as the challenge ciphertext. It is easy to verify that from $\mathcal{A}^\text{hy}_\text{IND-CCA}$'s perspective, this game is exactly game 2; in addition $\mathcal{A}^\text{hy}_\text{IND-CCA}$ wins the game if and only if $\mathcal{A}^\text{sym}_\text{IND-OTE}$ wins the game.
+\end{proof}
+
+\begin{lemma}
+    For every IND-CCA adversray $\mathcal{A}^\text{hy}_\text{IND-CCA}$, there exists an OW-CPA adversary $\mathcal{A}^\text{asym}_\text{OW-CPA}$ with advantage $\epsilon^\text{asym}_\text{OW-CPA}$ such that
+
+    $$
+    \epsilon^\text{asym}_\text{OW-CPA} = P[\text{query}] \cdot \frac{1}{q_H}
+    $$
+
+    where $q_H$ is the number of hash queries $\mathcal{A}^\text{hy}_\text{IND-CCA}$ makes to either $H$ or $G$.
+\end{lemma}
+
+\begin{proof}
+    Similar to the proof of lemma \ref{fo-bound-s2}, $\mathcal{A}^\text{asym}_\text{OW-CPA}$ can perfectly simulate key generation, hash oracles, and decryption oracle.
+
+    Let $e^\ast$ denote the asymmetric challenge ciphertext $\mathcal{A}^\text{asym}_\text{OW-CPA}$ receives from the OW-CPA challenger, let $\sigma^\ast$ denote the plaintext that corresponds with $e^\ast$, and let $(m_0, m_1)$ denote the challenge plaintexts submitted by $\mathcal{A}^\text{hy}_\text{IND-CCA}$. $\mathcal{A}^\text{asym}_\text{OW-CPA}$ samples a random symmetric key $a^\ast \leftsample \mathcal{K}^\text{sym}$ and a coin flip $b \leftsample \{0, 1\}$, then computes $c^\ast \leftarrow E^\text{sym}_{a^\ast}(m_b)$. $(e^\ast, c^\ast)$ is the IND-CCA challenge ciphertext.
+
+    After the $\mathcal{A}^\text{hy}_\text{IND-CCA}$ halts, $\mathcal{A}^\text{asym}_\text{OW-CPA}$ looks through the tape of the hash oracles $\mathcal{O}^H = \{(\tilde{\sigma}, \tilde{c})\}$ and $\mathcal{O}^G = \{\tilde{\sigma}\}$, then picks a random value among all possible $\tilde{\sigma}$'s to output. $\mathcal{A}^\text{asym}_\text{OW-CPA}$ wins if $\mathcal{A}^\text{hy}_\text{OW-CPA}$ makes a query $\tilde{\sigma} = \sigma^\ast$ and the correct query is chosen.
+\end{proof}
+
+\section{Tweaking FO Transform for IND-CCA KEM}
+While the FO transformation can construct IND-CCA public-key encryption scheme from OW-CPA PKE and IND-OTE symmetric cipher, there are a few drawbacks to the hybrid scheme as it is:
+
+\begin{itemize}
+    \item The security proof is not tight. The security of the hybrid scheme degrades linearly with the number of hash queries.
+    \item The hybrid scheme assumes the underlying PKE to be always correct. This is not the case in PKEs such as schemes based on "Learning with Errors" (LWE), which can have a small but non-zero probability of decryption error
+\end{itemize}
+
+In 2017, Hofheinz et al \cite{hofheinz2017modular} improved the FO transformation by addressing the non-tight security and accounting for possible decryption errors. In addition, the paper proposed various IND-CCA KEM constructions from weak PKE's that does not require a symmetric cipher. In fact, both Kyber \cite{avanzi2019crystals} and Classic McEliece \cite{albrecht2022classic} make direct use of transformations proposed in this paper to achieve IND-CCA security for their respective KEMs.
+
+The strategy for achieving IND-CCA KEM consists of two parts
+
+\begin{itemize}
+    \item Transform a OW-CPA and/or IND-CPA PKE into an OW-PCVA PKE
+    \item Transform the OW-PCVA PKE into a IND-CCA KEM
+\end{itemize}
+
+\subsection{Preliminaries}
+
+\subsection{From OW-CPA to OW-PCVA}
+
+\subsection{IND-CCA KEM}
+
+\section{OAEP and RSA-OAEP}
 
 \bibliographystyle{plain}
 \bibliography{./references.bib}
