@@ -37,6 +37,7 @@
 \section{Introduction}
 
 \section{Preliminaries}
+% TODO: from IND-CPA to OW-CPA
 
 \section{The Fujisaki-Okamoto Transformation}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} takes a IND-CPA public-key encryption scheme (PKE) and a few other cryptographic primitives of weaker security as inputs, and constructs a hybrid encryption scheme that achieves IND-CCA2 security.
@@ -230,9 +231,164 @@ The strategy for achieving IND-CCA KEM consists of two parts
     \item Transform the OW-PCVA PKE into a IND-CCA KEM
 \end{itemize}
 
-\subsection{Preliminaries}
+The intermediary security definition PCVA is defined by two oracles: the \textbf{plaintext checking oracle (PCO)} and the \textbf{ciphertext validation oracle (CVO)}. The details of these two oracles will be discussed in the following section
 
-\subsection{From OW-CPA to OW-PCVA}
+\subsection{From OW/IND-CPA to OW-PCVA}
+Let $(\text{KeyGen}, E, D)$ denote the input public-key encryption scheme, let $(\text{KeyGen}^T, E^T, D^T)$ denote the transformed public-key encryption scheme, let $G$ be a hash function. The transformed routines are as follows:
+
+\begin{algorithm}
+    \caption[keygen-t]{$\text{KeyGen}^T$}
+    \begin{algorithmic}[1]
+        \State $\text{pk}, \text{sk} \leftsample \text{KeyGen}()$
+        \State \Return $\text{pk}^T \leftarrow \text{pk}, \text{sk}^T \leftarrow \text{sk}$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption[encrypt-t]{Encryption routine: $E^T$}
+    \begin{algorithmic}[1]
+        \Require The message $m \in \mathcal{M}$
+        \State $r \leftarrow G(m)$ \Comment $r$ serves as the coin
+        \State $c \leftarrow E(\text{pk}^T, m, r)$
+        \State \Return $c$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption[decrypt-t]{Decryption routine: $D^T$}
+    \begin{algorithmic}[1]
+        \Require ciphertext $c \in \mathcal{C}$
+        \State $\hat{m} \leftarrow D(\text{sk}, c)$
+        \State $\hat{r} \leftarrow G(\hat{m})$
+        \If{$E(\text{pk}, \hat{m}, \hat{r}) \neq c$}
+            \State \Return $\bot$
+        \EndIf
+        \State \Return $\hat{m}$
+    \end{algorithmic}
+\end{algorithm}
+
+To discuss the security of the transformed scheme, we first need to lay out the implementations of the PCO and the CVO. In the vanilla PCVA game, the two oracles have access to the challenge secret key and perform decryption routines:
+
+
+\begin{algorithm}
+    \caption[pco-0]{Plaintext checking oracle $\text{PCO}_0$}
+    \begin{algorithmic}[1]
+        \Require A query plaintext-ciphertext pair $(\tilde{m}, \tilde{c})$
+        \State $\hat{m} \leftarrow D(\text{sk}, \tilde{c})$
+        \If{$\hat{m} \neq \tilde{m}$}
+            \State \Return 0 \Comment query is not valid
+        \EndIf
+        \State $\tilde{r} \leftarrow G(\tilde{m})$
+        \If{$E(\text{pk}, \tilde{m}, \tilde{r}) \neq \tilde{c}$}
+            \State \Return 0  \Comment query is also not valid
+        \EndIf
+        \State \Return 1  \Comment query is valid
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption[cvo-0]{Ciphertext validation oracle $\text{CVO}_0$}
+    \begin{algorithmic}[1]
+        \Require A query ciphertext $\tilde{c}$
+        \State $\hat{m} \leftarrow D(\text{sk}, \tilde{c})$
+        \If{$\hat{m} = \bot$}
+            \State \Return 0 \Comment ciphertext is not valid
+        \ElsIf{$E(\text{pk}, \hat{m}, G(\hat{m})) \neq \tilde{c}$}
+            \State \Return 0 \Comment ciphertext is not valid
+        \EndIf
+        \State \Return 1  \Comment ciphertext is valid
+    \end{algorithmic}
+\end{algorithm}
+\pagebreak
+
+To link the advantage of an OW-PCVA adversary, a sequence of games is devised in which PCO and CVO are incrementally modified to not require the secret key and the challenge encryption to be performed with a truly random coin. These modifications will allow the OW-PCVA game to be perfectly simulated by an OW/IND-CPA adversary, thus establishing the security of the transformed encryption scheme upon the security of the input encryption scheme.
+
+\begin{theorem}[IND-CPA to OW-PCVA]\label{cpa-to-pcva}
+    Under the random-oracle model, for every OW-PCVA adversary $\mathcal{A}^T_\text{OW-PCVA}$ against the transformed PKE with advantage $\epsilon^T_\text{OW-PCVA}$, there exists an IND-CPA adversary $\mathcal{A}_\text{IND-CPA}$ against the input PKE with advantage $\epsilon_\text{IND-CPA}$ such that
+
+    $$
+    \epsilon^T_\text{OW-PCVA} 
+        \leq q_V \cdot 2^{-\gamma} 
+            + q_G \cdot \delta 
+            + 3\cdot\epsilon_\text{IND-CPA}
+    $$
+
+    Where $\gamma$ is the spread of ciphertext of the input PKE, $\delta$ is the probability of decryption error of the input PKE, $q_V$ is the number of ciphertext validation queries, and $q_G$ is the number of hash queries to $G$.
+\end{theorem}
+
+\begin{proof}\label{cpa-to-pcva-proof}
+    \textit{Admittedly this is only a sketch. Some nuance is omitted for the sake of clarity, but the overall result will be off by no more than some negligible constants.}
+
+    We device a sequence of games that $\mathcal{A}^T_\text{OW-PCVA}$ plays. Game 0 is the standard OW-PCVA game.
+
+    Game 1 is identical to game 0, except that CVO has been modified to check the tape of the hash function $G$ for plaintext $\tilde{m}$ that encrypts into the queried ciphertext $\tilde{c}$ under $E^T$:
+
+    \begin{algorithm}\label{cvo-1}
+        \caption{$\text{CVO}_1$}
+        \begin{algorithmic}[1]
+            \Require queried ciphertext $\tilde{c}$
+            \For{$(\tilde{m}, \tilde{r})$ on the tape of $G$}
+                \If{$E(\text{pk}, \tilde{m}, \tilde{r}) = \tilde{c}$} 
+                    \State \Return 1  \Comment queried ciphertext is valid
+                \EndIf
+            \EndFor
+            \State \Return 0  \Comment queried ciphertext is invalid
+        \end{algorithmic}
+    \end{algorithm}
+
+    Following similar logic in the FO transformation's security reduction, it's easy to see that game 0 and game 1 diverge when $\mathcal{A}^T_\text{OW-PCVA}$ makes at least one CVO query $\tilde{c}$ whose decryption encrypts correctly (aka passes CVO in game 0) but without querying $G$ (aka fails CVO in game 1)
+
+    \begin{equation}
+        P[\text{wins game 0}] - P[\text{wins game 1}] \leq q_V \cdot 2^{-\gamma}
+    \end{equation}
+
+    Game 2 is identical to game 1, except that PCO is modified to check only the encryption instead of checking both encryption and decryption
+
+    \begin{algorithm}
+        \caption{$\text{PCO}_2$}
+        \begin{algorithmic}[1]
+            \Require query $(\tilde{m}, \tilde{c})$
+            \For{$(m, r)$ from the tape of $G$}
+                \If{$m = \tilde{m}$ and $E(\text{pk}, m, r) = \tilde{c}$}
+                    \State \Return 1
+                \EndIf
+            \EndFor
+            \State \Return 0
+        \end{algorithmic}
+    \end{algorithm}\pagebreak
+
+    Game 2 diverges from game 1 if $\mathcal{A}^T_\text{OW-PCVA}$ makes at least one hash query $(\tilde{m}, \tilde{r})$ such that 
+    
+    $$D(\text{sk}, E(\text{pk}, \tilde{m}, \tilde{r})) \neq \tilde{m}$$
+
+    Therefore 
+    
+    $$P[\text{wins game 1}] - P[\text{wins game 2}] \leq q_G \cdot \delta$$
+
+    Game 3 is identical to game 2, except that when encrypting the challenge ciphertext $c^\ast$, a truly random coin $(r^\ast \leftsample \text{Coin})$ is used instead of a pseudorandom coin $r^\ast \leftarrow G(m^\ast)$. Game 3 diverges from game 2 if $\mathcal{A}^T_\text{OW-PCVA}$ ever queries the hash of the challenge plaintext $m^\ast$:
+
+    $$
+    P[\text{wins game 2}] - P[\text{wins game 3}] \leq P[\text{query $m^\ast$}]
+    $$
+
+    In game 3, PCO and CVO can be simulated without the secret key, and the challenge ciphertext is computed using a truly random coin instead of the hash of the challenge plaintext. This allows game 3 to be perfectly simulated by some OW-CPA adversary $\mathcal{A}_\text{OW-CPA}$ against the input PKE:
+
+    \begin{itemize}
+        \item When $\mathcal{A}_\text{OW-CPA}$ receives $\text{pk}$, the public key is passed to $\mathcal{A}^T_\text{OW-PCVA}$
+        \item $\mathcal{A}_\text{OW-CPA}$ simulates $G$, $\text{PCO}_2$, $\text{CVO}_1$ for $\mathcal{A}^T_\text{OW-PCVA}$
+        \item When $\mathcal{A}_\text{OW-CPA}$ receives the challenge ciphertext $c^\ast$, it is passed to $\mathcal{A}^T_\text{OW-PCVA}$ as the OW-PCVA challenge ciphertext
+        \item When $\mathcal{A}^T_\text{OW-PCVA}$ outputs $m$, $\mathcal{A}_\text{OW-CPA}$ outputs the same value
+    \end{itemize}
+
+    It's easy to see that from $\mathcal{A}^T_\text{OW-PCVA}$'s perspective, it is playing game 3, and $\mathcal{A}^T_\text{OW-PCVA}$ wins if and only if $\mathcal{A}_\text{OW-CPA}$ wins:
+
+    $$
+    P[\text{$\mathcal{A}^T_\text{OW-PCVA}$ wins game 3}] = \epsilon_\text{OW-CPA} = \epsilon_\text{IND-CPA} + \frac{1}{\vert\mathcal{M}\vert}
+    $$
+
+    % TODO: bound P[query] by P[IND-CPA wins]
+
+\end{proof}
 
 \subsection{IND-CCA KEM}
 
