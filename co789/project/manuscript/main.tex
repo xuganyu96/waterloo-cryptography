@@ -310,6 +310,7 @@ To link the advantage of an OW-PCVA adversary, a sequence of games is devised in
     \epsilon^T_\text{OW-PCVA} 
         \leq q_V \cdot 2^{-\gamma} 
             + q_G \cdot \delta 
+            + \frac{1}{\vert\mathcal{M}\vert}
             + 3\cdot\epsilon_\text{IND-CPA}
     $$
 
@@ -338,7 +339,7 @@ To link the advantage of an OW-PCVA adversary, a sequence of games is devised in
 
     Following similar logic in the FO transformation's security reduction, it's easy to see that game 0 and game 1 diverge when $\mathcal{A}^T_\text{OW-PCVA}$ makes at least one CVO query $\tilde{c}$ whose decryption encrypts correctly (aka passes CVO in game 0) but without querying $G$ (aka fails CVO in game 1)
 
-    \begin{equation}
+    \begin{equation}\label{ow-pcva-g0-g1}
         P[\text{wins game 0}] - P[\text{wins game 1}] \leq q_V \cdot 2^{-\gamma}
     \end{equation}
 
@@ -362,14 +363,16 @@ To link the advantage of an OW-PCVA adversary, a sequence of games is devised in
     $$D(\text{sk}, E(\text{pk}, \tilde{m}, \tilde{r})) \neq \tilde{m}$$
 
     Therefore 
-    
-    $$P[\text{wins game 1}] - P[\text{wins game 2}] \leq q_G \cdot \delta$$
+
+    \begin{equation}\label{ow-pcva-g1-g2}
+        P[\text{wins game 1}] - P[\text{wins game 2}] \leq q_G \cdot \delta  
+    \end{equation}
 
     Game 3 is identical to game 2, except that when encrypting the challenge ciphertext $c^\ast$, a truly random coin $(r^\ast \leftsample \text{Coin})$ is used instead of a pseudorandom coin $r^\ast \leftarrow G(m^\ast)$. Game 3 diverges from game 2 if $\mathcal{A}^T_\text{OW-PCVA}$ ever queries the hash of the challenge plaintext $m^\ast$:
 
-    $$
-    P[\text{wins game 2}] - P[\text{wins game 3}] \leq P[\text{query $m^\ast$}]
-    $$
+    \begin{equation}\label{ow-pcva-g2-g3}
+        P[\text{wins game 2}] - P[\text{wins game 3}] \leq P[\text{query $m^\ast$}]
+    \end{equation}
 
     In game 3, PCO and CVO can be simulated without the secret key, and the challenge ciphertext is computed using a truly random coin instead of the hash of the challenge plaintext. This allows game 3 to be perfectly simulated by some OW-CPA adversary $\mathcal{A}_\text{OW-CPA}$ against the input PKE:
 
@@ -382,15 +385,157 @@ To link the advantage of an OW-PCVA adversary, a sequence of games is devised in
 
     It's easy to see that from $\mathcal{A}^T_\text{OW-PCVA}$'s perspective, it is playing game 3, and $\mathcal{A}^T_\text{OW-PCVA}$ wins if and only if $\mathcal{A}_\text{OW-CPA}$ wins:
 
+    \begin{equation}\label{ow-pcva-g3}
+        P[\text{$\mathcal{A}^T_\text{OW-PCVA}$ wins game 3}] 
+        = \epsilon_\text{OW-CPA} 
+        = \epsilon_\text{IND-CPA} + \frac{1}{\vert\mathcal{M}\vert}
+    \end{equation}
+
+    % TODO: this "well-known results" probably needs some explanation
+    Note that $\epsilon_\text{OW-CPA} = \epsilon_\text{IND-CPA} + \frac{1}{\vert\mathcal{M}\vert}$ is a well-known results
+
+    The final piece of this puzzle is to bound the probability of the event that the $\mathcal{A}^T_\text{OW-PCVA}$ queries the hash of the challenge plaintext $m^\ast$. Similar to the argument above, game 3 can be perfectly simulated by an IND-CPA adversary $\mathcal{A}_\text{IND-CPA}$ against the underlying PKE:
+
+    \begin{itemize}
+        \item The IND-CPA $\text{pk}$ is directly passed to $\mathcal{A}^T_\text{OW-PCVA}$
+        \item $\mathcal{A}_\text{IND-CPA}$ simulates $G$, $\text{PCO}_2$, $\text{CVO}_1$ for $\mathcal{A}^T_\text{OW-PCVA}$
+        \item $\mathcal{A}_\text{IND-CPA}$ submits randomly sampled messages $(m_0, m_1)$ as the challenge plaintexts. Upon receiving the IND-CPA challenge ciphertext $c^\ast$, $\mathcal{A}_\text{IND-CPA}$ passes $c^\ast$ to $\mathcal{A}^T_\text{OW-PCVA}$ as the OW-PCVA challenge ciphertext
+        \item After $\mathcal{A}^T_\text{OW-PCVA}$ halts, $\mathcal{A}_\text{IND-CPA}$ checks the tape of the hash function $G$. If either $m_0$ or $m_1$ is on the tape, then it is returned; if neither is on the tape, then $\mathcal{A}_\text{IND-CPA}$ randomly returns 0 or 1
+    \end{itemize}
+
+    Intuitively we can argue the following: if $\mathcal{A}^T_\text{OW-PCVA}$ indeed queries $m^\ast$, then $\mathcal{A}_\text{IND-CPA}$ wins with probability 1; otherwise, $\mathcal{A}_\text{IND-CPA}$ wins with probability $\frac{1}{2}$:
+
     $$
-    P[\text{$\mathcal{A}^T_\text{OW-PCVA}$ wins game 3}] = \epsilon_\text{OW-CPA} = \epsilon_\text{IND-CPA} + \frac{1}{\vert\mathcal{M}\vert}
+    P[\text{IND-CPA adversary wins}] 
+        = P[\text{query $m^\ast$}] 
+            + (1 - P[\text{query $m^\ast$}]) \cdot \frac{1}{2}
     $$
 
-    % TODO: bound P[query] by P[IND-CPA wins]
+    Which transforms into
+
+    \begin{equation}\label{ow-pcva-query}
+        P[\text{query $m^\ast$}] = 2\epsilon_\text{IND-CPA}
+    \end{equation}
+
+    Putting equations \ref{ow-pcva-g0-g1}, \ref{ow-pcva-g1-g2}, \ref{ow-pcva-g2-g3}, \ref{ow-pcva-g3}, \ref{ow-pcva-query} together gives us the result
 
 \end{proof}
 
 \subsection{IND-CCA KEM}
+Let $H$ be a hash function, $(\text{KeyGen}, E, D)$ be an IND-CPA public-key encryption scheme, and $(E^T, D^T)$ be the OW-PCVA public-key encryption obtained by running the IND-CPA PKE through the transformation described above. We first present the KEM, then discuss its security properties
+
+The KEM's key generation routine is identical to the key generation routine of the IND-CPA PKE.
+
+\begin{algorithm}
+    \caption{Encapsulate}
+    \begin{algorithmic}[1]
+        \Require $\text{pk}$
+        \State Sample random $m \leftsample \mathcal{M}$
+        \State $c \leftarrow E^T(\text{pk}, m)$ \Comment the ciphertext
+        \State $K \leftarrow H(m, c)$ \Comment the shared secret
+        \State \Return $(c, K)$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{Decapsulate}
+    \begin{algorithmic}[1]
+        \Require $\text{sk}$, the ciphertext $c$
+        \State $m \leftarrow D^T(\text{sk}, c)$
+        \If{$m = \bot$}
+            \State \Return $\bot$
+        \EndIf
+        \State \Return $H(m, c)$
+    \end{algorithmic}
+\end{algorithm}
+
+We denote the KEM by its routines $(\text{KeyGen}, E^{U^\bot}, D^{U^\bot})$
+
+\begin{theorem}\label{ind-cca-kem-adv}
+    For every IND-CCA adversary $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ against the KEM $(\text{KeyGen}, E^{U^\bot}, D^{U^\bot})$ with advantage $\epsilon^{U^\bot}_\text{IND-CCA}$, there exists an OW-PCVA adversary $\mathcal{A}^T_\text{OW-PCVA}$ against the transformed PKE $(E^T, D^T)$ with advantage $\epsilon^{T}_\text{OW-PCVA}$ such that
+
+    \begin{equation}
+        \epsilon^{U^\bot}_\text{IND-CCA} \leq \epsilon^{T}_\text{OW-PCVA}
+    \end{equation}
+\end{theorem}
+
+This security result is obtained through a sequence of games. When we start at the IND-CCA game, there is a decapsulation oracle that uses the true secret key, but through the sequence of games, the decapsulation oracle is modified to not require the secret key, so it can be simulated by an OW-PCVA adversary.
+
+\begin{proof}\label{ind-cca-kem-proof}
+    Game 0 is the KEM IND-CCA game
+
+    Game 1 is identical to game 0, but we modify both the hash oracle $H$ and the decapsulation oracle $\mathcal{O}^D$ to remove the use of the secret key.
+
+    \begin{algorithm}
+        \caption{$H_1$, the hash oracle in game 1}
+        \begin{algorithmic}[1]
+            \Require input $\tilde{m}, \tilde{c}$
+            \Require plaintext checking oracle PCO
+            \If{$\exists (m, c, K) \in \text{tape}_H$ such that $m=\tilde{m}, c=\tilde{c}$}
+                \State \Return $K$
+            \EndIf
+            \State $\tilde{K} \leftsample \{0, 1\}^n$
+            \If{PCO validates $\tilde{m}, \tilde{c}$}
+                \State Add $(\tilde{c}, \tilde{K})$ to the tape of $\mathcal{O}^D$
+            \EndIf
+            \State Add $(\tilde{m}, \tilde{c}, \tilde{K})$ to $\text{tape}_H$
+            \State \Return $\tilde{K}$
+        \end{algorithmic}
+    \end{algorithm}
+
+    \begin{algorithm}
+        \caption{$\mathcal{O}^D_1$, the decapsulation oracle in game 1}
+        \begin{algorithmic}[1]
+            \Require the queried ciphertext $\tilde{c}$
+            \Require a ciphertext validity oracle CVO
+            \If{CVO fails to validate $\tilde{c}$}
+                \State \Return $\bot$
+            \EndIf
+            \If{$\exists (c, K)$ on $\mathcal{O}^D$'s tape such that $c = \tilde{c}$}
+                \State \Return $K$
+            \EndIf
+            \State Sample $\tilde{K} \leftsample \{0, 1\}^n$ 
+            \State Add $(\tilde{c}, \tilde{K})$ to the tape of $\mathcal{O}^D$
+            \State \Return $\tilde{K}$
+        \end{algorithmic}
+    \end{algorithm}
+    \pagebreak
+
+    Intuitively, we can argue that the PCO and the CVO ensures the integrity of the ciphertext, and that the hash tape and the decapsulation tape ensure the consistency of the queries. Therefore, from the adversary's point of view, game 1 and game 0 are perfectly identical.
+
+    \begin{equation}\label{kem-g0-g1}
+        P[S_0] - P[S_1] = 0 
+    \end{equation}
+
+    Game 2 is identical to game 1, except that when queried on the challenge plaintext/ciphertext pair $(m^\ast, c^\ast)$ by the adversary, $H$ consistently returns a separately randomly sampled value $K$. Game 2 diverges from game 1 when $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ makes such a query
+    
+    \begin{equation}\label{kem-g1-g2}
+        P[S_1] - P[S_2] \leq P[\text{query}]
+    \end{equation}
+
+    In game 2, since $H(m^\ast, c^\ast)$ returns truly random value instead of pseudorandom value, the KEM adversary can obtain no information that correlates with $K^\ast$. In other words, no adversary can have any advantage in game 2:
+
+    \begin{equation}\label{kem-g2}
+        P[S_2] = \frac{1}{2}
+    \end{equation}
+
+    On the other hand, $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ making query to $m^\ast$ can be taken advantage of by the OW-PCVA adversary to recover $m^\ast$ in the OW-PCVA game:
+
+    \begin{itemize}
+        \item The OW-PCVA public key is passed directly to $\mathcal{A}^{U^\bot}_\text{IND-CCA}$
+        \item The hash function $H$ and the decapsulation oracle (implemented using PCO and CVO) can all be perfectly simulated by $\mathcal{A}^T_\text{OW-PCVA}$
+        \item When $\mathcal{A}^T_\text{OW-PCVA}$ receives the OW-PCVA challenge ciphertext $c^\ast$, it samples a random key $K^\ast \leftsample \{0, 1\}^n$ and passes $c^\ast, K^\ast$ to $\mathcal{A}^{U^\bot}_\text{IND-CCA}$
+        \item When $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ halts, $\mathcal{A}^T_\text{OW-PCVA}$ checks the tape of $H$. If there exists $(\tilde{m}, \tilde{c})$ such that $\tilde{c} = c^\ast$, then $\mathcal{A}^T_\text{OW-PCVA}$ returns $\tilde{m}$. If no such query exists, a random value is returned
+    \end{itemize}
+
+    Using the simulation above, we know that if $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ makes the query $(m^\ast, c^\ast)$, then $\mathcal{A}^T_\text{OW-PCVA}$ will win its game. Therefore, the probability of "query" cannot be more than the advantage of the OW-PCVA adversary:
+
+    \begin{equation}\label{kem-query}
+        P[\text{query}] \leq \epsilon^T_\text{OW-PCVA}
+    \end{equation}
+
+    Combining equations \ref{kem-g0-g1}, \ref{kem-g1-g2}, \ref{kem-g2}, \ref{kem-query} provides the desired result.
+\end{proof}
 
 \section{OAEP and RSA-OAEP}
 
