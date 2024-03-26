@@ -1,0 +1,55 @@
+\documentclass{beamer}
+%Information to be included in the title page:
+\title{Security reduction of FO transform and variations}
+\author{Ganyu (Bruce) Xu}
+\institute{University of Waterloo}
+\date{April, 2024}
+
+
+\begin{document}
+
+
+\frame{\titlepage}
+
+\begin{frame}{Outline}
+    \begin{itemize}
+        \item Some preliminaries
+        \item FO Transform in 1999
+        \item IND-CCA KEM in 2017
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Fujisaki-Okamoto Transformation, 1999}
+
+    Inputs:
+    \begin{itemize}
+        \item Public-key encryption scheme $
+            (\operatorname{KeyGen},
+            E^\text{asym},
+            D^\text{asym})
+        $
+        \item Symmetric encryption scheme $(E^\text{sym}, D^\text{sym})$
+        \item A hash function $
+            G: \mathcal{M}^\text{asym} \rightarrow \mathcal{K}^\text{sym}
+        $ (aka a KDF)
+        \item A hash function $
+            H: \{0, 1\}^\ast \rightarrow \text{Coin}^\text{asym}
+        $
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Fujisaki-Okamoto Transformation, 1999 cont'}
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        $E^\text{hy}(\text{pk}, m \in \mathcal{M}^\text{sym})$
+        $\sigma \leftarrow \mathcal{M}^\text{asym}$
+        $a \leftarrow G(\sigma)$
+    \end{columns}
+
+\end{frame}
+
+\end{document}
