@@ -1,9 +1,19 @@
 \documentclass{beamer}
+% \usetheme{Copenhagen}
+
 %Information to be included in the title page:
 \title{Security reduction of FO transform and variations}
 \author{Ganyu (Bruce) Xu}
 \institute{University of Waterloo}
 \date{April, 2024}
+
+% For writing algorithm
+\usepackage[ruled,vlined]{algorithm2e}
+% For using strikethrough
+\usepackage[normalem]{ulem}
+
+% My own macros
+\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
 
 
 \begin{document}
@@ -11,44 +21,937 @@
 
 \frame{\titlepage}
 
-\begin{frame}{Outline}
-    \begin{itemize}
-        \item Some preliminaries
-        \item FO Transform in 1999
-        \item IND-CCA KEM in 2017
-    \end{itemize}
-\end{frame}
-
 \begin{frame}
-    \frametitle{Fujisaki-Okamoto Transformation, 1999}
+    \frametitle{Fujisaki-Okamoto transformation, 1999}
 
     Inputs:
     \begin{itemize}
-        \item Public-key encryption scheme $
-            (\operatorname{KeyGen},
-            E^\text{asym},
-            D^\text{asym})
+        \item Public-key encryption scheme: $(\operatorname{KeyGen}, E^\text{asym}, D^\text{asym})$
+        \item Symmetric cipher $(E^\text{sym}, D^\text{sym})$
+        \item Key-derivation function \footnote{This is also a hash function and follows the random oracle assumption} $G: \{0, 1\}^\ast \rightarrow \mathcal{K}^\text{sym}$
+        \item Hash function $H: \{0, 1\}^\ast \rightarrow \text{Coin}^\text{asym}$
+    \end{itemize}
+
+    $\linebreak$
+
+    Hybrid scheme's key generation is identical to the PKE's    
+\end{frame}
+
+\begin{frame}
+    \frametitle{FO 1999 routines}
+
+    \begin{columns}
+        \column{0.6\textwidth}
+        \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{$E^\text{hy}$}
+
+        \KwIn{$\text{pk}^\text{hy}, m \in \mathcal{M}^\text{sym}$}
+        \KwOut{$(e \in \mathcal{C}^\text{asym}, c \in \mathcal{C}^\text{sym})$}
+        $\sigma \leftsample \mathcal{M}^\text{asym}$\;
         $
-        \item Symmetric encryption scheme $(E^\text{sym}, D^\text{sym})$
-        \item A hash function $
-            G: \mathcal{M}^\text{asym} \rightarrow \mathcal{K}^\text{sym}
-        $ (aka a KDF)
-        \item A hash function $
-            H: \{0, 1\}^\ast \rightarrow \text{Coin}^\text{asym}
+            a \leftarrow G(\sigma),
+            c \leftarrow E^\text{sym}_a(m)
+        $\;
+        \tcp{PKE encryption accepts $r$ as a seed}
         $
+            r \leftarrow H(c, \sigma), 
+            e \leftarrow E^\text{asym}(\operatorname{pk}, \sigma, r)
+        $
+        \;
+        \Return{$(e, c)$}\;
+        \end{algorithm}
+
+        \column{0.4\textwidth}
+        \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{$D^\text{hy}$}
+
+        \KwIn{$\text{pk}, \text{sk}, (e, c)$}
+        
+        $\hat{\sigma} \leftarrow D^\text{asym}(\text{sk}, e)$\;
+        $\hat{r} \leftarrow H(c, \hat{\sigma})$\;
+        $\hat{c} \leftarrow E^\text{asym}(\text{pk}, \hat{\sigma}, \hat{r})$\;
+        \If{$\hat{c} \neq c$}{
+            \Return{$\bot$}\;
+        }
+        $\hat{a} \leftarrow G(\sigma)$\;
+        $\hat{m} \leftarrow D^\text{sym}_{\hat{a}}(c)$\;
+        \Return{$\hat{m}$}\;
+        \end{algorithm}
+    \end{columns}
+    
+    
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Fujisaki-Okamoto transformation, 1999}
+
+
+    \begin{alertblock}{Security result}
+        Under the random oracle assumption, for every IND-CCA adversary against the hybrid scheme with advantage $\epsilon^\text{hy}_\text{IND-CCA}$, there exists an OW-CPA adversary against the underlying PKE with advantage $\epsilon^\text{asym}_\text{OW-CPA}$ and an IND-CPA adversary against the underlying symmetric ciphert with advantage $\epsilon^\text{sym}_\text{IND-CPA}$ such that
+
+        \begin{equation*}
+             \epsilon^\text{hy}_\text{IND-CCA} 
+             \leq q_D2^{-\gamma} 
+                + q_H\epsilon^\text{asym}_\text{OW-CPA} 
+                + \epsilon^\text{sym}_\text{IND-CPA} 
+        \end{equation*}
+
+        % NOTE: I will need to explain the terms
+    \end{alertblock}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Fujisaki-Okamoto transformation, 1999}
+
+    Proof overview:
+    \begin{itemize}
+        \item Use $\mathcal{A}^\text{asym}_\text{OW-CPA}$ and $\mathcal{A}^\text{sym}_\text{IND-CPA}$ to simulate the IND-CCA game
+        \item Simulate decryption oracle without using secret key
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Fujisaki-Okamoto transformation, 1999}
+
+    To simulate $\mathcal{O}^D(e, c)$ without secret key:
+    
+    % TODO: find a way to reset counter
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Hybrid encryption $E^\text{hy}$}
+
+    \KwIn{$\text{pk}^\text{hy}, m \in \mathcal{M}^\text{sym}$}
+    \KwOut{$(e \in \mathcal{C}^\text{asym}, c \in \mathcal{C}^\text{sym})$}
+    $\sigma \leftsample \mathcal{M}^\text{asym}$\;
+    $
+        a \leftarrow G(\sigma),
+        c \leftarrow E^\text{sym}_a(m)
+    $\;
+    \tcp{PKE encryption accepts $r$ as a seed}
+    \alert{$r \leftarrow H(c, \sigma)$}
+    $
+        , 
+        e \leftarrow E^\text{asym}(\operatorname{pk}, \sigma, r)
+    $
+    \;
+    \Return{$(e, c)$}\;
+    \end{algorithm}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Decryption oracle without secret key}
+
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{$\mathcal{O}^D_1$: decryption oracle without sk}
+    \KwIn{The query $(\tilde{e}, \tilde{c})$}
+    
+    \ForEach{$(\sigma, c, r)$ in $H$'s tape}{
+        \If{$c = \tilde{c}$}{
+            $a \leftarrow G(\sigma)$\;
+            $m \leftarrow D^\text{sym}_a(\tilde{c})$\;
+            \Return{$m$}\;
+        }
+    }
+    \Return{$\bot$}\;
+    \end{algorithm}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Challenge encryption with truly random key/coin}
+
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Challenge encryption $E^\text{hy}_\ast$}
+
+    \KwIn{$\text{pk}^\text{hy}, m \in \mathcal{M}^\text{sym}$}
+    \KwOut{$(e \in \mathcal{C}^\text{asym}, c \in \mathcal{C}^\text{sym})$}
+    $\sigma \leftsample \mathcal{M}^\text{asym}$\;
+    $
+        \alert{a \leftsample \mathcal{K}^\text{sym}},
+        c \leftarrow E^\text{sym}_a(m)
+    $\;
+    \tcp{PKE encryption accepts $r$ as a seed}
+    $
+        \alert{r \leftsample \text{Coin}}, 
+        e \leftarrow E^\text{asym}(\operatorname{pk}, \sigma, r)
+    $
+    \;
+    \Return{$(e, c)$}\;
+    \end{algorithm}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 0: IND-CCA game}
+
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Vanilla IND-CCA game}
+    $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+    $(m_0, m_1) \leftsample
+        \mathcal{A}^\text{hy}_\text{IND-CCA}(\text{pk}, \mathcal{O}^D)
+    $\;
+    $b \leftsample \{0, 1\}$\;
+    $c^\ast \leftarrow E^\text{hy}(\text{pk}, m_b)$\;
+    $\hat{b} \leftsample \mathcal{A}^\text{hy}_\text{IND-CCA}(
+        \text{pk}, \mathcal{O}^D, c^\ast
+    )$\;
+    Adversary wins if $\hat{b} = b$\;
+
+    \end{algorithm}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 1: modify the decryption oracle}
+
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Game 1}
+    $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+    $(m_0, m_1) \leftsample
+        \mathcal{A}^\text{hy}_\text{IND-CCA}(\text{pk}, \alert{\mathcal{O}^D_1})
+    $\;
+    $b \leftsample \{0, 1\}$\;
+    $c^\ast \leftarrow E^\text{hy}(\text{pk}, m_b)$\;
+    $\hat{b} \leftsample \mathcal{A}^\text{hy}_\text{IND-CCA}(
+        \text{pk}, \alert{\mathcal{O}^D_1}, c^\ast
+    )$\;
+    Adversary wins if $\hat{b} = b$\;
+
+    \end{algorithm}
+
+    Loss of security when $\mathcal{A}$ queries $\mathcal{O}^D$ with valid ciphertexts built without querying $H$ at least once
+
+    \begin{equation*}
+        \epsilon_0 - \epsilon_1 \leq q_D2^{-\gamma}
+    \end{equation*}
+    
+    % NOTE: need to explain gamma
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 2: use true randomness in challenge encryption}
+
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Game 2}
+    $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+    $(m_0, m_1) \leftsample
+        \mathcal{A}^\text{hy}_\text{IND-CCA}(\text{pk}, \alert{\mathcal{O}^D_1})
+    $\;
+    $b \leftsample \{0, 1\}$\;
+    $c^\ast \leftarrow \alert{E^\text{hy}_\ast}(\text{pk}, m_b)$\;
+    $\hat{b} \leftsample \mathcal{A}^\text{hy}_\text{IND-CCA}(
+        \text{pk}, \alert{\mathcal{O}^D_1}, c^\ast
+    )$\;
+    Adversary wins if $\hat{b} = b$\;
+
+    \end{algorithm}
+    
+    Loss of security when $\mathcal{A}$ queries either $G$ or $H$ with $\sigma^\ast$
+
+    \begin{equation*}
+        \epsilon_1 - \epsilon_2 \leq P[\text{QUERY}^\ast]
+    \end{equation*}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simulate game 2 with IND-CPA adversary}
+
+    \begin{algorithm}[H]
+    \SetAlgoLined
+    \caption{Symmetric cipher IND-CPA game $(E^\text{sym}, D^\text{sym})$}
+    $a^\ast \leftsample \mathcal{K}^\text{sym}$\;
+    $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}^\text{hy}()$\;
+    $(m_0, m_1) \leftsample \mathcal{A}^\text{hy}_\text{IND-CCA}(
+        \text{pk}, \mathcal{O}^D_1
+    )$\;
+    $b \leftsample \{0, 1\}$\;
+    $c^\ast \leftarrow E^\text{sym}_{a^\ast}(m_b)$\;
+    $
+        \sigma^\ast \leftsample \mathcal{M}^\text{asym},
+        r^\ast \leftsample \text{Coin}
+    $
+    \;
+    $e^\ast \leftarrow E^\text{asym}(\text{pk}, \sigma^\ast, r^\ast)$\;
+    $
+        \hat{b} \leftsample \mathcal{A}^\text{hy}_\text{IND-CCA}(
+            \text{pk}, \mathcal{O}^D_1, (e^\ast, c^\ast)
+        )
+    $\;
+    $\mathcal{A}^\text{sym}_\text{IND-CPA}$ wins if $\hat{b} = b$
+    \end{algorithm}
+
+    $\mathcal{A}^\text{sym}_\text{IND-CPA}$ perfectly simulates game 2 and wins iff $\mathcal{A}^\text{hy}_\text{IND-CCA}$ wins
+    \begin{equation*}
+        \alert{
+            \epsilon_2 = \epsilon^\text{sym}_\text{IND-CPA}
+        }
+    \end{equation*}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simulate game 2 with OW-CPA adversary}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{OW-CPA game against $(E^\text{asym}, D^\text{asym})$}
+        $(\text{pk}, \text{sk}) \leftarrow \operatorname{KeyGen}^\text{asym}()$\;
+        $\sigma^\ast \leftsample \mathcal{M}^\text{asym}$; 
+        $e^\ast \leftsample E^\text{asym}(\text{pk}, \sigma^\ast)$
+        \tcp*[h]{truly random coin}\;
+        $(m_0, m_1) \leftsample \mathcal{A}^\text{hy}_\text{IND-CCA}(
+            \text{pk}, \mathcal{O}^D_1
+        )$\;
+        $a^\ast \leftsample \mathcal{K}^\text{sym}$;
+        $b\leftsample \{0, 1\}$;
+        $c^\ast \leftarrow E^\text{sym}_{a^\ast}(m_b)$\;
+        $\mathcal{A}^\text{hy}_\text{IND-CCA}(
+            \text{pk}, \mathcal{O}^D_1, (e^\ast, c^\ast)
+        )$
+        \tcp*[h]{discard the output}\;
+        
+        \alert{Sample a random $\sigma$ from the tape of $H$ or $G$}\;
+
+        $\mathcal{A}^\text{asym}_\text{OW-CPA}$ wins if $\sigma = \sigma^\ast$
+    \end{algorithm}
+
+    $\mathcal{A}^\text{asym}_\text{OW-CPA}$ wins if $\mathcal{A}^\text{hy}_\text{IND-CCA}$ queried on $\sigma^\ast$ (aka $\text{QUERY}^\ast$) and the randomly chosen $\sigma$ is the correct one:
+
+    \begin{equation*}
+        \alert{
+            \epsilon^\text{asym}_\text{OW-CPA} 
+            = P[\text{QUERY}^\ast] \cdot \frac{1}{q_H}
+        }
+    \end{equation*}
+\end{frame}
+
+\begin{frame}
+    \frametitle{FO 1999, recap}
+
+    \begin{equation*}
+        \epsilon^\text{hy}_\text{IND-CCA} 
+        \leq q_D2^{-\gamma} 
+        + \alert{q_H\epsilon^\text{asym}_\text{OW-CPA} }
+        + \epsilon^\text{sym}_\text{IND-CPA} 
+    \end{equation*}
+
+    \begin{itemize}
+        \item But it's not a KEM?
+        \item \alert{Non-tight security}
     \end{itemize}
 
 \end{frame}
 
 \begin{frame}
-    \frametitle{Fujisaki-Okamoto Transformation, 1999 cont'}
+    \frametitle{Hofheinz, Hovelmanns, Kiltz, 2017}
+
+    \textit{"A modular analysis of the Fujisaki-Okamoto transformation"}
+
+    \begin{itemize}
+        \item Tighter security
+        \item No need for SKE
+        \item IND-CCA KEM
+        \item Used by Kyber and McEliece
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Modularity}
+
+    The transformation happens in two steps
+
+    \begin{enumerate}
+        \item OW-CPA/IND-CPA PKE to OW-PCVA PKE
+        \item OW-PCVA PKE to IND-CCA KEM
+    \end{enumerate}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{What is PCVA?}
+
+    In addition to CPA, the adversary can access two more oracles:
+
+    \begin{itemize}
+        \item \textbf{Plaintext checking oracle (PCO)} takes a pair of $(m, c)$ and check if they are valid encryption/decryption of each other
+        \item \textbf{Ciphertext validation oracle (CVO)} takes a ciphertext $c$ and checks if it is a valid ciphertext
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Vanilla PCO, CVO}
+
+    The vanilla implementations use the secret key to run the decryption routine
 
     \begin{columns}
         \column{0.5\textwidth}
-        $E^\text{hy}(\text{pk}, m \in \mathcal{M}^\text{sym})$
-        $\sigma \leftarrow \mathcal{M}^\text{asym}$
-        $a \leftarrow G(\sigma)$
+        \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{$\mathcal{O}^\text{CVO}$}
+        \KwIn{$\tilde{c}$}
+        $\hat{m} \leftarrow D(\text{sk}, c)$\;
+        \If{$\hat{m} = \bot$}{
+            \Return{$\bot$}\;
+        }
+        \If{$E(\text{pk}, \hat{m}) \neq \tilde{c}$}{
+            \Return{$\bot$}\;
+        }
+        \Return 1\;
+        \end{algorithm}
+
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{$\mathcal{O}^\text{PCO}$}
+        \KwIn{$(\tilde{m}, \tilde{c})$}
+        \If{$D(\text{sk}, \tilde{c}) \neq \tilde{m}$}{
+            \Return{$\bot$};
+        }
+        \If{$E(\text{pk}, \tilde{m}) \neq \tilde{c}$}{
+            \Return{$\bot$};
+        }
+        \Return{1}\;
+    \end{algorithm}
     \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{The OW-PCVA transformation $(E^T, D^T)$}
+
+    Inputs:
+    \begin{itemize}
+        \item A PKE $(E, D)$
+        \item A hash function $G$
+    \end{itemize}
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$E^T$}
+            \KwIn{$\text{pk}, m$}
+            $r \leftarrow G(m)$\;
+            $c \leftarrow E(\text{pk}, m, r)$\;
+            \Return{c}\;
+        \end{algorithm}
+
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$D^T$}
+            \KwIn{$\text{sk}, \text{pk}, c$}
+            $\hat{m} \leftarrow D(\text{sk}, c)$\;
+            $\hat{r} \leftarrow G(\hat{m})$\;
+            \If{$E(\text{pk}, \hat{m}, \hat{r}) \neq c$}{
+                \Return{$\bot$}\;
+            }
+            \Return{$\hat{m}$}\;
+        \end{algorithm}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{OW-PCVA security of $(E^T, D^T)$}
+
+    \begin{alertblock}{Theorem}
+        For every OW-PCVA adversary against the T-transformation $(E^T, D^T)$ with advantage $\epsilon^T_\text{OW-PCVA}$ there exists an IND-CPA adversary against the underlying PKE $(E, D)$ with advantage $\epsilon_\text{IND-CPA}$ such that
+
+        \begin{equation*}
+            \epsilon^T_\text{OW-PCVA} 
+            \leq q_V2^{-\gamma}
+            + q_H\delta
+            + \frac{1}{\vert\mathcal{M}\vert} 
+            + 3\epsilon_\text{IND-CPA}
+        \end{equation*}
+    \end{alertblock}
+\end{frame}
+
+\begin{frame}
+    \frametitle{OW-PCVA proof overview}
+    Similar strategy to the FO 1999 proof:
+    \begin{itemize}
+        \item Modify PCO and CVO so that they don't use secret key
+        \item Simulate OW-PCVA game using an IND-CPA adversary
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Modified PCO}
+
+    Instead of checking both encryption and decryption, check only encryption
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$\mathcal{O}^\text{PCO}$}
+            \KwIn{$(\tilde{m}, \tilde{c})$}
+            \If{$E(\text{pk}, \tilde{m}) \neq \tilde{c}$}{
+                \Return{$\bot$}\;
+            }
+            \If{$D(\text{sk}, \tilde{c}) \neq \tilde{m}$}{
+                \Return{$\bot$}\;
+            }
+            \Return{1}\;
+        \end{algorithm}
+
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$\mathcal{O}^\text{PCO}_1$}
+            \KwIn{$(\tilde{m}, \tilde{c})$}
+            \If{$E(\text{pk}, \tilde{m}) \neq \tilde{c}$}{
+                \Return{$\bot$}\;
+            }
+            \Return{1}\;
+        \end{algorithm}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Modified CVO}
+
+    Instead of running the decryption routine, check the hash oracle $G$
+
+    \begin{columns}
+        \column{0.4\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$\mathcal{O}^\text{CVO}$}
+            \KwIn{$\tilde{c}$}
+            $\hat{m} \leftarrow D(\text{sk}, \tilde{c})$\;
+            \If{
+                $\hat{m} = \bot$
+            }{
+                \Return{$\bot$}\;
+            }
+            \If{
+                $E(\text{pk}, \hat{m}) \neq \tilde{c}$
+            }{
+                \Return{$\bot$}\;
+            }
+            \Return{$1$}\;
+        \end{algorithm}
+
+        \column{0.64\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$\mathcal{O}^\text{CVO}_1$}
+            \KwIn{$\tilde{c}$}
+            \If{
+                $\exists (m, r) \in G$ s.t. $E(\text{pk}, m) = \tilde{c}$
+            }{
+                \Return{$1$}\;
+            }
+            \Return{$\bot$}
+        \end{algorithm}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 0: OW-PCVA game}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 0}
+
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $m^\ast \leftsample \mathcal{M}$;
+        $c^\ast \leftarrow E^T(\text{pk}, m^\ast)$\;
+        $\hat{m} \leftarrow \mathcal{A}^\text{T}_\text{OW-PCVA}(
+            \text{pk}, c^\ast, \mathcal{O}^\text{PCO}, \mathcal{O}^\text{CVO}
+        )$\;
+        $\mathcal{A}^T_\text{OW-PCVA}$ wins if $\hat{m} = m^\ast$
+    \end{algorithm}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 1: modify the PCO}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 0}
+
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $m^\ast \leftsample \mathcal{M}$;
+        $c^\ast \leftarrow E^T(\text{pk}, m^\ast)$\;
+        $\hat{m} \leftarrow \mathcal{A}^\text{T}_\text{OW-PCVA}(
+            \text{pk}, c^\ast,
+            \alert{\mathcal{O}^\text{PCO}_1},
+            \mathcal{O}^\text{CVO}
+        )$\;
+        $\mathcal{A}^T_\text{OW-PCVA}$ wins if $\hat{m} = m^\ast$
+    \end{algorithm}
+
+    \begin{block}{Remark}
+        Loss of tightness when decryption error \footnote{
+            A PKE is $\delta$-correct if for some fixed keypair and a randomly sampled $m$, $P[D(\text{sk}, E(\text{pk}, m)) \neq m] \leq \delta$
+        } happens:
+
+        \begin{equation*}
+            \epsilon_0 - \epsilon_1 \leq q_G\delta
+        \end{equation*}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 2: modify the CVO}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 0}
+
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $m^\ast \leftsample \mathcal{M}$;
+        $c^\ast \leftarrow E^T(\text{pk}, m^\ast)$\;
+        $\hat{m} \leftarrow \mathcal{A}^\text{T}_\text{OW-PCVA}(
+            \text{pk}, c^\ast,
+            \alert{\mathcal{O}^\text{PCO}_1},
+            \alert{\mathcal{O}^\text{CVO}_1}
+        )$\;
+        $\mathcal{A}^T_\text{OW-PCVA}$ wins if $\hat{m} = m^\ast$
+    \end{algorithm}
+
+    \begin{block}{Remark}
+        Loss of tightness when $\mathcal{A}$ queried some $\tilde{c}$ without querying $G$
+
+        \begin{equation*}
+            \epsilon_1 - \epsilon_2 \leq q_V 2^{-\gamma}
+        \end{equation*}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 3: use a truly random coin}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 0}
+
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $m^\ast \leftsample \mathcal{M}$;
+        \alert{
+            $r^\ast \leftsample \text{Coin}$;
+            $c^\ast \leftarrow E(\text{pk}, m^\ast, r^\ast)$
+        }\;
+        $\hat{m} \leftarrow \mathcal{A}^\text{T}_\text{OW-PCVA}(
+            \text{pk}, c^\ast,
+            \alert{\mathcal{O}^\text{PCO}_1},
+            \alert{\mathcal{O}^\text{CVO}_1}
+        )$\;
+        $\mathcal{A}_\text{OW-CPA}$ wins if $\hat{m} = m^\ast$
+    \end{algorithm}
+
+    \begin{block}{Remark}
+        Loss of tightness when $\mathcal{A}$ queries $G$ on $m^\ast$
+
+        \begin{equation*}
+            \epsilon_2 - \epsilon_3 \leq P[\text{QUERY}^\ast]
+        \end{equation*}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simulate game 3 with OW-CPA adversary}
+
+    Game 3 can be perfectly simulated by an OW-CPA adversary against the underlying PKE $(E, D)$:
+
+    \begin{equation*}
+        \alert{\epsilon_3 = \epsilon_\text{OW-CPA}}
+    \end{equation*}
+
+    The OW-CPA advantage can be directly translated into IND-CPA advantage with the following "well-known results":
+
+    \begin{block}{Theorem}
+        For every IND-CPA adversary with advantage $\epsilon_\text{IND-CPA}$ there exists an OW-CPA adversary with advantage $\epsilon_\text{OW-CPA}$ such that
+
+        \begin{equation*}
+            \epsilon_\text{OW-CPA} 
+            = \frac{1}{\vert\mathcal{M}\vert} + \epsilon_\text{IND-CPA}
+        \end{equation*}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simulate game 3 with IND-CPA adversary}
+
+    We can build $\mathcal{A}_\text{IND-CPA}$ that:
+    \begin{itemize}
+        \item Sample random $m_0, m_1$
+        \item Check the hash function tape for matching $m_b$
+    \end{itemize}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{IND-CPA game against $(E, D)$}
+
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $(m_0, m_1) \leftsample \mathcal{M}$\footnote{
+            We omit nuance about sampling $m_0, m_1$ randomly while making sure that they are distinct
+        }\;
+        $b \leftsample \{0,1\}$; $c^\ast = E(\text{pk}, m_b)$\;
+        $\hat{m} \leftarrow \mathcal{A}^T_\text{OW-PCVA}(
+            \text{pk}, c^\ast, \mathcal{O}^\text{PCO}_1, \mathcal{O}^\text{CVO}_1
+        )$\;
+        $\hat{b} \leftarrow \alert{\operatorname{CheckTape()}}$\;
+        $\mathcal{A}_\text{IND-CPA}$ wins if $\hat{b} = b$\;
+    \end{algorithm}
+\end{frame}
+
+\begin{frame}
+    \frametitle{CheckTape()}
+
+    If $\exists(m,r) \in G$ such that $m = m_0$ or $m = m_1$, then set $\hat{b} = 0$ or $\hat{b} = 1$ accordingly.
+
+    If no such record exists, return a blind guess $\hat{b} \leftsample \{0,1\}$
+
+    \begin{equation*}
+        P[\hat{b} = b] = P[\text{QUERY}^\ast]
+            + (1 - P[\text{QUERY}^\ast])\frac{1}{2}
+    \end{equation*}
+
+    Which implies
+
+    \begin{equation*}
+        \alert{\epsilon_\text{IND-CPA} = \frac{1}{2}P[\text{QUERY}^\ast]}
+    \end{equation*}
+\end{frame}
+
+\begin{frame}
+    \frametitle{IND-CCA KEM}
+
+    \begin{table}
+        \centering
+        \begin{tabular}{|c|c|c|}
+        \hline
+        & explicit rejection & implicit rejection \\
+        \hline
+        PKE is IND-CPA & $U^\bot$ & $U^{\not\bot}$ \\
+        PKE is OW-CPA & $U^\bot_m$ & $U^{\not\bot}_m$ \\
+        \hline
+        \end{tabular}
+        \caption{KEM transformations}
+    \end{table}
+\end{frame}
+
+\begin{frame}
+    \frametitle{$U^\bot$ implementation}
+
+    $H$ is another hash function
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$U^\bot$ Encap}
+            \KwIn{$\text{pk}$}
+            $m \leftsample \mathcal{M}$\;
+            $c \leftarrow E^T(\text{pk}, m)$\;
+            $K \leftarrow H(m, c)$\;
+            \Return{$(c, K)$}\;
+        \end{algorithm}
+
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$U^\bot$ Decap}
+            \KwIn{$\text{sk}, c$}
+            \KwOut{Shared secret}
+            $m \leftarrow D^T(\text{sk}, c)$\;
+            \If{
+                $m = \bot$
+            }{
+                \Return{$\bot$};
+            }
+            \Return{$H(m, c)$}\;
+        \end{algorithm}
+    \end{columns}
+\end{frame}
+
+\begin{frame}
+    \frametitle{$U^\bot$ security}
+
+    For every IND-CCA adversary against $U^\bot$ with advantage $\epsilon^{U^\bot}_\text{IND-CCA}$, there exists an OW-PCVA adversary against $(E^T, D^T)$ with advantage $\epsilon^T_\text{OW-PCVA}$ such that
+
+    $$
+    \epsilon^{U^\bot}_\text{IND-CCA} \leq \epsilon^T_\text{OW-PCVA}
+    $$
+
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simulate decapsulation oracle}
+
+    \begin{block}{Goal}
+        If the query $\tilde{c}$ is a valid ciphertext that decrypts to $\tilde{m}$, $\mathcal{O}^D$ should return $H(\tilde{m}, \tilde{c})$
+    \end{block}
+
+    \begin{block}{Strategy}
+        \begin{itemize}
+            \item Make both $H$ and $\mathcal{O}^D$ stateful
+            \item Use PCO and CVO to "decrypt" and check integrity
+        \end{itemize}    
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{\textit{Patched} hash and decap oracle}
+
+    $\mathcal{O}^D_1$ keeps track of past queries $(\tilde{c}, \tilde{K})$
+
+    \begin{columns}
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$H_1$}
+            \KwIn{$(\tilde{m}, \tilde{c})$}
+            \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in H_1$}{
+                \Return{$\tilde{K}$}\;
+            }
+            $\tilde{K} \leftsample \{0, 1\}^\ast$\;
+
+            \If{
+                $\mathcal{O}^\text{PCO}(\tilde{m}, \tilde{c}) \neq \bot$
+            }{
+                Append $(\tilde{c}, \tilde{K})$ to $\mathcal{O}^D$
+            }
+
+            \Return{$\tilde{K}$}\;
+        \end{algorithm}
+
+        \column{0.5\textwidth}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$\mathcal{O}^D_1$}
+            \KwIn{$\tilde{c}$}
+            \If{
+                $(\tilde{c}, \tilde{K}) \in \mathcal{O}^D_1$
+            }{
+                \Return{$\tilde{K}$}\;
+            }
+            \If{
+                $\mathcal{O}^\text{CVO}(\tilde{c}) = \bot$
+            }{
+                \Return{$\bot$}\;
+            }
+            $\tilde{K} \leftsample \{0, 1\}^\ast$\;
+            Append $(\tilde{c}, \tilde{K})$ to $\mathcal{O}^D$\;
+            \Return{$\tilde{K}$}\;
+        \end{algorithm}
+    \end{columns}
+
+    Patched oracles behave exactly like their vanilla counterparts
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 0: KEM IND-CCA}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 0: KEM IND-CCA}
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $(c^\ast, K_0) \leftsample E^{U^\bot}(\text{pk})$;
+        $K_1 \leftsample \{0, 1\}^\ast$\;
+        $b \leftsample\{0,1\}$;
+        $K^\ast \leftarrow K_b$\;
+        $\hat{b} \leftsample \mathcal{A}^{U^\bot}_\text{IND-CCA}(
+            \text{pk}, c^\ast, K^\ast, \mathcal{O}^D, H
+        )$\;
+        $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ wins if $\hat{b} = b$
+    \end{algorithm}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 1: Use patched oracles}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 1: with patched oracles}
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $(c^\ast, K_0) \leftsample E^{U^\bot}(\text{pk})$;
+        $K_1 \leftsample \{0, 1\}^\ast$\;
+        $b \leftsample\{0,1\}$;
+        $K^\ast \leftarrow K_b$\;
+        $\hat{b} \leftsample \mathcal{A}^{U^\bot}_\text{IND-CCA}(
+            \text{pk}, c^\ast, K^\ast, 
+            \alert{\mathcal{O}^D_1}, 
+            \alert{H_1}
+        )$\;
+        $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ wins if $\hat{b} = b$
+    \end{algorithm}
+
+    \begin{block}{Remark}
+        There is no difference between game 0 and game 1
+
+        \begin{equation*}
+            \epsilon_0 = \epsilon_1
+        \end{equation*}
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Game 2: Use truly random $K^\ast$}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Game 2: unwinnable game}
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $(c^\ast, K_0) \leftsample E^{U^\bot}(\text{pk})$\;
+        \alert{$K^\ast \leftsample \{0, 1\}^\ast$}\;
+        $b \leftsample\{0,1\}$\;
+        $\hat{b} \leftsample \mathcal{A}^{U^\bot}_\text{IND-CCA}(
+            \text{pk}, c^\ast, K^\ast, 
+            \alert{\mathcal{O}^D_1}, 
+            \alert{H_1}
+        )$\;
+        $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ wins if $\hat{b} = b$
+    \end{algorithm}
+
+    \begin{block}{Remark}
+        Game 2 and game 1 diverge when $\mathcal{A}^{}_\text{IND-CCA}$ queries $H$ on $(m^\ast, c^\ast)$
+
+        \begin{equation*}
+            \alert{\epsilon_1 - \epsilon_2 \leq P[\text{QUERY}^\ast]}
+        \end{equation*}
+
+        Also, game 2 is unwinnable: $\epsilon_2 = 0$
+    \end{block}
+\end{frame}
+
+\begin{frame}
+    \frametitle{Simulate game 2 with OW-PCVA adversary}
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{OW-PCVA game}
+        $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$\;
+        $m^\ast \leftsample \mathcal{M}$;
+        $c^\ast \leftarrow E^T(\text{pk}, m^\ast)$\;
+        $K^\ast \leftsample \{0,1\}^\ast$\;
+        $\hat{b} \leftarrow \mathcal{A}^{U^\bot}_\text{IND-CCA}(
+            \text{pk}, c^\ast, K^\ast, \mathcal{O}^D_1, H_1
+        )$\;
+        $\hat{m} \leftarrow \operatorname{CheckTape()}$\;
+        $\mathcal{A}^T_\text{OW-PCVA}$ wins if $\hat{m} = m^\ast$
+    \end{algorithm}
+
+    \begin{block}{Remark}
+        $\mathcal{A}^T_\text{OW-PCVA}$ wins if $\mathcal{A}^{U^\bot}_\text{IND-CCA}$ queries on $m^\ast$
+
+        \begin{equation*}
+            \alert{P[\text{QUERY}^\ast] = \epsilon^T_\text{OW-PCVA}}
+        \end{equation*}
+    \end{block}
 
 \end{frame}
 

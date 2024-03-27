@@ -187,7 +187,7 @@ The modification includes both $H$ and $\mathcal{O}^D$
 ## Sequence of games
 - Game 0: IND-CCA KEM
 - Game 1: Use modified hash and decapsulation oracle
-- Game 2: Modify $H$ so that if queried on $(m^\ast, c^\ast)$ by the adversary, returns another random value than $K^\ast$
+- Game 2: Challenge encryption uses a truly random $K^\ast$
 
 ## Security bounds
 Game 0 and game 1 are exactly the same
