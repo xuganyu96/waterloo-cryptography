@@ -6,7 +6,7 @@
 \usepackage{listings}
 
 % Algorithms and pseudocode
-\usepackage{algorithm}
+\usepackage[ruled,vlined]{algorithm2e}
 \usepackage{algpseudocode}
 
 % Common shortcuts
@@ -46,25 +46,16 @@ A lattice is a discrete subgroup of $\mathbb{R}^n$
 \end{theorem}
 
 \begin{algorithm}
-\caption{Caption for the algorithm}\label{alg:cap}
-\begin{algorithmic}[1]  % [1] is for displaying line number
-    \Require This input, and that input
-    \State Make some statement with the "State" command
-
-    \For{Wrap for loop condition within the "For" command}
-    \EndFor
-
-    \While{Wrap while loop condition within "While" command}
-    \EndWhile
-
-    \If{Wrap if else in the "If" command}
-    \ElsIf{Another condition}
-    \Else
-    \EndIf
-
-    \Return Return the output using the "Return" command
-
-\end{algorithmic}
+    \SetAlgoLined
+    \caption{Euclid's algorithm}
+    \KwData{Two positive integers $a$ and $b$}
+    \KwResult{The greatest common divisor of $a$ and $b$}
+    \While{$b \neq 0$}{
+    $r \leftarrow a \mod b$\;
+    $a \leftarrow b$\;
+    $b \leftarrow r$\;
+    }
+    \Return $a$\;
 \end{algorithm}
 
 \end{document}
