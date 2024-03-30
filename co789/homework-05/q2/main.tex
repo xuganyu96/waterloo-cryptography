@@ -6,56 +6,104 @@
 \usepackage{listings}
 
 % Algorithms and pseudocode
-\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[linesnumbered, ruled, vlined]{algorithm2e}
 \usepackage{algpseudocode}
 
 % Common shortcuts
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
-\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\Norm}[1]{\Vert {#1} \Vert}
+\newcommand{\norm}[1]{\vert {#1} \vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
 %    Corollaries are numbered within the theorem, though they are rarely used
-\newtheorem{definition}{Definition}[section]
-\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
 \newtheorem*{remark}{Remark}
 \newtheorem{corollary}{Corollary}[theorem]
-\newtheorem{proposition}{Proposition}[section]
+\newtheorem{proposition}{Proposition}
 \newtheorem{lemma}{Lemma}[theorem]
 
 
-\title{CO 789, Homework 1}
+\title{CO 789, Homework 5}
 \author{Ganyu (Bruce) Xu (g66xu)}
-\date{Fall 2023}
+\date{Winter 2024}
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 2}
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+\subsection*{(1)}
+Here is the decryption algorithm
 
 \begin{algorithm}
-    \SetAlgoLined
-    \caption{Euclid's algorithm}
-    \KwData{Two positive integers $a$ and $b$}
-    \KwResult{The greatest common divisor of $a$ and $b$}
-    \While{$b \neq 0$}{
-    $r \leftarrow a \mod b$\;
-    $a \leftarrow b$\;
-    $b \leftarrow r$\;
-    }
-    \Return $a$\;
+    \caption{Compressed McEliece decryption}
+    \KwIn{$c \in \mathbb{F}_2^{n - l}$, $\text{sk} = (P, \mathcal{C}, S)$}
+
+    Pad the low-order bits of $c$ with 0's such that $
+        c^\prime = [c, 0, 0, \ldots, 0] \in \mathbb{F}^n
+    $\;
+    $c^{\prime\prime} \leftarrow P^{-1}c^\prime$\;
+    $\hat{m} \leftarrow \mathcal{C}.\text{decode}(c^{\prime\prime})$\;
+    $\hat{m} \leftarrow S^{-1}\hat{m}$\;
+    \Return{$\hat{m}$}\;
 \end{algorithm}
 
+Among the high-order bits of $c^{\prime\prime}$, there are exactly $t - l$ bits of error, introduced by the sampled error term $e$. Among the low-order $l$ bits of $c^{\prime\prime}$, there are up to $l$ bits of errors since the padded 0's are blind guesses. Therefore, there are up to $t$ bits of errors in $c^{\prime\prime}$, and since $t \leq \frac{d-1}{2}$, the $(n, k, d)$-code is guaranteed to correct the error and recover the true $m$.
+
+\subsection*{(2)}
+The vanilla McEliece encryption scheme outputs the entire (partially corrupted codeword) $c$, which takes $n$ bits. This compressed scheme discarded the low-order $l$ bits, so the ciphertext takes $n - l$ bits, which saves space by a factor of $\frac{l}{n}$
+
+\subsection*{(3)}
+We already know that the McEliece encryption scheme is not IND-CPA. Instead, we will estimate the difficulty of breaking the encryption scheme by computing the probability of correctly decrypting some ciphertext without using the secret key. Specifically, since $c = Am + e$ where $A \in \mathbb{F}^{n \times k}$ is an overdetermined linear system, if the adversary can recover $e$, then it can recover $m$.
+
+In the un-compressed McEliece scheme, the encryption routine corrupts exactly $t$ out of $n$ bits. There are a total of $\binom{n}{t}$ possible error terms to choose from. Without knowing additional information, the adversary can do no better than a blind guess:
+
+\begin{equation*}
+    \epsilon_0 = \frac{1}{\binom{n}{t}}
+\end{equation*}
+
+In the compressed scheme, the encryption routine corrupts $t-l$ out of the high-order $n-l$ bits. The low-order $l$ bits are blind guesses. There are a total of $\binom{n-l}{t-l} \cdot 2^l$ possible error values to choose from:
+
+\begin{equation*}
+    \epsilon_1 = \frac{1}{\binom{n-l}{t-l} \cdot 2^l}
+\end{equation*}
+
+Observe that
+
+$$
+\begin{aligned}
+    \frac{\epsilon_0}{\epsilon_1} 
+    &= \frac{\binom{n-l}{t-l} \cdot 2^l}{\binom{n}{t}} \\
+    &= \frac{
+        t \cdot (t-1) \cdot \ldots \cdot (t - l + 1)
+    }{
+        n \cdot (n-1) \cdot \ldots \cdot (n - l + 1)
+    } \cdot 2^l
+\end{aligned}
+$$
+
+Since $t = \frac{d-1}{2} \leq \frac{d}{2} < \frac{n}{2}$, we know $\frac{t}{n} \leq \frac{1}{2}$. Furthermore, we claim without proof that if $0 < a < b$ then $\frac{a}{b} \geq \frac{a-1}{b-1}$, which means
+
+$$
+\frac{1}{2} > \frac{t}{n} > \frac{t-1}{n-1} > \ldots > \frac{t-l+1}{n-l+1}
+$$
+
+Therefore:
+
+$$
+\frac{\epsilon_0}{\epsilon_1} = \frac{
+    t \cdot (t-1) \cdot \ldots \cdot (t - l + 1)
+}{
+    n \cdot (n-1) \cdot \ldots \cdot (n - l + 1)
+} \cdot 2^l \leq 1
+$$
+
+This means that a blindly-guessing adversary against the compressed scheme has higher advantage than a blindly-guessing adversary against the vanilla scheme. In other words, the compressed scheme is less secure.
+
+\subsection*{(4)}
+For a linear amount of reduction in ciphertext size, we lose an exponential amount of security. This tradeoff is not worth it.
 \end{document}

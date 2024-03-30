@@ -12,13 +12,14 @@
 % Common shortcuts
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
 \newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\metric}[1]{\vert {#1} \vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
 %    Corollaries are numbered within the theorem, though they are rarely used
-\newtheorem{definition}{Definition}[section]
-\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
 \newtheorem*{remark}{Remark}
 \newtheorem{corollary}{Corollary}[theorem]
 \newtheorem{proposition}{Proposition}[section]
@@ -31,31 +32,36 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 1}
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
+We will prove $\metric{c_1 - (c_2 + e)} \geq \metric{c_1 - c_2} - \metric{e}$ by proving a more general result:
+
+\begin{theorem}[variation of triangle inequality]
+    let $\vert \cdot \vert$ be a metric, then for $a, b$ in the vector space:
+
+    \begin{equation*}
+        \metric{a - b} \geq \metric{a} - \metric{b}
+    \end{equation*}
 \end{theorem}
 
-\begin{algorithm}
-    \SetAlgoLined
-    \caption{Euclid's algorithm}
-    \KwData{Two positive integers $a$ and $b$}
-    \KwResult{The greatest common divisor of $a$ and $b$}
-    \While{$b \neq 0$}{
-    $r \leftarrow a \mod b$\;
-    $a \leftarrow b$\;
-    $b \leftarrow r$\;
-    }
-    \Return $a$\;
-\end{algorithm}
+The desired result is a special case of the theorem above where $a = c_1 - c_2$ and $b = e$
+
+\begin{proof}
+    By the triangle inequality we know that $\metric{a + b} \leq \metric{a} + \metric{b}$. Let $c = a + b$, then $a = c - b$, and the triangle inequality becomes
+
+    \begin{equation*}
+        \metric{c} \leq \metric{c - b} + \metric{b}
+    \end{equation*}
+
+    Re-arranging the equation above gives us the following:
+
+    \begin{equation*}
+        \metric{c - b} \geq \metric{c} - \metric{b}
+    \end{equation*}
+
+    We made no assumption of $a$, $b$, or $c$, so the inequality above holds for all vectors $b, c$ in the vector space
+\end{proof}
 
 \end{document}
