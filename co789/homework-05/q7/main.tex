@@ -13,6 +13,7 @@
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
 \newcommand{\norm}[1]{\Vert {#1} \Vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
@@ -31,31 +32,41 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section*{Question 7}
+Recall the Beaver triple protocol for computing $xy$ given $[x], [y]$:
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+\begin{enumerate}
+    \item A trusted third party generates random $a, b \leftsample \mathbb{Z}_n^\ast$ and compute $c = ab$
+    \item This third party distributes $[a], [b], [c]$ to the computation parties. We claim that since the circuit of the computation is known ahead of time, the trusted parties can generate and distributes $[a], [b], [c]$ before the MPC actually starts. Therefore, distributing $[a], [b], [c]$ does not count toward online communication cost during the MPC
+    \item Each party computes $[x-a], [y-b]$, broadcasts their shares, which publicizes $\epsilon = x-a, \delta = y-b$. \textbf{This invokes 2 units of online communication}
+    \item Each party computes $[z] = \delta[x] + \epsilon[y] - \epsilon\delta + [c]$ which evaluates to $[xy]$
+    \item Each party opens $[z]$, which assembles back into $xy$
+\end{enumerate}
 
-\begin{algorithm}
-    \SetAlgoLined
-    \caption{Euclid's algorithm}
-    \KwData{Two positive integers $a$ and $b$}
-    \KwResult{The greatest common divisor of $a$ and $b$}
-    \While{$b \neq 0$}{
-    $r \leftarrow a \mod b$\;
-    $a \leftarrow b$\;
-    $b \leftarrow r$\;
-    }
-    \Return $a$\;
-\end{algorithm}
+When computing the square of a number, we don't need to obfuscate two distinct operands $x, y$; instead, we only need to obfuscate one operand $x$, so we only need to generate a single one-time pad $a$ and its square $c = a^2$. This means that individual parties only need to broadcast $[x-a]$ during their computation, bring the units of online communication during MPC from 2 to 1.
+
+Here is the full protocol
+
+\begin{enumerate}
+    \item A trusted third party generates random $a \leftsample \mathbb{Z}_n^\ast$ and computes $c = a^2$
+    \item The shares $[a], [c]$ are pre-distributed to the computation parties.
+    \item Each party computes $[x-a]$ and boardcasts the value of their share, which publicizes the value of $x-a$. \textbf{This invokes 1 unit of online communication}.
+    \item Each party computes $[z] = 2\cdot (x-a)[x] - (x-a)^2 + [c]$, which evaluates to $[x^2]$
+    \item Each party opens $[z]$, which assembles back into $x^2$
+\end{enumerate}
+
+Proof of step 4:
+
+$$
+\begin{aligned}
+    \lbrack z \rbrack &= 2\cdot (x-a)[x] - (x-a)^2 + [c] \\
+    &= [2x^2 - 2ax] - (x^2 - 2ax + a^2) + [a^2] \\
+    &= [2x^2 - 2ax - (x^2 - 2ax + a^2)] + [a^2] \\
+    &= [x^2 - a^2] + [a^2] \\
+    &= [x^2]
+\end{aligned}
+$$
 
 \end{document}

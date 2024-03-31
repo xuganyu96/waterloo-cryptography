@@ -6,12 +6,13 @@
 \usepackage{listings}
 
 % Algorithms and pseudocode
-\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 \usepackage{algpseudocode}
 
 % Common shortcuts
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
-\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\Norm}[1]{\Vert {#1} \Vert}
+\newcommand{\norm}[1]{\vert {#1} \vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
@@ -31,31 +32,46 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
+% \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
-
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+\section*{Question 5}
+To clarify the question, we rephrase the erroneous implementation of the McEliece KEM:
 
 \begin{algorithm}
-    \SetAlgoLined
-    \caption{Euclid's algorithm}
-    \KwData{Two positive integers $a$ and $b$}
-    \KwResult{The greatest common divisor of $a$ and $b$}
-    \While{$b \neq 0$}{
-    $r \leftarrow a \mod b$\;
-    $a \leftarrow b$\;
-    $b \leftarrow r$\;
-    }
-    \Return $a$\;
+    \caption{Key generation}
+    Sample a random Goppa code $\mathcal{C}(g(x), \{\alpha_j\}_{j=1}^n)$ with parity check matrix $H$\;
+    \Return{$\text{pk} = H, \text{sk} = \mathcal{C}$}
 \end{algorithm}
 
+\begin{algorithm}
+    \caption{Encapsulation}
+    Sample a random $e$ such that $\norm{e} = t$\;
+    $c \leftarrow He$\;
+    $K \leftarrow \operatorname{KDF}(m, c, 0)$
+    \Return{$(c, K)$}\;
+\end{algorithm}
+
+Recall that the parity check matrix is defined by its individual entries:
+
+\begin{equation*}
+    H_{i,j} = \frac{\alpha_j^i}{g(\alpha_j)}
+\end{equation*}
+
+We can first recover individual values of $\alpha_j$ using adjacent values of the same column. For each of $1 \leq j \leq n$:
+
+\begin{equation*}
+    \frac{H_{1,j}}{H_{0,j}} 
+    = \frac{\alpha_j}{g(\alpha_j)} \frac{g(\alpha_j)}{1}
+    = \alpha_j
+\end{equation*}
+
+In addition, we can recover $g(\alpha_j)$ for $1 \leq j \leq n$ by inverting $H_{0,j}$:
+
+\begin{equation*}
+    H_{0,j} = g(\alpha_j)
+\end{equation*}
+
+From the construction of the Goppa code we know that the degree $t$ of the polynomial $g(x)$ is less than the number of $\alpha_j$'s, which means that with $n$ points on this polynomial we can uniquely determined the polynomial $g(x)$. Thus, we have fully recovered all parameters of the Goppa code from its parity check matrix.
+
+Having recovered the Goppa code $\mathcal{C}$ is equivalent to posessing the secret key since the random permutation and row reduction are both omitted (which is equivalent to having $S = I_{n-k}$ and $P = I_n$). In other words, we have recovered the secret key from the public key, which trivially breaks the KEM.
 \end{document}
