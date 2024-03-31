@@ -6,13 +6,15 @@
 \usepackage{listings}
 
 % Algorithms and pseudocode
-\usepackage[ruled,vlined]{algorithm2e}
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 \usepackage{algpseudocode}
 
 % Common shortcuts
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
-\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\Norm}[1]{\Vert {#1} \Vert}
+\newcommand{\norm}[1]{\vert {#1} \vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
