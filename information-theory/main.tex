@@ -1,0 +1,107 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algpseudocode}
+
+% Common shortcuts
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\Norm}[1]{\Vert {#1} \Vert}
+\newcommand{\norm}[1]{\vert {#1} \vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{ECE 612, Information Theory}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Winter, 2024}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section*{Preliminares}
+\begin{definition}
+    The normal distribution $N(\mu, \sigma^2)$ has the probability density function
+
+    $$
+    f(x) = \frac{1}{\sigma\sqrt{2\pi}}\exp(-\frac{1}{2}(\frac{x-\mu}{\sigma})^2)
+    $$
+\end{definition}
+
+\begin{definition}
+    The joint normal distribution $N(\mathbf{\mu}, K)$ is defined by probability density function:
+
+    $$
+    f(\mathbf{x}) = \frac{1}{\sqrt{(2\pi)^n\det(K)}}
+    \exp(-\frac{1}{2}
+        (\mathbf{x} - \mathbf{\mu})^\intercal
+        K^{-1}
+        (\mathbf{x} - \mathbf{\mu})
+    )
+    $$
+\end{definition}
+
+\section{Entropy, mutual information, divergence}
+
+\section{Entropy rate}
+
+\section{Asymptotic equipartition property}
+
+\section{Data compressions}
+
+\section{Channel capacity}
+
+\section{Differential entropy}
+\begin{theorem}[Differential entropy of Gaussian distribution]
+    Let $X$ be Gaussian $N(0, \sigma^2)$, then
+
+    $$
+    h(X) = \frac{1}{2}\log{(2\pi e \sigma^2)}
+    $$
+\end{theorem}
+
+\begin{theorem}
+    Let $\mathbf{X}$ follow joint Gaussian distribution $N(\mathbf{0}, K)$, then:
+
+    \begin{equation*}
+        h(\mathbf{X}) = \frac{1}{2}\log ((2\pi e)^n \det{K})
+    \end{equation*}
+\end{theorem}
+
+\section{Gaussian channel}
+\begin{definition}[Gaussian channel with power constraint]
+    
+\end{definition}
+
+\begin{definition}[Information channel capacity]
+    
+\end{definition}
+
+\begin{theorem}
+    The information channel capacity of a Gaussian channel is
+
+    \begin{equation}
+        \max_{f_X: E[X^2] \leq P} I(X; Y) = \frac{1}{2}\log{(1 + \frac{P}{\sigma^2})}
+    \end{equation}
+
+    Where $P$ is the power constraint, and $\sigma^2$ is the variance of the Gaussian noise. The maximum is achieved when $X$ follows Gaussian distribution $X \leftsample N(0, P)$
+\end{theorem}
+
+\section{Rate distortion theory}
+\end{document}
