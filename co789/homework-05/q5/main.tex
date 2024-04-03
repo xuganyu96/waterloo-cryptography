@@ -68,7 +68,7 @@ We can first recover individual values of $\alpha_j$ using adjacent values of th
 In addition, we can recover $g(\alpha_j)$ for $1 \leq j \leq n$ by inverting $H_{0,j}$:
 
 \begin{equation*}
-    H_{0,j} = g(\alpha_j)
+    H_{0,j}^{-1} = g(\alpha_j)
 \end{equation*}
 
 From the construction of the Goppa code we know that the degree $t$ of the polynomial $g(x)$ is less than the number of $\alpha_j$'s, which means that with $n$ points on this polynomial we can uniquely determined the polynomial $g(x)$. Thus, we have fully recovered all parameters of the Goppa code from its parity check matrix.

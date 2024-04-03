@@ -34,8 +34,43 @@
 % \maketitle
 
 \section*{Question 6}
+Recall the parameters of Kyber:
 
-% TODO: develop the IND-CCA attack
+\begin{itemize}
+    \item $R_q = \mathbb{Z}_q[x] / p(x)$ for $q = 3329$ and $p(x) = x^{256} + 1$.
+    \item $A \in R_q^{k \times k}$ for $k = 2, 3, 4$ depending on the security level. $\mathbf{s}, \mathbf{e}, \mathbf{b} \in R_q^k$
+    \item $m \in R_q$ but each coefficient is either 0 or 1
+\end{itemize}
+
+Also recall that for $p(x) = x^{256} + 1$, the NTT representation of each $f(x) \in R_q$ consists of 128 degree-1 polynomials in $\mathbb{Z}_q[x]$:
+
+\begin{equation*}
+    \operatorname{NTT}(f) = (
+        \hat{f}_0 + \hat{f}_1x, \hat{f}_2 + \hat{f}_3x, \ldots, \hat{f}_{254} + \hat{f}_{255}x
+    )
+\end{equation*}
+
+Finally, we claim without proof that:
+
+\begin{enumerate}
+    \item Polynomial addition and multiplication in $R_q$ are all performed coordinate-wise
+    \item $\operatorname{NTT}(f) = \mathbf{0}$ if and only if $f = 0$
+\end{enumerate}
+
+For some $\mathbf{s} \in R_q^k$, let $\mathbf{s}[i] = R_q$ denote the i-th polynomial in the vector, and $\mathbf{s}[i][j] = s_0 + s_1x$ denote the j-th entry of the NTT representation of $\mathbf{s}[i]$
+
+\textbf{
+    For some $l \in \{1, 2, \ldots, k\}$ and some $j \in \{1, 2, \ldots, 128\}$ we can recover the j-th entry in the NTT representation of the $l$-th polynomial in $\mathbf{s} \in R_q^k$ in $q^2$ steps.
+}
+
+\begin{enumerate}
+    \item Set $c_2 \in R_q$ to have NTT representation $\operatorname{NTT}(c_2) = (0, 0, \ldots, q(x), \ldots, 0)$ where all entries are 0 except for the j-th entry, which is some random guess $g(x) = g_0 + g_1x \in \mathbb{Z}_q$.
+    \item Set $\mathbf{c}_1 \in R_q^k$ such that all except for the $l$-th polynomial is 0, and all but the j-th entry to the NTT representation of the $l$-th polynomial is exactly 1
+    \item Feed $c = (\mathbf{c}_1, c_2, H(0))$ (aka I expect $m = 0$) to the decapsulation oracle and get $K = \mathcal{O}^D(c)$
+    \item If $K = H(0, (\mathbf{c}_1, c_2), 0)$, then $g(x)$ is the correct guess for the j-th entry of the NTT representation of the $l$-th polynomial in $\mathbf{s} \in R_q^k$. This works because  $\operatorname{NTT}(\mathbf{c}_1)$ is all $0$ except for the j-th entry in the l-th polynomial in NTT domain, which means $\operatorname{NTT}(\mathbf{c}_1 \cdot \mathbf{s}) = \operatorname{NTT}(\mathbf{c}_1) \circ \operatorname{NTT}(\mathbf{s}) = (0, 0, \ldots, \mathbf{s}[l][j], \ldots, 0)$, so $\operatorname{NTT}(c_2 - \mathbf{c}_1 \cdot \mathbf{s}) = (0, 0, \ldots, g(x) - \mathbf{s}[l][j], \ldots, 0)$. I claim without proof that if $g(x) - \mathbf{s}[l][j] \neq 0$, then $c_2 - \mathbf{c}_1 \cdot \mathbf{s}$ will not round to $0 \in R_q$, which means that the decryption $\hat{m} \neq 0$, which will cause the decapsulation oracle to output the implicit rejection $H(\mathbf{s}, c, 1)$ instead of $H(0, (\mathbf{c}_1, c_2), 0)$
+\end{enumerate}
+
+Since $g(x)$ is a degree-1 polynomial, it takes at most $q^2$ guesses to recover a single entry. We can then repeat the attack for all $j \in \{1, 2, \ldots, 128\}$ and $l \in \{1, 2, \ldots, k\}$. In other words, we can recover the secret key $\mathbf{s}$ (by recovering its NTT representation) in $q^2 \cdot \frac{n}{2} \cdot k$ steps.
 
 \subsection*{Comparing to McEliece}
 \begin{enumerate}

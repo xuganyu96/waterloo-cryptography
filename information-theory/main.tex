@@ -63,6 +63,10 @@
 
 \section{Entropy, mutual information, divergence}
 
+\begin{theorem}
+    Let $X, Y$ be random variables. $I(X; Y)$ is concave with respect to the probability distribution of X. For a fixed marignal distribution of $X$, $I(X; Y)$ is convex with respect to $f_{Y \mid X}$
+\end{theorem}
+
 \begin{theorem}[Fano's inequality]
     Let $X \rightarrow Y \rightarrow \hat{X}$ represent an encode-decode process, where $X, \hat{X} \in \mathcal{X}$ have the same support. Let $e$ denote decoding error $\hat{X} \neq X$, then:
 
@@ -116,4 +120,25 @@
 \end{theorem}
 
 \section{Rate distortion theory}
+\begin{theorem}
+    Let $X$ follow $\operatorname{Bernoulli}(p)$, then
+
+    $$
+    R(D) = \begin{cases}
+        h(p) - h(D)  & \text{When $D < \min(p, 1-p)$} \\
+        0   &  \text{otherwise}
+    \end{cases}
+$$
+\end{theorem}
+
+\begin{theorem}
+    For $X \leftsample N(0, \sigma^2)$:
+
+    $$
+    R(D) = \begin{cases}
+        \frac{1}{2}\log(\frac{\sigma^2}{D}) & (D \leq \sigma^2) \\
+        0 & \text{otherwise}
+    \end{cases}
+    $$
+\end{theorem}
 \end{document}
