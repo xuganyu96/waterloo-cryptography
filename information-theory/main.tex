@@ -57,7 +57,19 @@
     $$
 \end{definition}
 
+\begin{theorem}[Joint normality implies marginal normality]
+    If $\mathbf{X} = (X_1, X_2, \ldots, X_n)$ follows a joint normal distribution, then any linear combination of $\mathbf{X}$ follows normal distribution.
+\end{theorem}
+
 \section{Entropy, mutual information, divergence}
+
+\begin{theorem}[Fano's inequality]
+    Let $X \rightarrow Y \rightarrow \hat{X}$ represent an encode-decode process, where $X, \hat{X} \in \mathcal{X}$ have the same support. Let $e$ denote decoding error $\hat{X} \neq X$, then:
+
+    $$
+    H(X \mid Y) \leq H(P_e) + P_e \log(\norm{\mathcal{X}})
+    $$
+\end{theorem}
 
 \section{Entropy rate}
 
@@ -85,12 +97,12 @@
 \end{theorem}
 
 \section{Gaussian channel}
-\begin{definition}[Gaussian channel with power constraint]
-    
-\end{definition}
-
 \begin{definition}[Information channel capacity]
-    
+    Let $Y = X + Z$, where $Z \leftsample N(0, \sigma^2)$ and $E[X^2] \leq P$ for some power level constraint $P$. The \textbf{information channel capacity} is defined by
+
+    $$
+    C^I = \max_{f_X : E[X^2] \leq P} I(X; Y)
+    $$
 \end{definition}
 
 \begin{theorem}
