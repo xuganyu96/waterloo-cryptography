@@ -128,8 +128,17 @@ Some notable results:
         \max_{f_X: E[X^2] \leq P} I(X; Y) = \frac{1}{2}\log{(1 + \frac{P}{\sigma^2})}
     \end{equation}
 
-    Where $P$ is the power constraint, and $\sigma^2$ is the variance of the Gaussian noise. The maximum is achieved when $X$ follows Gaussian distribution $X \leftsample N(0, P)$
+    Where $P$ is the power constraint, and $\sigma^2$ is the variance of the Gaussian noise. The maximum is achieved when $X$ follows Gaussian distribution $X \sim N(0, P)$
 \end{theorem}
+
+\subsection{Parallel Gaussian Channel}
+Suppose for $1 \leq l \leq n$, $Y_l = X_l + Z_l$, where $Z_l \sim N(0, N_l)$ is independent Gaussian noise, then $\mathbf{Y} = (Y_l)_{l=1}^n$ can be seen as the output of $n$ parallel Gaussian channels combined into a single channel. The capacity of the combined channel is
+
+\begin{equation*}
+    C = \max_{f_\mathbf{X}}I(\mathbf{X}; \mathbf{Y})
+\end{equation*}
+
+The optimal strategy for maximizing the capacity is to make $X_l$ independent and individually Gaussian. If there is a combined power constraint $\sum_{l=1}^nE[X_l^2] \leq P$, then \textit{power should be first given to the channel with the lowest amount of noise until the combined noise + power exceeds the next lowest noise} (\textbf{waterfilling}).
 
 \section{Rate distortion theory}
 \begin{theorem}
