@@ -84,20 +84,32 @@
 \section{Channel capacity}
 
 \section{Differential entropy}
-\begin{theorem}[Differential entropy of Gaussian distribution]
-    Let $X$ be Gaussian $N(0, \sigma^2)$, then
-
-    $$
-    h(X) = \frac{1}{2}\log{(2\pi e \sigma^2)}
-    $$
-\end{theorem}
-
-\begin{theorem}
-    Let $\mathbf{X}$ follow joint Gaussian distribution $N(\mathbf{0}, K)$, then:
+\begin{definition}
+    Let $X \in \mathbb{R}$ be a random variable with probability density function $f_X$. The \textbf{differential entropy} of $X$ is defined by
 
     \begin{equation*}
-        h(\mathbf{X}) = \frac{1}{2}\log ((2\pi e)^n \det{K})
+        h(X) = -\int_{x \in \mathbb{R}} f_X(x)\ln(f_X(x))dx = -E[\ln(f_X(X))]
     \end{equation*}
+\end{definition}
+
+Some notable results:
+
+\begin{itemize}
+    \item For uniform distribution over $[0, a]$, $f_X(x) = \frac{1}{a}$, $h(X) = \ln(a)$
+    \item For $X \sim N(0, \sigma^2)$, $h(X) = \frac{1}{2}\ln(2\pi e \sigma^2)$
+    \item For multivariate normal $\mathbf{X} \sim N(\mathbf{0}, K)$, $h(\mathbf{X}) = \frac{1}{2}\log ((2\pi e)^n \det{K})$
+    \item For some constant $a$, $h(X + a) = h(X)$
+    \item For some constant $a$, $h(aX) = \ln(\norm{a}) + h(X)$
+\end{itemize}
+
+\begin{theorem}
+    Let $X$ be continuous random variable with $0$ mean and $\sigma^2$ variance, then
+
+    \begin{equation*}
+        h(X) \leq \frac{1}{2}\ln(2\pi e \sigma^2)
+    \end{equation*}
+
+    Equality is reached if and only if $X$ is Gaussian
 \end{theorem}
 
 \section{Gaussian channel}
