@@ -71,12 +71,28 @@
         \end{equation*}
     \end{definition}
 
-    \begin{definition}[Mutual informaiton]
-    The mutual information between two random variables $X, Y$ is defined by
+    \begin{definition}[KL Divergence]
+        The \textbf{KL Divergence} between two probability distributions $p, q$ on the same support $\mathcal{X}$ is defined by
 
-    \begin{equation*}
-        I(X; Y) = H(X) - H(X \mid Y)
-    \end{equation*}
+        \begin{equation*}
+            D(p \Vert q) = \sum_{x \in \mathcal{X}} p(x) \log{
+                \frac{p(x)}{q(x)}
+            }
+        \end{equation*}
+    \end{definition}
+
+    \begin{definition}[Mutual information]
+        The mutual information between two random variables $X, Y$ is defined by
+
+        \begin{equation*}
+            I(X; Y) = H(X) - H(X \mid Y)
+        \end{equation*}
+
+        It can also be expressed as the KL divergence between the joint distribution $p_{X, Y}$ and the product of marginal distribution $p_Xp_Y$:
+
+        \begin{equation*}
+            I(X; Y) = D(p_{X,Y} \Vert p_X \cdot p_Y)
+        \end{equation*}
     \end{definition}
 
     \begin{proposition}
