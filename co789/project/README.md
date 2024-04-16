@@ -3,6 +3,18 @@
 - [A modular approach]?
 - [OAEP, and RSA OAEP]
 
+# Introduction
+Indistinguishability under (adaptive) chosen-ciphertext attack (IND-CCA2) is widely recognized as the desirable security notion for public-key cryptography. However, directly achieving IND-CCA2 security is difficult. Previous attempts at deploying public-key cryptography in production, such as the usage of RSA PKCS1 v1.5 in early versions of SSl/TLS, were found to be vulnerable to adaptive chosen-ciphertext attacks.
+
+Instead of directly constructing IND-CCA2 secure cryptosystem from NP-hard problems, recent works approached this problem by proposing generic transformation that take cryptographic primitives of lesser strengths (e.g. OW-CPA, IND-CPA) and produce encryption schemes that lose only a negligible amount of security. One such transformation was proposed by Fujisaki and Okamoto in 1999 and later improved by Hofheinz, Hovelmann, and Kiltz in 2017. With simple construction and robust security reduction, the FO transformation is adopted by submissions to NIST's post-quantum cryptography competition (notably by Kyber, which has been standardized in FIPS 203 in 2024).
+
+In this paper, we will review the constructions of the Fujisaki-Okamoto transformation and its variations. We will also review their security results, including the techniques used in the security reduction. Finally, we will discuss open problems and propose some optimization.
+
+# Related works
+Another notable example of generic CCA-secure transformation is the Optimal Asymmetric Encryption Padding (OAEP) proposed by Bellare and Rogaway. This scheme made improvements on the simple padding scheme for RSA standardized by PKCS1 v1.5, which was not only easy to implement incorrectly (the simple Bleichenbacher attack), but also later shown to be vulnerable to adaptive chosen-ciphertext attack (the more sophisticated Bleichenbacher attack).
+
+While OAEP was proposed as a generic transformation, it was later shown to be only resilient against CCA1 adversary but not CCA2 adversary.
+
 # From Fujisaki-Okamoto transformation to IND-CCA KEM
 
 ## The FO transformation

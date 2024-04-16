@@ -11,7 +11,8 @@
 
 % Common shortcuts
 \newcommand{\round}[1]{\lfloor {#1} \rceil}
-\newcommand{\norm}[1]{\Vert {#1} \Vert}
+\newcommand{\norm}[1]{\vert {#1} \vert}
+\newcommand{\Norm}[1]{\Vert {#1} \Vert}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
 \newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
 
@@ -23,7 +24,7 @@
 \newtheorem*{remark}{Remark}
 \newtheorem{corollary}{Corollary}[theorem]
 \newtheorem{proposition}{Proposition}[section]
-\newtheorem{lemma}{Lemma}[theorem]
+\newtheorem{lemma}{Lemma}
 
 
 \title{A survey of IND-CCA constructions}
@@ -35,9 +36,57 @@
 \maketitle
 
 \section{Introduction}
+Indistinguishability under (adaptive) chosen-ciphertext attack (IND-CCA2) is widely recognized as the desirable security notion for public-key cryptography. However, directly achieving IND-CCA2 security is difficult. Previous attempts at deploying public-key cryptography in production, such as the usage of RSA PKCS1 v1.5 in early versions of SSl/TLS, were found to be vulnerable to adaptive chosen-ciphertext attacks.
+
+Instead of directly constructing IND-CCA2 secure cryptosystem from NP-hard problems, recent works approached this problem by proposing generic transformation that take cryptographic primitives of lesser strengths (e.g. OW-CPA, IND-CPA) and produce encryption schemes that lose only a negligible amount of security. One such transformation was proposed by Fujisaki and Okamoto in 1999 and later improved by Hofheinz, Hovelmann, and Kiltz in 2017. With simple construction and robust security reduction, the FO transformation is adopted by submissions to NIST's post-quantum cryptography competition (notably by Kyber, which has been standardized in FIPS 203 in 2024).
+
+In this paper, we will review the constructions of the Fujisaki-Okamoto transformation and its variations. We will also review their security results, including the techniques used in the security reduction. Finally, we will discuss open problems and propose some optimization.
 
 \section{Preliminaries}
 % TODO: from IND-CPA to OW-CPA
+
+\subsection{Spread and correctness}
+The spread of measures the randomness of ciphertext in a probabilistic encryption scheme, where the randomness of the encryption routine is determined by a random coin $r \leftsample \text{Coin}$ from the coin space.
+
+\begin{definition}[$\gamma$-spread]
+    The spread $\gamma$ of an asymmetric encryption scheme $(\operatorname{KeyGen}, E, D)$ for some fixed public key $\text{pk}$ and plaintext $m$ is defined by
+
+    \begin{equation*}
+        \gamma(\text{pk}, m) = -\log{\Norm{E_\text{pk}(m)}_\infty}
+    \end{equation*}
+
+    Where $\Norm{E_\text{pk}(m)}_\infty$ is the min-entropy of the ciphertext with respect to the coin:
+
+    \begin{equation*}
+        \Norm{E_\text{pk}(m)}_\infty 
+        = \max_{c \in \mathcal{C}} P[E_\text{pk}(m) = c]
+    \end{equation*}
+\end{definition}
+
+\begin{definition}[correctness]
+    A public-key encrpytion scheme $(\operatorname{KeyGen}, E, D)$ is $\delta$-correct if across all possible keypairs and messages, the probability of decryption error is at most $\delta$:
+
+    \begin{equation*}
+        \max_{
+            m \in \mathcal{M},
+            (\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()
+        } P[D_\text{sk}(E_\text{pk}(m)) \neq m]
+        \leq \delta
+    \end{equation*}
+\end{definition}
+
+\subsection{Difference lemma}
+The difference lemma is used extensively in the sequence of games to estimate the loss of security when one game is transformed into another
+
+\begin{lemma}[Difference lemma]
+    Let $A, B, F$ be events defined on the same probability space. If $P[A \cap \neg F] = P[B \cap \neg F]$, then $P[A] - P[B] \leq P[F]$
+\end{lemma}
+
+\begin{proof}
+    
+\end{proof}
+
+\subsection{IND-CPA to OW-CPA}
 
 \section{The Fujisaki-Okamoto Transformation}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} takes a IND-CPA public-key encryption scheme (PKE) and a few other cryptographic primitives of weaker security as inputs, and constructs a hybrid encryption scheme that achieves IND-CCA2 security.
