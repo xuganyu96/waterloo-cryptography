@@ -28,7 +28,7 @@
 \newtheorem{lemma}{Lemma}
 
 
-\title{A survey of IND-CCA constructions}
+\title{An introduction to Fujisaki-Okamoto transformation}
 \author{Ganyu (Bruce) Xu (g66xu)}
 \date{CO 789, Winter 2024}
 
@@ -99,7 +99,7 @@ The difference lemma is used extensively in the sequence of games to estimate th
 
 In the context of security reduction using sequence of game, the difference lemma is invoked with event $A$ and $B$ set to "adversary winning one game" and "adversary winning another game", and event $F$ set to the event that would cause the two games two diverge. If the diverging event $F$ does not happen, then the two games are identical to each other, so the advantage of the adversary remains the same across the two games; if the diverging event $F$ happens, then the advantage of the adversary does not change by more than the probability of the diverging event $F$.
 
-\subsection{IND-CPA to OW-CPA}
+\subsection{IND-CPA to OW-CPA}\label{ind-cpa-to-ow-cpa}
 It is trivially true that if a public-key encryption scheme is not one-way secure, then it is not indistinguishable. The converse if also almost true, with the caveat that the message space must be sufficiently large: 
 
 \begin{lemma}
@@ -111,35 +111,39 @@ It is trivially true that if a public-key encryption scheme is not one-way secur
 \end{lemma}
 
 \section{Related works}
+\subsection{OAEP and plaintext awareness}
+    One of the early attempts at an IND-CCA secure public-key encryption scheme is RSA. Unfortunately, the first deployment of RSA in PKCS\#1 v1.5 \cite{kaliski1998rfc2313} is proved vulnerable to chosen-ciphertext attacks by Bleichenbacher \cite{bleichenbacher1998chosen}. Subsequent work by Bellare and Rogaway \cite{bellare1995optimal} proposed the Optimal Asymmetric Encryption Padding (OAEP) as a generic IND-CCA secure transformation. Bellare and Rogaway argued for the IND-CCA security of OAEP through the framework of ``plaintext awareness'', which states that the ciphertext cannot be partially decrypted without inverting some cryptographic trapdoor functions. Later on OAEP is shown to be only IND-CCA1 secure, although Fujisaki, et all showed that RSA-OAEP is indeed IND-CCA2 secure \cite{fujisaki2001rsa}.
+
+\subsection{In the context of key exchange}
     Key encapsulation mechanisms (KEM) usually have weaker security requirements than public-key encryption schemes (PKE) thanks to the fact that properly designed KEMs obfuscate the plaintext through a key-derivation function (which is usually a hash function and thus a random oracle under the RO assumption) in the decryption routine. As a result, we can implement a simple IND-CCA2 KEM using an IND-CCA2 PKE:
 
-    \begin{multicols}{3}
-        \begin{algorithm}[H]
-            \SetAlgoLined
-            \caption{KeyGen}
-            $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$ \;
-            \Return{$(\text{pk}, \text{sk})$}
-        \end{algorithm}
+    % \begin{multicols}{3}
+    %     \begin{algorithm}[H]
+    %         \SetAlgoLined
+    %         \caption{KeyGen}
+    %         $(\text{pk}, \text{sk}) \leftsample \operatorname{KeyGen}()$ \;
+    %         \Return{$(\text{pk}, \text{sk})$}
+    %     \end{algorithm}
 
-        \begin{algorithm}[H]
-            \SetAlgoLined
-            \caption{Encap}
-            \KwIn{$\text{pk}$}
-            $m \leftsample \mathcal{M}$\;
-            $c \leftsample E(\text{pk}, m)$\;
-            $K \leftarrow H(m, c)$\;
-            \Return{$(c, K)$}\;
-        \end{algorithm}
+    %     \begin{algorithm}[H]
+    %         \SetAlgoLined
+    %         \caption{Encap}
+    %         \KwIn{$\text{pk}$}
+    %         $m \leftsample \mathcal{M}$\;
+    %         $c \leftsample E(\text{pk}, m)$\;
+    %         $K \leftarrow H(m, c)$\;
+    %         \Return{$(c, K)$}\;
+    %     \end{algorithm}
 
-        \begin{algorithm}[H]
-            \SetAlgoLined
-            \caption{Decap}
-            \KwIn{$\text{sk}, c \in \mathcal{C}$}
-            $\hat{m} \leftarrow D(\text{sk}, c)$\;
-            $\hat{K} \leftarrow H(\hat{m}, c)$\;
-            \Return{$\hat{K}$}\;
-        \end{algorithm}
-    \end{multicols}
+    %     \begin{algorithm}[H]
+    %         \SetAlgoLined
+    %         \caption{Decap}
+    %         \KwIn{$\text{sk}, c \in \mathcal{C}$}
+    %         $\hat{m} \leftarrow D(\text{sk}, c)$\;
+    %         $\hat{K} \leftarrow H(\hat{m}, c)$\;
+    %         \Return{$\hat{K}$}\;
+    %     \end{algorithm}
+    % \end{multicols}
 
     It is straightforward to simulate the KEM game using a PKE adversary. The PKE adversary samples two random messages $(m_0, m_1) \leftsample \mathcal{M}$ and obtains the challenge encryption for one of them $c^\ast \leftarrow E(\text{pk}, m_b)$. The PKE adversary then computes $K^\ast \leftarrow H(c^\ast, m_0)$ and passes $(c^\ast, K^\ast)$ as the challenge encapsulation to the KEM adversary. If $c^\ast$ is an encryption of $m_0$, then $K^\ast$ is pseudorandom, otherwise under the random oralce model, $K^\ast$ is truly random from the perspective of the KEM adversary. Therefore, $\epsilon_\text{PKE} = \epsilon_\text{KEM}$.
 
@@ -170,6 +174,8 @@ $$
 $$
 
 The output of the transformation is a public-key encryption scheme $(\operatorname{KeyGen}, E^\text{hy}, D^\text{hy})$. Note that the key generation routine is exactly the same as the input asymmetric cipher's routine, so no distinction of notation is needed. The encryption and decryption routines are as follows:
+
+% \pagebreak
 
 \begin{multicols}{2}
     \begin{algorithm}[H]
@@ -418,7 +424,7 @@ On the other hand, if the adversary indeed queries the hash $G(m_b)$, then the t
     P[\operatorname{QUERY}^\ast] \leq \epsilon_\text{IND-CPA}
 \end{equation*}
 
-\subsubsection{Plaintext checking, ciphertext validation, and patched decapsulation oracle}
+\subsubsection{Plaintext checking, ciphertext validation, and patched decapsulation oracle}\label{patched-decap}
 The concept of plaintext-checking attack (PCA) was proposed in early 2000s and first used in generic IND-CCA transformation by Coron et al in \textit{GEM: a generic chosen-ciphertext secure encryption method} \cite{jean2002gem}. Although PCA security is not a standard security definition, it is nonetheless useful as an intermediary step for constructing simple generic IND-CCA secure cryptosystems.
 
 The standard plaintext-checking oracle (PCO) takes as input a plaintext-ciphertext pair $(m, c)$ and uses the secret key to determine whether they correspond to each other. Because lattice-based cryptosystems sometimes suffer from decryption errors, and because the OW-PCVA transformation $(E^T, D^T)$ is a deterministic encryption scheme, the standard PCO checks both encryption and decryption. When trying to simulate PCO without using the secret key, the decryption routine is omitted. Thanks for $E^T$ being deterministic, the behavior of the simulated PCO diverges from the standard PCO if and only if $m$ causes decryption error. The probability of decryption error is bounded by $\delta$-correctness.
@@ -560,18 +566,160 @@ The combination of PCO and CVO allows the decapsulation oracle to be simulated b
 Under the random oracle model, the combination of patched hash function and patched decapsulation oracle should behave exactly the same as the standard decapsulation oracle.
 
 \subsection{A sketch of proof}
-Here we provide a sketch of the security proof for both the 1999 transformation and the 2017 variations.
+Here we provide a sketch of the security proof for both the 1999 transformation and the 2017 variations. All three proofs follow the framework of sequence of games.
 
 \subsubsection{Proof of theorem \ref{fo-1999-theorem}}
 \begin{proof}
+    Game 0 is the standard IND-CCA2 game.
     
+    Game 1 is identical to Game 0, except for that the standard decryption oracle is replaced with the simulated decryption oracle described in section \ref{simulate-dec-oracle}. From the IND-CCA adversary's perspective, game 1 and game 0 are indistinguishable, except when the adversary makes one or more ciphertext query $(\tilde{c}, \tilde{e})$ to the decryption oracle without matching hash query $(m, c, r) \in \mathcal{O}^H$ such that $c = \tilde{c}$ and $E^\text{asym}(\text{pk}, m, r) = \tilde{c}$. Given that the adversary makes exactly $q_D$ decryption queries, the probability of ``at least one divergent query'' is:
+
+    \begin{equation*}
+        \begin{aligned}
+            P[\text{at least 1 diverging decryption query}]
+            &= P[\cup_{i=1}^{q_D} \text{ query $i$ is divergent}] \\
+            &\leq \sum_{i=1}^{q_D}P[\text{query $i$ is divergent}] \\
+            &= q_D2^{-\gamma}
+        \end{aligned}
+    \end{equation*}
+
+    By the difference lemma, we know:
+
+    \begin{equation}
+        \epsilon_0 - \epsilon_1 
+        \leq P[\text{at least 1 diverging decryption query}] 
+        \leq q_D2^{-\gamma}
+    \end{equation}
+
+    Where $\epsilon_0$ and $\epsilon_1$ is the adversary's advantage in game 0 and game 1, respectively.
+
+    Game 2 is identical to game 1, except for that in the challenge encryption, the both the symmetric key and the asymmetric coin are truly random instead of pseudorandom:
+
+    \begin{multicols}{2}
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$G_1$ challenge encryption}
+            \KwIn{$\text{pk}, m \in \mathcal{M}^\text{sym}$}
+            $\sigma \leftsample \mathcal{M}^\text{asym}$\;
+            $a \leftarrow G(\sigma)$; $c \leftarrow E^\text{sym}_a(m)$\;
+            $r \leftarrow H(\sigma, c)$;
+            $e \leftarrow E^\text{asym}(\text{pk}, m, r)$\;
+            \Return{$(c, e)$}\;
+        \end{algorithm}
+        \columnbreak
+
+        \begin{algorithm}[H]
+            \SetAlgoLined
+            \caption{$G_2$ challenge encryption}
+            \KwIn{$\text{pk}, m \in \mathcal{M}^\text{sym}$}
+            $\sigma \leftsample \mathcal{M}^\text{asym}$\;
+            $a \leftsample \mathcal{K}^\text{sym}$; $c \leftarrow E^\text{sym}_a(m)$\;
+            $r \leftsample \text{Coin}$;
+            $e \leftarrow E^\text{asym}(\text{pk}, m, r)$\;
+            \Return{$(c, e)$}\;
+        \end{algorithm}
+    \end{multicols}
+
+    From the adversary's perspective, game 2 is identical to game 1 except for when the adversary queries either $G$ or $H$ with the $\sigma$ used in the challenge encryption:
+
+    \begin{equation}
+        \epsilon_1 - \epsilon_2 \leq P[\operatorname{QUERY}^\ast]
+    \end{equation}
+
+    Game 2 can be perfectly simulated by an IND-CPA adversary against the underlying symmetric cipher using the technique discussed in section \ref{random-until-queried}:
+
+    \begin{equation}
+        \epsilon_2 = \epsilon^\text{sym}_\text{IND-CPA}
+    \end{equation}
+
+    Game 2 can also be perfectly simulated by an OW-CPA adversary against the underlying asymmetric cipher. The OW-CPA adversary will pass the OW-CPA challenge ciphertext as the asymmetric part of the IND-CCA challenge ciphertext. After the IND-CCA adversary halts, the OW-CPA adversary will check the tape of the hash oracles and pick a random queried value $\tilde{\sigma}$ as its output. The OW-CPA adversary wins if and only if the IND-CCA adversary makes the divergent hash query and that the randomly picked query is the correct one:
+
+    \begin{equation}
+        P[\operatorname{QUERY}^\ast] \cdot \frac{1}{q_H} = \epsilon^\text{asym}_\text{OW-CPA}
+    \end{equation}
+
+    Summing the four equations above will bound the IND-CCA adversary's advantage in game 0.
 \end{proof}
 
 \subsubsection{Proof of theorem \ref{ow-pcva-result}}
+\begin{proof}
+    Game 0 is the OW-PCVA game, which is identical to the OW-CPA game, but the adversary also has access to the PCO and the CVO.
+
+    Game 1 is identical to game 0, except for that the PCO is replaced with the simulated PCO. From the perspective of the OW-PCVA adversary, the two games are indistinguishable except for when the adversary produces a ciphertext $c$ from a plaintext $m$ that causes decryption error. Since each call to the encryption routine involves a call to the hash oracle, and assuming that the asymmetric cipher is $\delta$-correct, we can bound the change in the adversary's advantage:
+
+    \begin{equation*}
+        \epsilon_0 - \epsilon_1 
+        \leq P[\text{at least one decryption error}]
+        \leq q_G \cdot \delta
+    \end{equation*}
+
+    Game 2 is identical to game 1, except for that the CVO is replaced with the simulated CVO. Using the technique discussed in section \ref{simulate-dec-oracle}, we have:
+
+    \begin{equation*}
+        \epsilon_1 - \epsilon_2 \leq q_V \cdot 2^{-\gamma}
+    \end{equation*}
+
+    Game 3 is identical to game 2, except for that the challenge encryption is performed using a truly random coin $r^\ast \leftsample \text{Coin}$ instead of the pseudorandom coin $r^\ast \leftarrow G(m)$. Using the argument in section \ref{random-until-queried}:
+
+    \begin{equation*}
+        \epsilon_2 - \epsilon_3 \leq P[\operatorname{QUERY}^\ast]
+    \end{equation*}
+
+    Game 3 can be perfectly simulated by a OW-CPA adversary against the underlying asymmetric cipher:
+
+    \begin{equation*}
+        \epsilon_3 = \epsilon_\text{OW-CPA}
+    \end{equation*}
+
+    Game 3 can also be simulated by an IND-CPA adversary against the underlying asymmetric cipher who passes the IND-CPA challenge ciphertext to the OW-PCVA adversary. If the OW-PCVA adversary queries $G$ with the value of $m^\ast$, then the IND-CPA adversary will find in the tape of the hash oracle $G$ a value that matches one its own challenge plaintexts. If no match is found, the IND-CPA adversary will output a random coin toss. Thus, the advantage of this IND-CPA adversary is exactly the probability $P[\operatorname{QUERY}^\ast]$:
+
+    \begin{equation*}
+        P[\operatorname{QUERY}^\ast] = \epsilon_\text{IND-CPA}
+    \end{equation*}
+
+    The four equations above, combined with the result in section \ref{ind-cpa-to-ow-cpa}, will bound the advantage of the OW-PCVA adversary
+\end{proof}
 
 \subsubsection{Proof of theorem \ref{cca-kem-result}}
+\begin{proof}
+    Game 0 is the IND-CCA KEM game.
+
+    Game 1 is identical to game 0, except for that the decapsulation oracle is replaced with the patched hash oracle plus the patched decapsulation oracle. Using the argument in section \ref{patched-decap}, from the perspective of the adversary, the two games are indistinguishable:
+
+    \begin{equation*}
+        \epsilon_0 = \epsilon_1
+    \end{equation*}
+
+    Game 2 is identical to game 1, except for that in the challenge encapsulation, the shared secret is truly random $K^\ast \leftsample \mathcal{K}$ instead of pseudorandom $K^\ast \leftarrow H(m, c)$. Game 2 diverges from game 1 in ways described in section \ref{random-until-queried}
+
+    \begin{equation*}
+        \epsilon_1 - \epsilon_2 = P[\operatorname{QUERY}^\ast]
+    \end{equation*}
+
+    If the IND-CCA KEM adversary indeed makes a hash query on the challenge values $(m^\ast, c^\ast)$, then an OW-PCVA adversary can check the hash oracle's tape to decrypt a challenge encryption:
+
+    \begin{equation*}
+        P[\operatorname{QUERY}^\ast] = \epsilon_\text{OW-PCVA}
+    \end{equation*}
+
+    Finally, since $K^\ast$ is always truly random, no adversary can have any advantage in game 2:
+
+    \begin{equation*}
+        \epsilon_2 = 0
+    \end{equation*}
+\end{proof}
 
 \section{Future works on generic IND-CCA transformation}
+The 2017 transformations $U^\bot$ and $U^{\not\bot}$ have been largely successful in its simple constructions and robust security result, and the latter is adopted by NIST PQC winners such as Kyber. However, there are still continuous work on further improving the Fujisaki-Okamoto transformation. Here are a few open questions in the field:
+
+\subsection{Security in the quantum random oracle model}
+The weakest link in all of the transformations and their security reduction above is the random oracle model. In addition, as the prospect of quantum computer looms bigger, there is an increasingly urgent need to re-consider the random oracle model in the quantum setting. For example, a quantum computer can compute the hash values of a superposition of inputs, although due to the nuance of quantum mechanics that are outside this author's capacity, quantum random oracles are not a straightforward upgrade of computing capabilities from the non-quantum random oracle model. Taking a step back, the entire premise of quantum security remains an open question.
+
+\subsection{Better handling of decryption error}
+In the 2017 transformation, decryption error is handled with a shotgun approach: the authors simply assumed that the probability of an adversary coming up with a message $m$ that would cause decryption error is negligible, but in practice this probability is still an non-trivial factor, and some adversary may choose such message $m$ adversarially, thus making the loss of security potentially non-trivial.
+
+\subsection{Removing re-encryption}
+The re-encryption step in the decryption routine is the source of ciphertext integrity and thus an essential component to the IND-CCA security of the Fujisaki-Okamoto transformation. Unfortunately, this step is also very computationally expensive (this is especially true in Kyber, whose encryption routine involves computing and storing the entire public-key matrix $A \in R_q^{k \times k}$ but whose decryption routine involves much less computation and memory requirements). There might be other ways to provide integrity with better performance characteristics. For example, classic McEliece achieves integrity through the unique properties of Goppa code and the syndrome decoding problem, although this approach lacks generality and is not readily applicable to lattice-based schemes like Kyber. Symmetric integrity primitives like message authentication code (MAC) are also promising candidates, though the security implications remain unproven.
 
 \bibliographystyle{plain}
 \bibliography{./references.bib}
