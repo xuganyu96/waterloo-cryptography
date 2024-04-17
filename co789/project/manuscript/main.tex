@@ -185,7 +185,7 @@ The output of the transformation is a public-key encryption scheme $(\operatorna
 
     \columnbreak
 
-    \begin{algorithm}[H]
+    \begin{algorithm}[H]\label{hybrid-decryption-99}
         \SetAlgoLined
         \caption{Hybrid decryption $D^\text{hy}$}
         \KwIn{$\text{sk}, c \in \mathcal{C}^\text{sym}, e \in \mathcal{C}^\text{asym}$}
@@ -202,7 +202,7 @@ The output of the transformation is a public-key encryption scheme $(\operatorna
     \end{algorithm}
 \end{multicols}
 
-\begin{theorem}[Security result for $(E^\text{hy}, D^\text{hy})$]
+\begin{theorem}[Security result for $(E^\text{hy}, D^\text{hy})$]\label{fo-1999-theorem}
     If the input asymmetric cipher has $\gamma$ spread, then for every IND-CPA adversary $\mathcal{A}^\text{sym}_\text{IND-CPA}$ against the underlying symmetric cipher with advantage $\epsilon^\text{sym}$ and OW-CPA adversary $\mathcal{A}^\text{asym}_\text{OW-CPA}$ against the input asymmetric cipher with advantage $\epsilon^\text{asym}$, there exists an IND-CCA2 adversary with against the hybrid scheme making $q_H$ hash queries and $q_D$ decryption queries such that:
 
     \begin{equation*}
@@ -316,7 +316,7 @@ On the other hand, the implicit rejection KEM, denoted by $U^{\not\bot}$, genera
 
 The security result is similarly expressed in two theorems:
 
-\begin{theorem}
+\begin{theorem}\label{ow-pcva-result}
     If the input asymmetric scheme is $\delta$-correct and $\gamma$-spread, then for every OW-PCVA adversary that issues at most $q_G$ hash queries and $q_V$ ciphertext validation queries with advantage $\epsilon^T$, there exists an IND-CPA adversary against the underlying asymmetric scheme with advantage $\epsilon$ such that
 
     \begin{equation*}
@@ -326,7 +326,7 @@ The security result is similarly expressed in two theorems:
     \end{equation*}
 \end{theorem}
 
-\begin{theorem}
+\begin{theorem}\label{cca-kem-result}
     For every IND-CCA2 adversary against the $U^\bot$ KEM with advantage $\epsilon^{U^\bot}$, there exists an OW-PCVA adversary against the input scheme $(E^T, D^T)$ with advantage $\epsilon^T$ such that
 
     \begin{equation*}
@@ -342,9 +342,234 @@ The security result is similarly expressed in two theorems:
     \end{equation*}
 \end{theorem}
 
-\subsection{A discussion of techniques}
+\subsection{A discussion of proof techniques}
+The 1999 Fujisaki-Okamoto transformation and its 2017 variations deployed similar strategies for their respective security reductions: start with the appropriate standard IND-CCA game, then gradually transform the game into something that can be simulated by some adversary playing another standard OW-CPA or IND-CPA game (or in the case of the IND-CCA KEM, some adversary playing the OW-PCVA game).
+
+In the standard games, the decryption oracle, the decapsulation oracle, the plaintext checking oracle, and the ciphertext validation oracles all behave as if they possess the true secret key and use the secret key to execute the decryption routine on their query inputs. However, thanks to the design of the transformed schemes, there are ways to simulate the behaviors of those oracles under the random oracle assumption by modeling the hash functions as probabilistic turing machines whose state is taped. The simulated oracles will behave differently from the true oracles in certain circumstances, so the transformed game will diverge from the original game, but because of the difference lemma, we can bound the loss of security by the probability of the diverging event.
+
+\subsubsection{Simulate decryption oracle with random oracle}\label{simulate-dec-oracle}
+The decryption oracle can be simulated without secret key by taking advantage of the fact that in an honest execution of the encryption routine, a hash of the message is used to generate the pseudorandom coin. Assuming that the random oracle records its queries, if the ciphertext is honestly generated, then the random oracle should contain exactly one record whose input contains the correct message.
+
+Here is an example of comparing the standard decryption oracle with the simulated decryption oracle in the 1999 Fujisaki-Okamoto transformation, where the hash function $H: \{0, 1\}^\ast \rightarrow \text{Coin}$ is modeled as a probabilistic turing machine and used to recover the plaintext
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Standard decryption oracle}
+        \KwIn{
+            $\tilde{c} \in \mathcal{C}^\text{sym}, 
+            \tilde{e} \in \mathcal{C}^\text{asym}$
+        }
+        \tcp*[h]{Check algorithm \ref{hybrid-decryption-99} for $D^\text{hy}$}
+        $\hat{m} \leftarrow D^\text{hy}(\text{sk}, (\tilde{c}, \tilde{e}))$\;
+        \Return{$\hat{m}$}
+    \end{algorithm}
+
+
+    \columnbreak
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Simulated decryption oracle}
+        \KwIn{
+            $\tilde{c} \in \mathcal{C}^\text{sym}
+            , \tilde{e}\in\mathcal{C}^\text{asym}$
+        }
+        \If{
+            $\exists (\sigma, c, r) \in \mathcal{O}^H$ such that
+            $c = \tilde{c}$ 
+            and $E^\text{asym}(\text{pk}, \sigma, r) = \tilde{e}$
+        }{
+            \tcp{We have found a decryption}
+            $\hat{a} \leftarrow G(\sigma)$\;
+            $\hat{m} \leftarrow D^\text{sym}_{\hat{a}}(c)$\;
+            \Return{$\hat{m}$}
+        }
+        \Return{$\bot$}\;
+    \end{algorithm}
+\end{multicols}
+
+The two oracles will behave differently if and only if the queried ciphertext is generated without querying the hash oracle, but if the hash oracle is not consulted, then the coin is indistinguishable from truly random. Therefore, the simulated oracle's behavior diverges from the standard oracle if and only if the adversary correctly guesses the ciphertext generated from a truly random coin. The probaility of such an event is bounded by the spread of the underlying encryption scheme.
+
+\subsubsection{Random until queried}\label{random-until-queried}
+In the 1999 transformation, both the symmetric key $a \leftarrow G(\sigma)$ and the asymmetric coin $r \leftarrow H(\sigma, c)$ are pseudorandom. In the 2017 transformation, the asymmetric coin $r \leftarrow H(m)$ is also pseudorandom. On the other hand, in the standard security game against any symmetric cipher, the secret key is truly random, and in the standard security game against an asymmetric cipher, the encryption coin is also truly random. This difference prevents an adversary playing the standard game to correctly simulate the challenge encryption in the IND-CCA2 game.
+
+Under the random oracle model, this difference can be resolved by observing that there is no distinction between querying a random oracle once and randomly sampling from the specified probability space. In other words, unless the IND-CCA2 adversary makes a query to the random oracle with the specific input, from the IND-CCA2 adversary's perspective there is no difference between pseudorandom and truly random values, so the sequence of games can safely replace pseudorandom values with truly random values, and the difference in advantage will be bounded by the probability that the IND-CCA2 adversary indeed makes some very specific query. Finally, this probability can be bounded by a standard game adversary who can take advantage of the specific value being queried.
+
+As an example, in the 1999 transformation's security reduction, consider an IND-CPA adversary against the underlying symmetric cipher $\mathcal{A}^\text{sym}_\text{IND-CPA}$. $\mathcal{A}^\text{sym}_\text{IND-CPA}$ tries to simulate the IND-CCA2 game for an adversary against the hybrid scheme $\mathcal{A}^\text{hy}_\text{IND-CCA}$ in the following steps:
+
+\begin{enumerate}
+    \item $\mathcal{A}^\text{sym}_\text{IND-CPA}$ runs hybrid KeyGen and passes pk to $\mathcal{A}^\text{hy}_\text{IND-CCA}$
+    \item $\mathcal{A}^\text{sym}_\text{IND-CPA}$ simulates random oracle $H, G$ and the decryption oracle $\mathcal{O}^D$ using method described in section \ref{simulate-dec-oracle}
+    \item When $\mathcal{A}^\text{hy}$ outputs the challenge messages $m_0, m_1$, $\mathcal{A}^\text{sym}$ passes these two messages to the symmetric cipher challenger. The symmetric challenger returns the encryption of one of them $c^\ast = E^\text{sym}_{a^\ast}(m_b)$ under a \textbf{truly random key $a^\ast$}
+    \item $\mathcal{A}^\text{sym}$ samples random $\sigma \leftarrow \mathcal{M}^\text{asym}$, computes the coin $r \leftarrow H(c^\ast, \sigma)$ and the asymmetric ciphertext $e^\ast \leftarrow E^\text{asym}(\text{pk}, \sigma, r)$
+    \item $\mathcal{A}^\text{sym}$ passes $(c^\ast, e^\ast)$ as the challenge ciphertext to $\mathcal{A}^\text{hy}$. When $\mathcal{A}^\text{hy}$ outputs the guess $\hat{b}$, $\mathcal{A}^\text{sym}$ passes $\hat{b}$ as its own output
+\end{enumerate}
+
+Note that in the simulation of the IND-CCA2 game above, the symmetric key for the challenge encryption in the IND-CCA2 game is truly random instead of pseudorandom. Let $G_a$ denote the IND-CCA2 game with truly random symmetric key (aka the simulation above), let $G_b$ denote the IND-CCA2 game with pseudorandom symmetric key, and let $\operatorname{QUERY}^\ast$ denote the event that the IND-CCA2 adversary queries $G$ with $m_b$, which is the diverging event between the two games. By the difference lemma:
+
+\begin{equation*}
+    \epsilon_a - \epsilon_b \leq P[\operatorname{QUERY}^\ast]
+\end{equation*}
+
+On the other hand, if the adversary indeed queries the hash $G(m_b)$, then the tape of the random oracle $G$ should contain an entry that matches one of $(m_0, m_1)$, which can then be used by another IND-CPA adversary:
+
+\begin{equation*}
+    P[\operatorname{QUERY}^\ast] \leq \epsilon_\text{IND-CPA}
+\end{equation*}
+
+\subsubsection{Plaintext checking, ciphertext validation, and patched decapsulation oracle}
+The concept of plaintext-checking attack (PCA) was proposed in early 2000s and first used in generic IND-CCA transformation by Coron et al in \textit{GEM: a generic chosen-ciphertext secure encryption method} \cite{jean2002gem}. Although PCA security is not a standard security definition, it is nonetheless useful as an intermediary step for constructing simple generic IND-CCA secure cryptosystems.
+
+The standard plaintext-checking oracle (PCO) takes as input a plaintext-ciphertext pair $(m, c)$ and uses the secret key to determine whether they correspond to each other. Because lattice-based cryptosystems sometimes suffer from decryption errors, and because the OW-PCVA transformation $(E^T, D^T)$ is a deterministic encryption scheme, the standard PCO checks both encryption and decryption. When trying to simulate PCO without using the secret key, the decryption routine is omitted. Thanks for $E^T$ being deterministic, the behavior of the simulated PCO diverges from the standard PCO if and only if $m$ causes decryption error. The probability of decryption error is bounded by $\delta$-correctness.
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Standard PCO}
+        \KwIn{$(m \in \mathcal{M}, c \in \mathcal{C})$}
+        \If{
+            $E^T(\text{pk}, m) \neq c$
+        }{
+            \Return{$\bot$}\;
+        }
+        \If{
+            $D^T(\text{sk}, c) \neq m$
+        }{
+            \Return{$\bot$}\;
+        }
+    \end{algorithm}
+
+    \columnbreak
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Simulated PCO}
+        \KwIn{$(m \in \mathcal{M}, c \in \mathcal{C})$}
+        \If{
+            $E^T(\text{pk}, m) \neq c$
+        }{
+            \Return{$\bot$}\;
+        }
+    \end{algorithm}
+\end{multicols}
+
+In addition to PCO, Hofheinz \cite{hofheinz2017modular} also introduced a ciphertext-validation oracle (CVO) that checks whether the queried ciphertext is valid or not. The standard CVO uses the secret key to execute the decryption routine, and the simulated CVO uses the random oracle in a similar trick as described in section \ref{simulate-dec-oracle} with a similar loss of security.
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Standard CVO}
+        \KwIn{
+            $c \in \mathcal{C}$
+        }
+        $\hat{m} \leftarrow D^T(\text{sk}, c)$\;
+        \If{
+            $\hat{m} = \bot$
+        }{
+            \Return{$\bot$}
+        }
+        \If{
+            $E^T(\text{pk}, \hat{m}) \neq c$
+        }{
+            \Return{$\bot$}
+        }
+    \end{algorithm}
+    \columnbreak
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Simulated CVO}
+        \KwIn{
+            $c \in \mathcal{C}$
+        }
+        \If{
+            $\not\exists (m, r) \in \mathcal{O}^G$ such that
+            $E^T(\text{pk}, m) = c$
+        }{
+            \Return{$\bot$}
+        }
+    \end{algorithm}
+\end{multicols}
+
+The combination of PCO and CVO allows the decapsulation oracle to be simulated by an OW-PCVA adversary having access to these two oracles. The simulation is achieved by making both the hash oracle $H$ and the simulated decapsulation oracle $\mathcal{O}^D$ stateful, and allowing valid queries to $H$ be added to the state of $\mathcal{O}^D$ so that the output of $\mathcal{O}^D$ stays consistent. In this simulation $H$ \textbf{patches} the state of $\mathcal{O}^D$, hence we call this decapsulation ``patched".
+
+\pagebreak
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Standard decap oracle}
+        \KwIn{
+            $c \in \mathcal{C}$
+        }
+        $\hat{m} \leftarrow D^T(\text{sk}, c)$\;
+        \If{
+            $\hat{m} \neq \bot$
+        }{
+            \Return{$H(\hat{m}, c)$}\;
+        }
+        \Return{$\bot$}\;
+    \end{algorithm}
+    \columnbreak
+
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Patched hash oracle $H$}
+        \KwIn{
+            $m \in \mathcal{M}, c \in \mathcal{C}$
+        }
+        \If{
+            $\exists (
+                \tilde{m}, \tilde{c}, \tilde{K}
+            ) \in \mathcal{O}^H$ such that $\tilde{m} = m, \tilde{c} = c$
+        }{
+            \Return{$\tilde{K}$}
+        }
+        $K \leftsample \mathcal{K}$\;
+        Append $(m, c, K)$ to $\mathcal{O}^H$\;
+        \If{
+            $\operatorname{PCO}(m, c) \neq bot$
+        }{
+            Append $(c, K)$ to $\mathcal{O}^D$
+        }
+        \Return{$K$}
+    \end{algorithm}
+    
+    \begin{algorithm}[H]
+        \SetAlgoLined
+        \caption{Patched decap oracle $\mathcal{O}^D$}
+        \KwIn{$c \in \mathcal{C}$}
+        \If{
+            $\exists (\tilde{c}, \tilde{K}) \in \mathcal{O}^D$
+            such that $\tilde{c} = c$
+        }{
+            \Return{$\tilde{K}$}
+        }
+        \If{
+            $\operatorname{CVO}(c) \neq \bot$
+        }{
+            $K \leftsample \mathcal{K}$\;
+            Append $(c, K)$ to $\mathcal{O}^D$\;
+            \Return{$K$}
+        }
+        \Return{$\bot$}
+        \tcp*[alignment]{Or the implicit rejection}
+    \end{algorithm}
+\end{multicols}
+
+Under the random oracle model, the combination of patched hash function and patched decapsulation oracle should behave exactly the same as the standard decapsulation oracle.
 
 \subsection{A sketch of proof}
+Here we provide a sketch of the security proof for both the 1999 transformation and the 2017 variations.
+
+\subsubsection{Proof of theorem \ref{fo-1999-theorem}}
+\begin{proof}
+    
+\end{proof}
+
+\subsubsection{Proof of theorem \ref{ow-pcva-result}}
+
+\subsubsection{Proof of theorem \ref{cca-kem-result}}
 
 \section{Future works on generic IND-CCA transformation}
 
