@@ -1,7 +1,38 @@
-- [Fujisaki-Okamoto transformation](./fujisaki-okamoto.pdf)
-- [HPKE](https://datatracker.ietf.org/doc/rfc9180/)
-- [A modular approach]?
-- [OAEP, and RSA OAEP]
+# Potential improvements
+we modify the first transformation $E^T, D^T$ to use a MAC for ciphertext integrity:
+
+```python
+def encrypt_t(pk, m):
+    (r, k) = hash_g(m)
+    c = CPAPKE.encrypt(pk, m, coin=r)
+    t = MAC.sign(k, c)
+    return (c, t)
+
+def decrypt_t(sk, ct):
+    c, t = ct
+    m_hat = CPAPKE.decrypt(sk, c)
+    (_, k_hat) = hash_g(m_hat)
+    if MAC.sign(k_hat, c) != t:
+        raise InvalidCiphertextError()
+    return m_hat
+```
+
+I claim the following theorem
+
+> If the input scheme is OW-CPA or IND-CPA, then the transformed scheme is OW-PCVA with:
+
+$$
+\epsilon_{OW-PCVA} \leq q_H\delta + q_V \frac{1}{\vert \mathcal{K}_\text{MAC} \vert} + \epsilon_\text{EUF-CMA} + \epsilon_\text{IND-CPA}
+$$
+
+Suppose we already have simulated PCO and CVO, and the MAC key is truly random, then we can use an OW-PCVA adversary to build an EF-CMA adversary:
+
+1. EF-CMA adversary generates public key and secret key, then passes the public key to the OW-PCVA adversary
+2. EF-CMA adversary simulates the hash function $G$, the PCO, and the CVO
+3. EF-CMA adversary samples a random ciphertext $c^\ast \leftarrow \mathcal{C}$ and queries MAC signing oracle with $c^\ast$ to obtain a tag $t^\ast$. EF-CMA adversary passes $(c^\ast, t^\ast)$ to OW-PCVA
+4. When OW-PCVA returns with the guess $\hat{m}$, the EF-CMA adversary computes $(\hat{r}, \hat{k}) \leftarrow G(\hat{m})$
+
+**If $\hat{m}$ is correct, then $\hat{k}$ is the true MAC key**, meaning that the EF-CMA adversary has successfully recovered the secret key in the EF-CMA game and can thus make arbitrary forgery. (In fact this is not just "existential forgery"; instead it is a key-recovery attack).
 
 # Introduction
 Indistinguishability under (adaptive) chosen-ciphertext attack (IND-CCA2) is widely recognized as the desirable security notion for public-key cryptography. However, directly achieving IND-CCA2 security is difficult. Previous attempts at deploying public-key cryptography in production, such as the usage of RSA PKCS1 v1.5 in early versions of SSl/TLS, were found to be vulnerable to adaptive chosen-ciphertext attacks.
