@@ -1,4 +1,0 @@
-- [x] [NTT for Kyber](./docs/ntt-in-kyber.md)
-- [ ] In-place NTT for Kyber
-- [ ] Sampling uniformly random polynomials
-- [ ] Sampling polynomials from centered binomial distribution
