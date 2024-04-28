@@ -2,6 +2,7 @@
 
 Implementation of primitive components used in lattice cryptography, such as:
 
+- [ ] Modular arithmetic in the prime field (q=3329)
 - [ ] Polynomial ring and its NTT transformation
 - [ ] Sampling from uniform distribution or centered binomial distribution
 - [ ] Ciphertext rounding and compression
