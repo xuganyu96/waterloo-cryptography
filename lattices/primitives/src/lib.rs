@@ -23,6 +23,7 @@ impl ConditionallySelectable for FieldElem {
 }
 
 impl FieldElem {
+    pub const ZERO: Self = Self(0);
     pub const Q: Word = 3329;
     /// k = 2 * (floor(log2(Q)) + 1)
     pub const BARRETT_SHIFT: usize = 24;
@@ -45,8 +46,19 @@ impl FieldElem {
         return Self::simple_reduce(val - quot * Self::Q);
     }
 
+    /// Modulus multiplication
     pub fn modmul(&self, other: &Self) -> Self {
         Self::barrett_reduce(self.0 * other.0)
+    }
+
+    /// Modulus subtraction. Will wrap around the modulus if self is less than other
+    pub fn modsub(&self, other: &Self) -> Self {
+        let negwrap = Choice::from((self.0 < other.0) as u8);
+        return Self::conditional_select(
+            &Self(self.0.wrapping_sub(other.0)),
+            &Self(Self::Q + self.0 - other.0),
+            negwrap,
+        );
     }
 }
 
@@ -104,15 +116,19 @@ pub struct Poly {
     ///
     /// NOTE: something about using a larger uint type than strictly necessary (3329 < 2 ** 16)
     /// because it's easier to do modular arithmetic with
-    coeffs: [u32; 256],
+    coeffs: [FieldElem; N],
 }
 
 impl Poly {
-    pub fn from_coeffs(coeffs: [u32; 256]) -> Self {
-        Self { coeffs }
+    pub fn from_words(words: [Word; N]) -> Self {
+        let mut coeffs = [FieldElem::ZERO; N];
+        (0..N).for_each(|i| {
+            coeffs[i] = FieldElem(words[i]);
+        });
+        return Self { coeffs };
     }
 
-    pub fn as_coeffs(&self) -> &[u32] {
+    pub fn as_coeffs(&self) -> &[FieldElem] {
         &self.coeffs
     }
 }
@@ -121,7 +137,7 @@ impl core::fmt::Debug for Poly {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "Poly {{")?;
         for (i, coeff) in self.as_coeffs().iter().enumerate() {
-            write!(f, "{}", coeff)?;
+            write!(f, "{}", coeff.0)?;
             if i < self.as_coeffs().len() - 1 {
                 write!(f, ", ")?;
             }
@@ -145,7 +161,7 @@ impl UpperHex for Poly {
         write!(f, "Poly {{")?;
         for (i, coeff) in self.as_coeffs().iter().enumerate() {
             // 3329 < 2 ** 12, so 12 bits is sufficient for representation
-            write!(f, "0x{:03X}", coeff)?;
+            write!(f, "0x{:03X}", coeff.0)?;
             if i < self.as_coeffs().len() - 1 {
                 write!(f, ", ")?;
             }
@@ -161,7 +177,7 @@ impl LowerHex for Poly {
         write!(f, "Poly {{")?;
         for (i, coeff) in self.as_coeffs().iter().enumerate() {
             // 3329 < 2 ** 12, so 12 bits is sufficient for representation
-            write!(f, "0x{:03x}", coeff)?;
+            write!(f, "0x{:03x}", coeff.0)?;
             if i < self.as_coeffs().len() - 1 {
                 write!(f, ", ")?;
             }
