@@ -29,6 +29,10 @@ impl FieldElem {
     pub const BARRETT_SHIFT: usize = 24;
     pub const BARRETT_MULTIPLIER: Word = (1 << Self::BARRETT_SHIFT) / Self::Q;
 
+    pub fn from_u8(byte: u8) -> Self {
+        Self(byte.into())
+    }
+
     /// Assuming that the input value satisfies 0 <= val < 2*Q, perform a simple reduction
     fn simple_reduce(val: Word) -> Self {
         let val = Word::conditional_select(
@@ -131,6 +135,35 @@ impl Poly {
     pub fn as_coeffs(&self) -> &[FieldElem] {
         &self.coeffs
     }
+
+    /// Sample a polynomial from CBD(eta=2)
+    pub fn sample_cbd_eta2(mut xof: impl XofReader) -> Self {
+        let mut stream = [0u8; N / 2];
+        xof.read(&mut stream);
+        let mut coeffs = [FieldElem::ZERO; N];
+
+        stream.iter().enumerate().for_each(|(i, byte)| {
+            // bit operators have even lower precedence than +
+            let d1 = FieldElem::from_u8(((byte >> 0) & 1) + ((byte >> 1) & 1))
+                .modsub(&FieldElem::from_u8(((byte >> 2) & 1) + ((byte >> 3) & 1)));
+            let d2 = FieldElem::from_u8(((byte >> 4) & 1) + ((byte >> 5) & 1))
+                .modsub(&FieldElem::from_u8(((byte >> 6) & 1) + ((byte >> 7) & 1)));
+            coeffs[2 * i] = d1;
+            coeffs[2 * i + 1] = d2;
+        });
+
+        return Self { coeffs };
+    }
+
+    /// Sample a polynomial from CBD(eta=3)
+    pub fn sample_cbd_eta3(mut xof: impl XofReader) -> Self {
+        // Every 3 bytes can output 4 samples
+        let mut stream = [0u8; N / 4 * 3];
+        xof.read(&mut stream);
+        let coeffs = [FieldElem::ZERO; N];
+
+        return Self { coeffs };
+    }
 }
 
 impl core::fmt::Debug for Poly {
@@ -201,5 +234,21 @@ mod tests {
                 assert_eq!(barret_modmul, expected);
             }
         }
+    }
+
+    #[test]
+    fn test_sample_cbd_eta2() {
+        use sha3::{
+            digest::{ExtendableOutput, Update},
+            Shake256,
+        };
+        let mut hasher = Shake256::default();
+        hasher.update(b"test seed");
+        let poly = Poly::sample_cbd_eta2(hasher.finalize_xof());
+        assert!(poly.coeffs.contains(&FieldElem(0)));
+        assert!(poly.coeffs.contains(&FieldElem(1)));
+        assert!(poly.coeffs.contains(&FieldElem(2)));
+        assert!(poly.coeffs.contains(&FieldElem(3328)));
+        assert!(poly.coeffs.contains(&FieldElem(3327)));
     }
 }

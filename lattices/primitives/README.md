@@ -49,3 +49,16 @@ R_q \cong
     \langle x^2 - \zeta^{255} \rangle
 }
 $$
+
+## Centered Binomial Distribution
+The centered binomial distribution $\mathop{\text{CBD}}(n, p)$ is defined a shifted binomial distribution:
+
+$$
+\mathop{\text{CBD}}(n, p) = \mathcal{B}(n, p) - np
+$$
+
+The secret $\mathbf{s} \in R_q^k$ is coordinate-wise sampled from $\mathop{\text{CBD}}(6, \frac{1}{2})$ and the error $\mathbf{e} \in R_q^k$ is coordinate-wise sampled from $\mathop{\text{CBD}}(4, \frac{1}{2})$.
+
+To sample from CBD, observe that if $I, J$ are two independent fair coin tosses, then $I - J$ follows $\mathop{\text{CBD}}(2, \frac{1}{2})$. Also observe that the sum of two centered binomial distribution is another centered binoamil distribution. Therefore, for an even $n$, sampling from $\mathop{\text{CBD}}(n, \frac{1}{2})$ can be simulated by sampling from $n$ independent fair coin tosses (aka bits), then compute the sum of pairwise differences.
+
+We can thus sample 2 entries from $\mathop{\text{CBD}}(4, \frac{1}{2})$ per 1 byte and 4 entries from $\mathop{\text{CBD}}(6, \frac{1}{2})$ per 3 bytes. 

@@ -1,6 +1,13 @@
 use primitives::Poly;
+use sha3::{
+    digest::{ExtendableOutput, Update},
+    Shake256,
+};
 
 fn main() {
-    let poly = Poly::from_words([3328; 256]);
-    println!("{:x}", poly);
+    let mut xof = Shake256::default();
+    xof.update(b"!!!Hello, world");
+    let xof = xof.finalize_xof();
+    let poly = Poly::sample_cbd_eta2(xof);
+    println!("{}", poly);
 }
