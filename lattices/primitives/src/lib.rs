@@ -2,13 +2,17 @@
 #![no_std]
 
 use core::fmt::{LowerHex, UpperHex};
+use sha3::digest::XofReader;
 use subtle::{Choice, ConditionallySelectable};
 
 /// word size of all arithmetics
 pub type Word = u64;
 
+/// Degree of the quotient polynomial
+pub const N: usize = 256;
+
 /// An element of the prime field Z_q where q = 3329
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FieldElem(pub Word);
 
 impl ConditionallySelectable for FieldElem {
@@ -43,6 +47,50 @@ impl FieldElem {
 
     pub fn modmul(&self, other: &Self) -> Self {
         Self::barrett_reduce(self.0 * other.0)
+    }
+}
+
+/// A member of the polynomial ring R_q in NTT domain
+///
+/// Mathematically, the NTT representation of some polynomial in R_q consists of 128 polynomials
+/// each of degree 1, but we don't impose additional structure on the coefficients so the sampling
+/// and transformation methods can be easier to implement
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct PolyNTT {
+    /// Entries of the NTT representation
+    coeffs: [FieldElem; N],
+}
+
+impl PolyNTT {
+    /// Algorithm 6: Sample from uniform distribution
+    ///
+    /// Since q = 3329 takes 12 bits, we try to sample 2 entries from 3 bytes at a time. Each entry
+    /// is sampled from a random 12 bit string, but if the 12-bit integer is too large, it is
+    /// rejected. Conditioned on the 12-bit integer being less than Q, the sampled coefficient
+    /// follows a uniform distribution within Z_q
+    pub fn sample(mut xof: impl XofReader) -> Self {
+        let mut j: usize = 0;
+        let mut coeffs: [FieldElem; N] = [FieldElem(0); N];
+        let mut stream = [0u8; 3];
+
+        while j < 256 {
+            xof.read(&mut stream);
+            let b1: Word = stream[0].into();
+            let b2: Word = stream[1].into();
+            let b3: Word = stream[2].into();
+            let d1 = b1 + (b2 & 0x0F) << 8;
+            let d2 = b2 >> 4 + b3 << 4;
+            if d1 < FieldElem::Q {
+                coeffs[j] = FieldElem(d1);
+                j += 1;
+            }
+            if d2 < FieldElem::Q && j < 256 {
+                coeffs[j] = FieldElem(d2);
+                j += 1;
+            }
+        }
+
+        return Self { coeffs };
     }
 }
 
