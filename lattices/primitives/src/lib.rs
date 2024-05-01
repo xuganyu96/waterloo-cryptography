@@ -9,7 +9,8 @@ use subtle::{Choice, ConditionallySelectable};
 pub type Word = u64;
 
 /// Degree of the quotient polynomial
-pub const N: usize = 256;
+pub const KYBER_N: usize = 256;
+pub const KYBER_Q: Word = 3329;
 
 /// An element of the prime field Z_q where q = 3329
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,10 +25,10 @@ impl ConditionallySelectable for FieldElem {
 
 impl FieldElem {
     pub const ZERO: Self = Self(0);
-    pub const Q: Word = 3329;
+    pub const Q: Word = KYBER_Q;
     /// k = 2 * (floor(log2(Q)) + 1)
     pub const BARRETT_SHIFT: usize = 24;
-    pub const BARRETT_MULTIPLIER: Word = (1 << Self::BARRETT_SHIFT) / Self::Q;
+    pub const BARRETT_MULTIPLIER: Word = (1 << Self::BARRETT_SHIFT) / KYBER_Q;
 
     pub fn from_u8(byte: u8) -> Self {
         Self(byte.into())
@@ -36,9 +37,9 @@ impl FieldElem {
     /// Assuming that the input value satisfies 0 <= val < 2*Q, perform a simple reduction
     fn simple_reduce(val: Word) -> Self {
         let val = Word::conditional_select(
-            &(val.wrapping_sub(Self::Q)),
+            &(val.wrapping_sub(KYBER_Q)),
             &val,
-            Choice::from((val < Self::Q) as u8),
+            Choice::from((val < KYBER_Q) as u8),
         );
 
         Self(val)
@@ -47,7 +48,7 @@ impl FieldElem {
     /// Perform the Barrett reduction
     pub fn barrett_reduce(val: Word) -> Self {
         let quot = (val * Self::BARRETT_MULTIPLIER) >> Self::BARRETT_SHIFT;
-        return Self::simple_reduce(val - quot * Self::Q);
+        return Self::simple_reduce(val - quot * KYBER_Q);
     }
 
     /// Modulus multiplication
@@ -60,7 +61,7 @@ impl FieldElem {
         let negwrap = Choice::from((self.0 < other.0) as u8);
         return Self::conditional_select(
             &Self(self.0.wrapping_sub(other.0)),
-            &Self(Self::Q + self.0 - other.0),
+            &Self(KYBER_Q + self.0 - other.0),
             negwrap,
         );
     }
@@ -74,7 +75,7 @@ impl FieldElem {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct PolyNTT {
     /// Entries of the NTT representation
-    coeffs: [FieldElem; N],
+    coeffs: [FieldElem; KYBER_N],
 }
 
 impl PolyNTT {
@@ -86,7 +87,7 @@ impl PolyNTT {
     /// follows a uniform distribution within Z_q
     pub fn sample(mut xof: impl XofReader) -> Self {
         let mut j: usize = 0;
-        let mut coeffs: [FieldElem; N] = [FieldElem(0); N];
+        let mut coeffs: [FieldElem; KYBER_N] = [FieldElem(0); KYBER_N];
         let mut stream = [0u8; 3];
 
         while j < 256 {
@@ -120,13 +121,13 @@ pub struct Poly {
     ///
     /// NOTE: something about using a larger uint type than strictly necessary (3329 < 2 ** 16)
     /// because it's easier to do modular arithmetic with
-    coeffs: [FieldElem; N],
+    coeffs: [FieldElem; KYBER_N],
 }
 
 impl Poly {
-    pub fn from_words(words: [Word; N]) -> Self {
-        let mut coeffs = [FieldElem::ZERO; N];
-        (0..N).for_each(|i| {
+    pub fn from_words(words: [Word; KYBER_N]) -> Self {
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
+        (0..KYBER_N).for_each(|i| {
             coeffs[i] = FieldElem(words[i]);
         });
         return Self { coeffs };
@@ -138,9 +139,9 @@ impl Poly {
 
     /// Sample a polynomial from CBD(eta=2)
     pub fn sample_cbd_eta2(mut xof: impl XofReader) -> Self {
-        let mut stream = [0u8; N / 2];
+        let mut stream = [0u8; KYBER_N / 2];
         xof.read(&mut stream);
-        let mut coeffs = [FieldElem::ZERO; N];
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
 
         stream.iter().enumerate().for_each(|(i, byte)| {
             // bit operators have even lower precedence than +
@@ -158,9 +159,37 @@ impl Poly {
     /// Sample a polynomial from CBD(eta=3)
     pub fn sample_cbd_eta3(mut xof: impl XofReader) -> Self {
         // Every 3 bytes can output 4 samples
-        let mut stream = [0u8; N / 4 * 3];
+        let mut stream = [0u8; KYBER_N / 4 * 3];
         xof.read(&mut stream);
-        let coeffs = [FieldElem::ZERO; N];
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
+
+        // TODO: is there a way to iterate over three elements at a time?
+        for i in 0..(KYBER_N / 4) {
+            let b1 = stream[3 * i];
+            let b2 = stream[3 * i + 1];
+            let b3 = stream[3 * i + 2];
+
+            let d1 = FieldElem::from_u8(((b1 >> 0) & 1) + ((b1 >> 1) & 1) + ((b1 >> 2) & 1))
+                .modsub(&FieldElem::from_u8(
+                    ((b1 >> 3) & 1) + ((b1 >> 4) & 1) + ((b1 >> 5) & 1),
+                ));
+            let d2 = FieldElem::from_u8(((b1 >> 6) & 1) + ((b1 >> 7) & 1) + ((b2 >> 0) & 1))
+                .modsub(&FieldElem::from_u8(
+                    ((b2 >> 1) & 1) + ((b2 >> 2) & 1) + ((b2 >> 3) & 1),
+                ));
+            let d3 = FieldElem::from_u8(((b2 >> 4) & 1) + ((b2 >> 5) & 1) + ((b2 >> 6) & 1))
+                .modsub(&FieldElem::from_u8(
+                    ((b2 >> 7) & 1) + ((b3 >> 0) & 1) + ((b3 >> 1) & 1),
+                ));
+            let d4 = FieldElem::from_u8(((b3 >> 2) & 1) + ((b3 >> 3) & 1) + ((b3 >> 4) & 1))
+                .modsub(&FieldElem::from_u8(
+                    ((b3 >> 5) & 1) + ((b3 >> 6) & 1) + ((b3 >> 7) & 1),
+                ));
+            coeffs[4 * i] = d1;
+            coeffs[4 * i + 1] = d2;
+            coeffs[4 * i + 2] = d3;
+            coeffs[4 * i + 3] = d4;
+        }
 
         return Self { coeffs };
     }
@@ -224,6 +253,10 @@ impl LowerHex for Poly {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sha3::{
+        digest::{ExtendableOutput, Update},
+        Shake256,
+    };
 
     #[test]
     fn field_modmul() {
@@ -237,18 +270,38 @@ mod tests {
     }
 
     #[test]
+    fn field_modsub() {
+        assert_eq!(FieldElem(2).modsub(&FieldElem(1)), FieldElem(1));
+        assert_eq!(
+            FieldElem(1).modsub(&FieldElem(2)),
+            FieldElem(FieldElem::Q - 1)
+        );
+    }
+
+    #[test]
     fn test_sample_cbd_eta2() {
-        use sha3::{
-            digest::{ExtendableOutput, Update},
-            Shake256,
-        };
         let mut hasher = Shake256::default();
         hasher.update(b"test seed");
         let poly = Poly::sample_cbd_eta2(hasher.finalize_xof());
+        // TODO: this should be a statistical test
         assert!(poly.coeffs.contains(&FieldElem(0)));
         assert!(poly.coeffs.contains(&FieldElem(1)));
         assert!(poly.coeffs.contains(&FieldElem(2)));
         assert!(poly.coeffs.contains(&FieldElem(3328)));
         assert!(poly.coeffs.contains(&FieldElem(3327)));
+    }
+
+    #[test]
+    fn test_sample_cbd_eta3() {
+        let hasher = Shake256::default();
+        let poly = Poly::sample_cbd_eta3(hasher.finalize_xof());
+        // TODO: this should be a statistical test
+        assert!(poly.coeffs.contains(&FieldElem(0)));
+        assert!(poly.coeffs.contains(&FieldElem(1)));
+        assert!(poly.coeffs.contains(&FieldElem(2)));
+        assert!(poly.coeffs.contains(&FieldElem(3)));
+        assert!(poly.coeffs.contains(&FieldElem(3328)));
+        assert!(poly.coeffs.contains(&FieldElem(3327)));
+        assert!(poly.coeffs.contains(&FieldElem(3326)));
     }
 }
