@@ -20,3 +20,16 @@ More specifically, for every IND-CCA adversary that issues $q_D$ decryption quer
 $$
 \epsilon_\text{CCA} \leq \epsilon_\text{CPA} + q_D \cdot \epsilon_\text{CI}
 $$
+
+This is proved using a sequence of games:
+
+1. Game 0 is IND-CCA game
+2. Game 1 replaces the decryption oracle with a simulated decryption oracle that returns rejection at all times. The loss of security is bounded by ciphertext integrity
+3. Game 1 can be smiulated by IND-CPA game
+
+> If $(E, D)$ is IND-CPA symmetric cipher and $(S, V)$ is EUF-CMA MAC, then **encrypt-then-MAC** is authenticated encryption
+
+For every CI-CPA adversary against encrypt-then-MAC, there is an EUF-CMA adversary against the MAC with identical advantage. For every IND-CPA adversary against encrypt-then-MAC, there is an IND-CPA adversary against the underlying symmetric cipher
+
+# Authenticated asymmetric encryption
+Can we extend the concept of authenticated encryption to asymmetric cipher? The ciphertext integrity game does not naturally extend, since there is no "encryption oracle" anymore. The Fujisaki-Okamoto transformation uses a hash oracle (under the random oracle model) to keep track of the ciphertexts that an adversary has honestly generated, which somewhat plays the role of the "encryption oracle".
