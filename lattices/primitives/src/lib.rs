@@ -12,6 +12,155 @@ pub type Word = u64;
 pub const KYBER_N: usize = 256;
 pub const KYBER_Q: Word = 3329;
 
+/// zeta (the 256-th primitive root of 3329) and its powers, up to 127
+pub const ZETA_POWS: [FieldElem; 128] = [
+    FieldElem(1),
+    FieldElem(17),
+    FieldElem(289),
+    FieldElem(1584),
+    FieldElem(296),
+    FieldElem(1703),
+    FieldElem(2319),
+    FieldElem(2804),
+    FieldElem(1062),
+    FieldElem(1409),
+    FieldElem(650),
+    FieldElem(1063),
+    FieldElem(1426),
+    FieldElem(939),
+    FieldElem(2647),
+    FieldElem(1722),
+    FieldElem(2642),
+    FieldElem(1637),
+    FieldElem(1197),
+    FieldElem(375),
+    FieldElem(3046),
+    FieldElem(1847),
+    FieldElem(1438),
+    FieldElem(1143),
+    FieldElem(2786),
+    FieldElem(756),
+    FieldElem(2865),
+    FieldElem(2099),
+    FieldElem(2393),
+    FieldElem(733),
+    FieldElem(2474),
+    FieldElem(2110),
+    FieldElem(2580),
+    FieldElem(583),
+    FieldElem(3253),
+    FieldElem(2037),
+    FieldElem(1339),
+    FieldElem(2789),
+    FieldElem(807),
+    FieldElem(403),
+    FieldElem(193),
+    FieldElem(3281),
+    FieldElem(2513),
+    FieldElem(2773),
+    FieldElem(535),
+    FieldElem(2437),
+    FieldElem(1481),
+    FieldElem(1874),
+    FieldElem(1897),
+    FieldElem(2288),
+    FieldElem(2277),
+    FieldElem(2090),
+    FieldElem(2240),
+    FieldElem(1461),
+    FieldElem(1534),
+    FieldElem(2775),
+    FieldElem(569),
+    FieldElem(3015),
+    FieldElem(1320),
+    FieldElem(2466),
+    FieldElem(1974),
+    FieldElem(268),
+    FieldElem(1227),
+    FieldElem(885),
+    FieldElem(1729),
+    FieldElem(2761),
+    FieldElem(331),
+    FieldElem(2298),
+    FieldElem(2447),
+    FieldElem(1651),
+    FieldElem(1435),
+    FieldElem(1092),
+    FieldElem(1919),
+    FieldElem(2662),
+    FieldElem(1977),
+    FieldElem(319),
+    FieldElem(2094),
+    FieldElem(2308),
+    FieldElem(2617),
+    FieldElem(1212),
+    FieldElem(630),
+    FieldElem(723),
+    FieldElem(2304),
+    FieldElem(2549),
+    FieldElem(56),
+    FieldElem(952),
+    FieldElem(2868),
+    FieldElem(2150),
+    FieldElem(3260),
+    FieldElem(2156),
+    FieldElem(33),
+    FieldElem(561),
+    FieldElem(2879),
+    FieldElem(2337),
+    FieldElem(3110),
+    FieldElem(2935),
+    FieldElem(3289),
+    FieldElem(2649),
+    FieldElem(1756),
+    FieldElem(3220),
+    FieldElem(1476),
+    FieldElem(1789),
+    FieldElem(452),
+    FieldElem(1026),
+    FieldElem(797),
+    FieldElem(233),
+    FieldElem(632),
+    FieldElem(757),
+    FieldElem(2882),
+    FieldElem(2388),
+    FieldElem(648),
+    FieldElem(1029),
+    FieldElem(848),
+    FieldElem(1100),
+    FieldElem(2055),
+    FieldElem(1645),
+    FieldElem(1333),
+    FieldElem(2687),
+    FieldElem(2402),
+    FieldElem(886),
+    FieldElem(1746),
+    FieldElem(3050),
+    FieldElem(1915),
+    FieldElem(2594),
+    FieldElem(821),
+    FieldElem(641),
+    FieldElem(910),
+    FieldElem(2154),
+];
+
+/// Reverse the bits of a 7-bit unsigned integer.
+///
+/// It is asssumed that 0 <= val < 128
+const fn bitrev7(val: u8) -> u8 {
+    // NOTE: cursed bit arithmetic. Hopefully it is evaluated at compile time!
+    let mut bitrev = 0;
+    let mut scan = 0;
+    while scan <= 7 {
+        if (val & (1u8 << scan)) != 0 {
+            bitrev |= 0b0100_0000 >> scan;
+        }
+        scan += 1;
+    }
+
+    return bitrev;
+}
+
 /// An element of the prime field Z_q where q = 3329
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FieldElem(pub Word);
@@ -65,6 +214,12 @@ impl FieldElem {
             negwrap,
         );
     }
+
+    /// Modulus addition
+    pub fn modadd(&self, other: &Self) -> Self {
+        // Direct addition is guaranteed to be at most 1 modulus reduction away correct
+        Self::simple_reduce(self.0 + other.0)
+    }
 }
 
 /// A member of the polynomial ring R_q in NTT domain
@@ -108,6 +263,39 @@ impl PolyNTT {
         }
 
         return Self { coeffs };
+    }
+
+    /// Algorithm 9: Invert the NTT transformation
+    ///
+    /// This is an in-place transformation so self is consumed
+    pub fn invert_ntt(self) -> Poly {
+        let mut coeffs = self.coeffs;
+        let mut k = 127;
+        let mut len = 2;
+        while len <= 128 {
+            let mut start = 0;
+            while start < 256 {
+                let zeta = ZETA_POWS[bitrev7(k) as usize];
+                k -= 1;
+                let mut j = start;
+                while j < start + len {
+                    let t = coeffs[j];
+                    coeffs[j] = t.modadd(&coeffs[j + len]);
+                    coeffs[j + len] = zeta.modmul(&coeffs[j + len].modsub(&t));
+
+                    j += 1;
+                }
+
+                start += 2 * len;
+            }
+
+            len = len * 2;
+        }
+        for i in 0..KYBER_N {
+            coeffs[i] = coeffs[i].modmul(&FieldElem(3303));
+        }
+
+        return Poly { coeffs };
     }
 }
 
@@ -193,6 +381,35 @@ impl Poly {
 
         return Self { coeffs };
     }
+
+    /// Algorithm 8: NTT transformation
+    /// This is an in-place transformation, so the input will be consumed
+    pub fn ntt(self) -> PolyNTT {
+        let mut coeffs = self.coeffs;
+
+        let mut k = 1;
+        let mut len = 128;
+        while len >= 2 {
+            let mut start = 0;
+            while start < 256 {
+                let zeta = ZETA_POWS[bitrev7(k) as usize];
+                k += 1;
+                let mut j = start;
+                while j < start + len {
+                    let t = zeta.modmul(&coeffs[j + len]);
+                    coeffs[j + len] = coeffs[j].modsub(&t);
+                    coeffs[j] = coeffs[j].modadd(&t);
+                    j += 1;
+                }
+
+                start += 2 * len;
+            }
+
+            len = len >> 1;
+        }
+
+        return PolyNTT { coeffs };
+    }
 }
 
 impl core::fmt::Debug for Poly {
@@ -270,6 +487,12 @@ mod tests {
     }
 
     #[test]
+    fn field_modadd() {
+        assert_eq!(FieldElem(1).modadd(&FieldElem(1)), FieldElem(2));
+        assert_eq!(FieldElem(3328).modadd(&FieldElem(1)), FieldElem(0));
+    }
+
+    #[test]
     fn field_modsub() {
         assert_eq!(FieldElem(2).modsub(&FieldElem(1)), FieldElem(1));
         assert_eq!(
@@ -303,5 +526,24 @@ mod tests {
         assert!(poly.coeffs.contains(&FieldElem(3328)));
         assert!(poly.coeffs.contains(&FieldElem(3327)));
         assert!(poly.coeffs.contains(&FieldElem(3326)));
+    }
+
+    #[test]
+    fn test_bitrev7() {
+        assert_eq!(bitrev7(0), 0);
+        assert_eq!(bitrev7(0b111_1111), 0b111_1111);
+        assert_eq!(bitrev7(0b111_0000), 0b000_0111);
+        assert_eq!(bitrev7(0b100_0000), 0b000_0001);
+    }
+
+    /// Do a NTT on a random polynomial and invert. Check that the inversion is correct
+    #[test]
+    fn ntt_and_invert() {
+        let mut hasher = Shake256::default();
+        hasher.update(b"test seed");
+        let poly = Poly::sample_cbd_eta2(hasher.finalize_xof());
+        let ntt = poly.clone().ntt();
+        let inverse = ntt.invert_ntt();
+        assert_eq!(inverse, poly);
     }
 }
