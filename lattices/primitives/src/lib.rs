@@ -13,7 +13,7 @@ pub const KYBER_N: usize = 256;
 pub const KYBER_Q: Word = 3329;
 
 /// zeta (the 256-th primitive root of 3329) and its powers, up to 127
-pub const ZETA_POWS: [FieldElem; 128] = [
+pub const ZETA_POWS: [FieldElem; 256] = [
     FieldElem(1),
     FieldElem(17),
     FieldElem(289),
@@ -142,6 +142,134 @@ pub const ZETA_POWS: [FieldElem; 128] = [
     FieldElem(641),
     FieldElem(910),
     FieldElem(2154),
+    FieldElem(3328),
+    FieldElem(3312),
+    FieldElem(3040),
+    FieldElem(1745),
+    FieldElem(3033),
+    FieldElem(1626),
+    FieldElem(1010),
+    FieldElem(525),
+    FieldElem(2267),
+    FieldElem(1920),
+    FieldElem(2679),
+    FieldElem(2266),
+    FieldElem(1903),
+    FieldElem(2390),
+    FieldElem(682),
+    FieldElem(1607),
+    FieldElem(687),
+    FieldElem(1692),
+    FieldElem(2132),
+    FieldElem(2954),
+    FieldElem(283),
+    FieldElem(1482),
+    FieldElem(1891),
+    FieldElem(2186),
+    FieldElem(543),
+    FieldElem(2573),
+    FieldElem(464),
+    FieldElem(1230),
+    FieldElem(936),
+    FieldElem(2596),
+    FieldElem(855),
+    FieldElem(1219),
+    FieldElem(749),
+    FieldElem(2746),
+    FieldElem(76),
+    FieldElem(1292),
+    FieldElem(1990),
+    FieldElem(540),
+    FieldElem(2522),
+    FieldElem(2926),
+    FieldElem(3136),
+    FieldElem(48),
+    FieldElem(816),
+    FieldElem(556),
+    FieldElem(2794),
+    FieldElem(892),
+    FieldElem(1848),
+    FieldElem(1455),
+    FieldElem(1432),
+    FieldElem(1041),
+    FieldElem(1052),
+    FieldElem(1239),
+    FieldElem(1089),
+    FieldElem(1868),
+    FieldElem(1795),
+    FieldElem(554),
+    FieldElem(2760),
+    FieldElem(314),
+    FieldElem(2009),
+    FieldElem(863),
+    FieldElem(1355),
+    FieldElem(3061),
+    FieldElem(2102),
+    FieldElem(2444),
+    FieldElem(1600),
+    FieldElem(568),
+    FieldElem(2998),
+    FieldElem(1031),
+    FieldElem(882),
+    FieldElem(1678),
+    FieldElem(1894),
+    FieldElem(2237),
+    FieldElem(1410),
+    FieldElem(667),
+    FieldElem(1352),
+    FieldElem(3010),
+    FieldElem(1235),
+    FieldElem(1021),
+    FieldElem(712),
+    FieldElem(2117),
+    FieldElem(2699),
+    FieldElem(2606),
+    FieldElem(1025),
+    FieldElem(780),
+    FieldElem(3273),
+    FieldElem(2377),
+    FieldElem(461),
+    FieldElem(1179),
+    FieldElem(69),
+    FieldElem(1173),
+    FieldElem(3296),
+    FieldElem(2768),
+    FieldElem(450),
+    FieldElem(992),
+    FieldElem(219),
+    FieldElem(394),
+    FieldElem(40),
+    FieldElem(680),
+    FieldElem(1573),
+    FieldElem(109),
+    FieldElem(1853),
+    FieldElem(1540),
+    FieldElem(2877),
+    FieldElem(2303),
+    FieldElem(2532),
+    FieldElem(3096),
+    FieldElem(2697),
+    FieldElem(2572),
+    FieldElem(447),
+    FieldElem(941),
+    FieldElem(2681),
+    FieldElem(2300),
+    FieldElem(2481),
+    FieldElem(2229),
+    FieldElem(1274),
+    FieldElem(1684),
+    FieldElem(1996),
+    FieldElem(642),
+    FieldElem(927),
+    FieldElem(2443),
+    FieldElem(1583),
+    FieldElem(279),
+    FieldElem(1414),
+    FieldElem(735),
+    FieldElem(2508),
+    FieldElem(2688),
+    FieldElem(2419),
+    FieldElem(1175),
 ];
 
 /// Reverse the bits of a 7-bit unsigned integer.
@@ -250,8 +378,8 @@ impl PolyNTT {
             let b1: Word = stream[0].into();
             let b2: Word = stream[1].into();
             let b3: Word = stream[2].into();
-            let d1 = b1 + (b2 & 0x0F) << 8;
-            let d2 = b2 >> 4 + b3 << 4;
+            let d1 = b1 + ((b2 & 0x0F) << 8);
+            let d2 = (b2 >> 4) + (b3 << 4);
             if d1 < FieldElem::Q {
                 coeffs[j] = FieldElem(d1);
                 j += 1;
@@ -296,6 +424,42 @@ impl PolyNTT {
         }
 
         return Poly { coeffs };
+    }
+
+    /// Algorithm 11: BaseCaseMultiply
+    ///
+    /// Multiply two degree-one polynomial modulus (x^2 - gamma)
+    fn base_polymul(
+        a0: &FieldElem,
+        a1: &FieldElem,
+        b0: &FieldElem,
+        b1: &FieldElem,
+        gamma: &FieldElem,
+    ) -> (FieldElem, FieldElem) {
+        return (
+            a0.modmul(b0).modadd(&a1.modmul(b1).modmul(gamma)),
+            a0.modmul(b1).modadd(&a1.modmul(b0)),
+        );
+    }
+
+    /// Algorithm 10: MultiplyNTTs
+    /// Multiply two polynomials in the NTT domain
+    pub fn polymul(&self, other: &PolyNTT) -> PolyNTT {
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
+
+        for i in 0..128 {
+            let (h0, h1) = Self::base_polymul(
+                &self.coeffs[2 * i],
+                &self.coeffs[2 * i + 1],
+                &other.coeffs[2 * i],
+                &other.coeffs[2 * i + 1],
+                &ZETA_POWS[bitrev7(i as u8) as usize * 2 + 1],
+            );
+            coeffs[2 * i] = h0;
+            coeffs[2 * i + 1] = h1;
+        }
+
+        return PolyNTT { coeffs };
     }
 }
 
@@ -410,6 +574,26 @@ impl Poly {
 
         return PolyNTT { coeffs };
     }
+
+    /// Polynomial multiplication using convolution
+    pub fn polymul(&self, other: &Self) -> Self {
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
+
+        for self_exp in 0..KYBER_N {
+            for other_exp in 0..KYBER_N {
+                let mut coeff = self.coeffs[self_exp].modmul(&other.coeffs[other_exp]);
+                let prod_exp = if self_exp + other_exp >= KYBER_N {
+                    coeff = coeff.modmul(&FieldElem(KYBER_Q - 1));
+                    self_exp + other_exp - KYBER_N
+                } else {
+                    self_exp + other_exp
+                };
+                coeffs[prod_exp] = coeffs[prod_exp].modadd(&coeff);
+            }
+        }
+
+        return Self { coeffs };
+    }
 }
 
 impl core::fmt::Debug for Poly {
@@ -488,17 +672,28 @@ mod tests {
 
     #[test]
     fn field_modadd() {
-        assert_eq!(FieldElem(1).modadd(&FieldElem(1)), FieldElem(2));
-        assert_eq!(FieldElem(3328).modadd(&FieldElem(1)), FieldElem(0));
+        for a in 0..FieldElem::Q {
+            for b in 0..FieldElem::Q {
+                let result = FieldElem(a).modadd(&FieldElem(b)).0;
+                let expected = (a + b) % FieldElem::Q;
+                assert_eq!(result, expected);
+            }
+        }
     }
 
     #[test]
     fn field_modsub() {
-        assert_eq!(FieldElem(2).modsub(&FieldElem(1)), FieldElem(1));
-        assert_eq!(
-            FieldElem(1).modsub(&FieldElem(2)),
-            FieldElem(FieldElem::Q - 1)
-        );
+        for a in 0..FieldElem::Q {
+            for b in 0..FieldElem::Q {
+                let result = FieldElem(a).modsub(&FieldElem(b)).0;
+                let expected = if a >= b {
+                    (a - b) % FieldElem::Q
+                } else {
+                    (a + FieldElem::Q - b) % FieldElem::Q
+                };
+                assert_eq!(result, expected);
+            }
+        }
     }
 
     #[test]
@@ -545,5 +740,49 @@ mod tests {
         let ntt = poly.clone().ntt();
         let inverse = ntt.invert_ntt();
         assert_eq!(inverse, poly);
+    }
+
+    /// Sanity check for base case polynomial multiplication
+    #[test]
+    fn base_polymul() {
+        assert_eq!(
+            PolyNTT::base_polymul(
+                &FieldElem(0),
+                &FieldElem(0),
+                &FieldElem(0),
+                &FieldElem(0),
+                &ZETA_POWS[1],
+            ),
+            (FieldElem(0), FieldElem(0))
+        );
+        assert_eq!(
+            PolyNTT::base_polymul(
+                &FieldElem(3326),
+                &FieldElem(1234),
+                &FieldElem(876),
+                &FieldElem(543),
+                &ZETA_POWS[1],
+            ),
+            (FieldElem(3246), FieldElem(759))
+        );
+    }
+
+    /// Sanity check for polynomial multiplication in NTT
+    #[test]
+    fn polymul_ntt() {
+        let mut hasher = Shake256::default();
+        hasher.update(b"test poly 1");
+        let poly1_ntt = PolyNTT::sample(hasher.finalize_xof());
+        let mut hasher = Shake256::default();
+        hasher.update(b"test poly 2");
+        let poly2_ntt = PolyNTT::sample(hasher.finalize_xof());
+
+        let ntt_prod = poly1_ntt.polymul(&poly2_ntt).invert_ntt();
+
+        let poly1 = poly1_ntt.invert_ntt();
+        let poly2 = poly2_ntt.invert_ntt();
+        let conv_prod = poly1.polymul(&poly2);
+
+        assert_eq!(ntt_prod, conv_prod);
     }
 }

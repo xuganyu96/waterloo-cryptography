@@ -9,5 +9,5 @@ fn main() {
     xof.update(b"!!!Hello, world");
     let xof = xof.finalize_xof();
     let poly = Poly::sample_cbd_eta3(xof);
-    println!("{}", poly);
+    println!("{}", poly.polymul(&poly));
 }
