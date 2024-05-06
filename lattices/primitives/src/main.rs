@@ -7,7 +7,7 @@ use sha3::{
 fn main() {
     let mut xof = Shake256::default();
     xof.update(b"!!!Hello, world");
-    let xof = xof.finalize_xof();
-    let poly = Poly::sample_cbd_eta3(xof);
+    let mut xof = xof.finalize_xof();
+    let poly = Poly::sample_cbd_eta3(&mut xof);
     println!("{}", poly.polymul(&poly));
 }

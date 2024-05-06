@@ -2,7 +2,8 @@
 #![no_std]
 
 use core::fmt::{LowerHex, UpperHex};
-use sha3::digest::XofReader;
+use sha3::digest::{ExtendableOutput, Update, XofReader};
+use sha3::{Shake128, Shake256};
 use subtle::{Choice, ConditionallySelectable};
 
 /// word size of all arithmetics
@@ -11,6 +12,12 @@ pub type Word = u64;
 /// Degree of the quotient polynomial
 pub const KYBER_N: usize = 256;
 pub const KYBER_Q: Word = 3329;
+pub const KYBER_K_512: usize = 2;
+pub const KYBER_K_768: usize = 3;
+pub const KYBER_K_1024: usize = 4;
+
+/// Most seeds are 32-bytes
+pub const SEEDSIZE: usize = 32;
 
 /// zeta (the 256-th primitive root of 3329) and its powers, up to 127
 pub const ZETA_POWS: [FieldElem; 256] = [
@@ -289,6 +296,26 @@ const fn bitrev7(val: u8) -> u8 {
     return bitrev;
 }
 
+pub fn shake256_prf<const ETA: usize>(seed: [u8; SEEDSIZE], ctr: u8) -> [u8; ETA] {
+    let mut hasher = Shake256::default();
+    hasher.update(&seed);
+    hasher.update(&[ctr]);
+    let mut xof = hasher.finalize_xof();
+
+    let mut output = [0u8; ETA];
+    xof.read(&mut output);
+    return output;
+}
+
+pub fn shake128_xof(seed: [u8; SEEDSIZE], i: u8, j: u8) -> impl XofReader {
+    let mut hasher = Shake128::default();
+    hasher.update(&seed);
+    hasher.update(&[i, j]);
+    let xof = hasher.finalize_xof();
+
+    return xof;
+}
+
 /// An element of the prime field Z_q where q = 3329
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FieldElem(pub Word);
@@ -362,13 +389,18 @@ pub struct PolyNTT {
 }
 
 impl PolyNTT {
+    pub const ZERO: Self = Self {
+        coeffs: [FieldElem::ZERO; KYBER_N],
+    };
+
     /// Algorithm 6: Sample from uniform distribution
     ///
     /// Since q = 3329 takes 12 bits, we try to sample 2 entries from 3 bytes at a time. Each entry
     /// is sampled from a random 12 bit string, but if the 12-bit integer is too large, it is
     /// rejected. Conditioned on the 12-bit integer being less than Q, the sampled coefficient
     /// follows a uniform distribution within Z_q
-    pub fn sample(mut xof: impl XofReader) -> Self {
+    /// TODO: use shake128_xof to implement this
+    pub fn sample_uniform(xof: &mut impl XofReader) -> Self {
         let mut j: usize = 0;
         let mut coeffs: [FieldElem; KYBER_N] = [FieldElem(0); KYBER_N];
         let mut stream = [0u8; 3];
@@ -477,6 +509,10 @@ pub struct Poly {
 }
 
 impl Poly {
+    pub const ZERO: Self = Self {
+        coeffs: [FieldElem::ZERO; KYBER_N],
+    };
+
     pub fn from_words(words: [Word; KYBER_N]) -> Self {
         let mut coeffs = [FieldElem::ZERO; KYBER_N];
         (0..KYBER_N).for_each(|i| {
@@ -490,7 +526,8 @@ impl Poly {
     }
 
     /// Sample a polynomial from CBD(eta=2)
-    pub fn sample_cbd_eta2(mut xof: impl XofReader) -> Self {
+    /// TODO: use shake256_prf to implement this
+    pub fn sample_cbd_eta2(xof: &mut impl XofReader) -> Self {
         let mut stream = [0u8; KYBER_N / 2];
         xof.read(&mut stream);
         let mut coeffs = [FieldElem::ZERO; KYBER_N];
@@ -509,7 +546,8 @@ impl Poly {
     }
 
     /// Sample a polynomial from CBD(eta=3)
-    pub fn sample_cbd_eta3(mut xof: impl XofReader) -> Self {
+    /// TODO: use shake256_prf to implement this
+    pub fn sample_cbd_eta3(xof: &mut impl XofReader) -> Self {
         // Every 3 bytes can output 4 samples
         let mut stream = [0u8; KYBER_N / 4 * 3];
         xof.read(&mut stream);
@@ -651,6 +689,37 @@ impl LowerHex for Poly {
     }
 }
 
+/// A vector of K polynomials
+#[derive(Copy, Clone, PartialEq)]
+pub struct PolyVec<const K: usize> {
+    pub vec: [Poly; K],
+}
+
+impl<const K: usize> PolyVec<K> {
+    #[allow(unused_variables)]
+    pub fn sample_cbd_eta2(xof: &mut impl XofReader) -> Self {
+        todo!();
+    }
+
+    #[allow(unused_variables)]
+    pub fn sample_cbd_eta3(xof: &mut impl XofReader) -> Self {
+        todo!();
+    }
+}
+
+/// A vector of K polynomials in NTT domain
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct PolyNTTVec<const K: usize> {
+    pub vec: [PolyNTT; K],
+}
+
+impl<const K: usize> PolyNTTVec<K> {
+    #[allow(unused_variables)]
+    pub fn sample_uniform(xof: &mut impl XofReader) -> Self {
+        todo!();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -700,7 +769,8 @@ mod tests {
     fn test_sample_cbd_eta2() {
         let mut hasher = Shake256::default();
         hasher.update(b"test seed");
-        let poly = Poly::sample_cbd_eta2(hasher.finalize_xof());
+        let mut xof = hasher.finalize_xof();
+        let poly = Poly::sample_cbd_eta2(&mut xof);
         // TODO: this should be a statistical test
         assert!(poly.coeffs.contains(&FieldElem(0)));
         assert!(poly.coeffs.contains(&FieldElem(1)));
@@ -712,7 +782,8 @@ mod tests {
     #[test]
     fn test_sample_cbd_eta3() {
         let hasher = Shake256::default();
-        let poly = Poly::sample_cbd_eta3(hasher.finalize_xof());
+        let mut xof = hasher.finalize_xof();
+        let poly = Poly::sample_cbd_eta3(&mut xof);
         // TODO: this should be a statistical test
         assert!(poly.coeffs.contains(&FieldElem(0)));
         assert!(poly.coeffs.contains(&FieldElem(1)));
@@ -736,7 +807,8 @@ mod tests {
     fn ntt_and_invert() {
         let mut hasher = Shake256::default();
         hasher.update(b"test seed");
-        let poly = Poly::sample_cbd_eta2(hasher.finalize_xof());
+        let mut xof = hasher.finalize_xof();
+        let poly = Poly::sample_cbd_eta2(&mut xof);
         let ntt = poly.clone().ntt();
         let inverse = ntt.invert_ntt();
         assert_eq!(inverse, poly);
@@ -772,10 +844,9 @@ mod tests {
     fn polymul_ntt() {
         let mut hasher = Shake256::default();
         hasher.update(b"test poly 1");
-        let poly1_ntt = PolyNTT::sample(hasher.finalize_xof());
-        let mut hasher = Shake256::default();
-        hasher.update(b"test poly 2");
-        let poly2_ntt = PolyNTT::sample(hasher.finalize_xof());
+        let mut xof = hasher.finalize_xof();
+        let poly1_ntt = PolyNTT::sample_uniform(&mut xof);
+        let poly2_ntt = PolyNTT::sample_uniform(&mut xof);
 
         let ntt_prod = poly1_ntt.polymul(&poly2_ntt).invert_ntt();
 
