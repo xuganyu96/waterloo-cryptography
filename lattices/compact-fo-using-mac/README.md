@@ -1,3 +1,14 @@
+# What to write about
+- Introduction
+- A review of previous result
+    - What is OW-PCVA
+    - How OW-PCVA transform into IND-CCA KEM
+- Present the transformation with MAC
+    - Security proof
+- Performance analysis
+    - Do an implementation with Rust (btw), swap out the re-encryption with MAC
+- Future work
+
 # Authenticated encryption (in symmetric cipher)
 The indistinguishability game is well defined. We now define the game for ciphertext integrity under chosen-plaintext attack:
 
