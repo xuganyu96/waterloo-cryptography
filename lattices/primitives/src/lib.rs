@@ -49,8 +49,8 @@ pub fn shake128_xof(seed: [u8; SEEDSIZE], i: u8, j: u8) -> impl XofReader {
 /// Vec), so the user has to provide the buffer to write the bytes to. Fortunately, it is easy to
 /// check that the input buffer has the right size
 pub fn byte_encode(coeffs: &[FieldElem], d: usize, buffer: &mut [u8]) {
-    // Encoding 256 integers where each integer takes d bits requires at least (32 * d) bytes
-    assert!(buffer.len() == coeffs.len() * d / 8);
+    // The total number of bits must match
+    assert_eq!(coeffs.len() * d, buffer.len() * (u8::BITS as usize));
 
     for coeff_loc in 0..coeffs.len() {
         let coeff = coeffs[coeff_loc].0;
@@ -68,13 +68,37 @@ pub fn byte_encode(coeffs: &[FieldElem], d: usize, buffer: &mut [u8]) {
 }
 
 /// Algorithm 5: ByteDecode
+/// Assume that the input buffer is the output of calling byte_encode with the same value for d,
+/// recover the encoding back to the integer array
 pub fn byte_decode(coeffs: &mut [FieldElem], d: usize, buffer: &[u8]) {
-    todo!();
+    // The total number of bits must match
+    assert_eq!(coeffs.len() * d, buffer.len() * (u8::BITS as usize));
+
+    for (byte_loc, byte) in buffer.iter().enumerate() {
+        for bit_loc in 0..(u8::BITS as usize) {
+            let bit = (byte >> (7 - bit_loc)) & 1;
+
+            let coeff_loc = (byte_loc * (u8::BITS as usize) + bit_loc) / d;
+            let coeff_bit_loc = (byte_loc * (u8::BITS as usize) + bit_loc) % d;
+            let coeff = if bit == 1 {
+                coeffs[coeff_loc].0 | (1 << coeff_bit_loc)
+            } else {
+                coeffs[coeff_loc].0 & (!(1 << coeff_bit_loc))
+            };
+            coeffs[coeff_loc] = FieldElem(coeff);
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use self::algebra::{Poly, PolyNTT};
+
     use super::*;
+    use sha3::{
+        digest::{ExtendableOutput, Update},
+        Shake256,
+    };
 
     #[test]
     fn byte_encode_12() {
@@ -107,5 +131,20 @@ mod tests {
                 0b0010_0000,
             ]
         );
+    }
+
+    #[test]
+    fn encode_and_decode() {
+        let mut hasher = Shake256::default();
+        hasher.update(b"");
+        let mut xof = hasher.finalize_xof();
+        let poly = PolyNTT::sample_uniform(&mut xof).invert_ntt();
+
+        let mut buffer = [0u8; 256 * 12 / 8];
+        byte_encode(poly.as_coeffs(), 12, &mut buffer);
+        let mut decoded_poly = Poly::ZERO.clone();
+        byte_decode(decoded_poly.as_mut_coeffs(), 12, &buffer);
+
+        assert_eq!(poly, decoded_poly);
     }
 }

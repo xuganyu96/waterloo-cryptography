@@ -491,6 +491,10 @@ impl Poly {
         &self.coeffs
     }
 
+    pub fn as_mut_coeffs(&mut self) -> &mut [FieldElem] {
+        &mut self.coeffs
+    }
+
     /// Sample a polynomial from CBD(-eta, -eta+1, ..., eta-1, eta)
     fn sample_cbd(eta: usize, uniform: &[u8]) -> Self {
         // a single sample from CBD(eta) requires (2 * eta) uniform bits, each polynomial has 256
