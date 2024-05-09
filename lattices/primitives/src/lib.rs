@@ -2,10 +2,6 @@
 #![no_std]
 
 use crate::algebra::FieldElem;
-use sha3::{
-    digest::{ExtendableOutput, Update, XofReader},
-    Shake128, Shake256,
-};
 
 /// word size of all arithmetics
 pub type Word = u64;
@@ -21,26 +17,7 @@ pub const KYBER_K_1024: usize = 4;
 pub const SEEDSIZE: usize = 32;
 
 pub mod algebra;
-
-pub fn shake256_prf<const ETA: usize>(seed: [u8; SEEDSIZE], ctr: u8) -> [u8; ETA] {
-    let mut hasher = Shake256::default();
-    hasher.update(&seed);
-    hasher.update(&[ctr]);
-    let mut xof = hasher.finalize_xof();
-
-    let mut output = [0u8; ETA];
-    xof.read(&mut output);
-    return output;
-}
-
-pub fn shake128_xof(seed: [u8; SEEDSIZE], i: u8, j: u8) -> impl XofReader {
-    let mut hasher = Shake128::default();
-    hasher.update(&seed);
-    hasher.update(&[i, j]);
-    let xof = hasher.finalize_xof();
-
-    return xof;
-}
+pub mod symmetric;
 
 /// Algorithm 4: ByteEncode
 /// Encode an integer array into a byte array by encoding each integer using d bits
