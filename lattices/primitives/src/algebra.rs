@@ -496,7 +496,7 @@ impl Poly {
     }
 
     /// Sample a polynomial from CBD(-eta, -eta+1, ..., eta-1, eta)
-    fn sample_cbd(eta: usize, uniform: &[u8]) -> Self {
+    pub fn sample_cbd(eta: usize, uniform: &[u8]) -> Self {
         // a single sample from CBD(eta) requires (2 * eta) uniform bits, each polynomial has 256
         // coefficients, hence a total of (64 * eta) bytes are needed
         // TODO: make ETA a compile-time constant instead of runtime argument
