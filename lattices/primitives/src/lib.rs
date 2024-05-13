@@ -1,6 +1,9 @@
 //! Primitives used in lattice-based cryptography
 #![no_std]
 
+use algebra::{Poly, PolyNTT};
+use symmetric::shake128_xof;
+
 use crate::algebra::FieldElem;
 
 /// word size of all arithmetics
@@ -12,12 +15,24 @@ pub const KYBER_Q_BITS: usize = 12;
 pub const KYBER_K_512: usize = 2;
 pub const KYBER_K_768: usize = 3;
 pub const KYBER_K_1024: usize = 4;
+pub const KYBER_K: usize = KYBER_K_768;
 
 /// Most seeds are 32-bytes
 pub const SEEDSIZE: usize = 32;
 
 pub mod algebra;
 pub mod symmetric;
+
+/// Parameter sets
+/// TODO: KYBER_K is a compile time parameter, but eta_1, eta_2, and a few other parameters are
+/// run-time parameters; it is difficult to use a run-time enum to configure a compile-time
+/// parameter
+#[allow(non_camel_case_types)]
+pub enum SecurityLevels {
+    ML_KEM_512,
+    ML_KEM_768,
+    ML_KEM_1024,
+}
 
 /// Algorithm 4: ByteEncode
 /// Encode an integer array into a byte array by encoding each integer using d bits
@@ -64,6 +79,50 @@ pub fn byte_decode(coeffs: &mut [FieldElem], d: usize, buffer: &[u8]) {
             };
             coeffs[coeff_loc] = FieldElem(coeff);
         }
+    }
+}
+
+pub struct PublicKey {
+    /// The seed that generates A
+    pub seed: [u8; SEEDSIZE],
+
+    /// The k * k public matrix A
+    pub a: [[PolyNTT; KYBER_K]; KYBER_K],
+
+    /// The noisy samples: t = A * s + e
+    pub t: [PolyNTT; KYBER_K],
+}
+
+impl PublicKey {
+    fn sample_a(seed: [u8; SEEDSIZE]) -> [[PolyNTT; KYBER_K]; KYBER_K] {
+        let mut a = [[PolyNTT::ZERO; KYBER_K]; KYBER_K];
+
+        for i in 0..KYBER_K {
+            for j in 0..KYBER_K {
+                let mut xof = shake128_xof(seed, i.try_into().unwrap(), j.try_into().unwrap());
+                a[i][j] = PolyNTT::sample_uniform(&mut xof);
+            }
+        }
+
+        return a;
+    }
+}
+
+pub struct SecretKey {
+    /// The secret s
+    pub sols: [PolyNTT; KYBER_K],
+
+    /// The error e
+    pub errs: [PolyNTT; KYBER_K],
+}
+
+impl SecretKey {
+    fn sample_sk(seed: [u8; SEEDSIZE]) -> Self {
+        let mut ctr = 0;
+        let mut sols = [Poly::ZERO; KYBER_K];
+        let mut errs = [Poly::ZERO; KYBER_K];
+
+        todo!();
     }
 }
 
