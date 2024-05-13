@@ -459,6 +459,17 @@ impl PolyNTT {
 
         return PolyNTT { coeffs };
     }
+
+    /// Polynomial addition in NTT domain
+    pub fn polyadd(&self, other: &Self) -> Self {
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
+
+        for i in 0..KYBER_N {
+            coeffs[i] = self.coeffs[i].modadd(&other.coeffs[i]);
+        }
+
+        return Self { coeffs };
+    }
 }
 
 /// A member of the polynomial ring used in Kyber:
@@ -589,6 +600,17 @@ impl Poly {
                 };
                 coeffs[prod_exp] = coeffs[prod_exp].modadd(&coeff);
             }
+        }
+
+        return Self { coeffs };
+    }
+
+    /// Polynomial addition
+    pub fn polyadd(&self, other: &Self) -> Self {
+        let mut coeffs = [FieldElem::ZERO; KYBER_N];
+
+        for i in 0..KYBER_N {
+            coeffs[i] = self.coeffs[i].modadd(&other.coeffs[i]);
         }
 
         return Self { coeffs };
@@ -801,5 +823,23 @@ mod tests {
         let conv_prod = poly1.polymul(&poly2);
 
         assert_eq!(ntt_prod, conv_prod);
+    }
+
+    /// Sanity check for polynomial addition
+    #[test]
+    fn polyadd_ntt() {
+        let mut hasher = Shake256::default();
+        hasher.update(b"test poly 1");
+        let mut xof = hasher.finalize_xof();
+        let poly1_ntt = PolyNTT::sample_uniform(&mut xof);
+        let poly2_ntt = PolyNTT::sample_uniform(&mut xof);
+
+        let ntt_sum = poly1_ntt.polyadd(&poly2_ntt);
+
+        let poly1 = poly1_ntt.invert_ntt();
+        let poly2 = poly2_ntt.invert_ntt();
+        let poly_sum = poly1.polyadd(&poly2);
+
+        assert_eq!(poly_sum, ntt_sum.invert_ntt());
     }
 }

@@ -15,6 +15,7 @@ pub const KYBER_Q_BITS: usize = 12;
 pub const KYBER_K_512: usize = 2;
 pub const KYBER_K_768: usize = 3;
 pub const KYBER_K_1024: usize = 4;
+
 pub const KYBER_K: usize = KYBER_K_768;
 
 /// Most seeds are 32-bytes
@@ -24,9 +25,11 @@ pub mod algebra;
 pub mod symmetric;
 
 /// Parameter sets
-/// TODO: KYBER_K is a compile time parameter, but eta_1, eta_2, and a few other parameters are
+/// NOTE: KYBER_K is a compile time parameter, but eta_1, eta_2, and a few other parameters are
 /// run-time parameters; it is difficult to use a run-time enum to configure a compile-time
 /// parameter
+///
+/// TODO: will only implement ML_KEM_768 for now
 #[allow(non_camel_case_types)]
 pub enum SecurityLevels {
     ML_KEM_512,
