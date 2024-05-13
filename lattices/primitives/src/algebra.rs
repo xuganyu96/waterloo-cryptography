@@ -1,9 +1,12 @@
 //! Modulus and polynomial ring operations
 use core::fmt::{Binary, LowerHex, UpperHex};
-use sha3::digest::XofReader;
+use sha3::{
+    digest::{ExtendableOutput, Update, XofReader},
+    Shake256,
+};
 use subtle::{Choice, ConditionallySelectable};
 
-use crate::{Word, KYBER_N, KYBER_Q};
+use crate::{Word, KYBER_ETA_1, KYBER_ETA_2, KYBER_N, KYBER_Q, SEEDSIZE};
 
 /// zeta (the 256-th primitive root of 3329) and its powers, up to 127
 pub const ZETA_POWS: [FieldElem; 256] = [
@@ -536,24 +539,28 @@ impl Poly {
         return Self { coeffs };
     }
 
-    /// Sample a polynomial from CBD(eta=2)
-    #[allow(non_upper_case_globals)]
-    pub fn sample_cbd_eta2(xof: &mut impl XofReader) -> Self {
-        const eta: usize = 2;
-        let mut uniform = [0u8; eta * 64];
-        xof.read(&mut uniform);
+    /// Sample from CBD(eta = KYBER_ETA_1) based on the input seed and counter
+    pub fn sample_cbd_eta1(seed: &[u8; SEEDSIZE], ctr: u8) -> Self {
+        let mut hasher = Shake256::default();
+        hasher.update(seed);
+        hasher.update(&[ctr]);
+        let mut xof = hasher.finalize_xof();
 
-        return Self::sample_cbd(eta, &uniform);
+        let mut uniform = [0u8; KYBER_ETA_1 * 64];
+        xof.read(&mut uniform);
+        return Self::sample_cbd(KYBER_ETA_1, &uniform);
     }
 
-    /// Sample a polynomial from CBD(eta=3)
-    #[allow(non_upper_case_globals)]
-    pub fn sample_cbd_eta3(xof: &mut impl XofReader) -> Self {
-        const eta: usize = 3;
-        let mut uniform = [0u8; eta * 64];
-        xof.read(&mut uniform);
+    /// Sample from CBD(eta = KYBER_ETA_2) based on the input seed and counter
+    pub fn sample_cbd_eta2(seed: &[u8; SEEDSIZE], ctr: u8) -> Self {
+        let mut hasher = Shake256::default();
+        hasher.update(seed);
+        hasher.update(&[ctr]);
+        let mut xof = hasher.finalize_xof();
 
-        return Self::sample_cbd(eta, &uniform);
+        let mut uniform = [0u8; KYBER_ETA_2 * 64];
+        xof.read(&mut uniform);
+        return Self::sample_cbd(KYBER_ETA_2, &uniform);
     }
 
     /// Algorithm 8: NTT transformation
@@ -734,32 +741,21 @@ mod tests {
     }
 
     #[test]
-    fn test_sample_cbd_eta2() {
-        let mut hasher = Shake256::default();
-        hasher.update(b"test seed");
-        let mut xof = hasher.finalize_xof();
-        let poly = Poly::sample_cbd_eta2(&mut xof);
-        // TODO: this should be a statistical test
-        assert!(poly.coeffs.contains(&FieldElem(0)));
-        assert!(poly.coeffs.contains(&FieldElem(1)));
-        assert!(poly.coeffs.contains(&FieldElem(2)));
-        assert!(poly.coeffs.contains(&FieldElem(3328)));
-        assert!(poly.coeffs.contains(&FieldElem(3327)));
-    }
-
-    #[test]
-    fn test_sample_cbd_eta3() {
-        let hasher = Shake256::default();
-        let mut xof = hasher.finalize_xof();
-        let poly = Poly::sample_cbd_eta3(&mut xof);
-        // TODO: this should be a statistical test
-        assert!(poly.coeffs.contains(&FieldElem(0)));
-        assert!(poly.coeffs.contains(&FieldElem(1)));
-        assert!(poly.coeffs.contains(&FieldElem(2)));
-        assert!(poly.coeffs.contains(&FieldElem(3)));
-        assert!(poly.coeffs.contains(&FieldElem(3328)));
-        assert!(poly.coeffs.contains(&FieldElem(3327)));
-        assert!(poly.coeffs.contains(&FieldElem(3326)));
+    fn sample_cbd_eta12_sanity() {
+        let poly = Poly::sample_cbd_eta1(&[0u8; 32], 0);
+        for i in 0..=KYBER_ETA_1 {
+            let elem = FieldElem::ZERO.modadd(&FieldElem(i.try_into().unwrap()));
+            assert!(poly.as_coeffs().contains(&elem));
+            let elem = FieldElem::ZERO.modsub(&FieldElem(i.try_into().unwrap()));
+            assert!(poly.as_coeffs().contains(&elem));
+        }
+        let poly = Poly::sample_cbd_eta2(&[0u8; 32], 0);
+        for i in 0..=KYBER_ETA_2 {
+            let elem = FieldElem::ZERO.modadd(&FieldElem(i.try_into().unwrap()));
+            assert!(poly.as_coeffs().contains(&elem));
+            let elem = FieldElem::ZERO.modsub(&FieldElem(i.try_into().unwrap()));
+            assert!(poly.as_coeffs().contains(&elem));
+        }
     }
 
     #[test]
@@ -776,10 +772,9 @@ mod tests {
         let mut hasher = Shake256::default();
         hasher.update(b"test seed");
         let mut xof = hasher.finalize_xof();
-        let poly = Poly::sample_cbd_eta2(&mut xof);
-        let ntt = poly.clone().ntt();
-        let inverse = ntt.invert_ntt();
-        assert_eq!(inverse, poly);
+        let ntt = PolyNTT::sample_uniform(&mut xof);
+        let poly = ntt.invert_ntt();
+        assert_eq!(ntt, poly.ntt());
     }
 
     /// Sanity check for base case polynomial multiplication

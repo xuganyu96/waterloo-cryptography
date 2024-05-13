@@ -4,7 +4,7 @@
 use algebra::{Poly, PolyNTT};
 use symmetric::shake128_xof;
 
-use crate::algebra::FieldElem;
+use crate::{algebra::FieldElem, symmetric::hash_g};
 
 /// word size of all arithmetics
 pub type Word = u64;
@@ -16,26 +16,16 @@ pub const KYBER_K_512: usize = 2;
 pub const KYBER_K_768: usize = 3;
 pub const KYBER_K_1024: usize = 4;
 
+/// TODO: will only implement ML_KEM_768 for now
 pub const KYBER_K: usize = KYBER_K_768;
+pub const KYBER_ETA_1: usize = 2;
+pub const KYBER_ETA_2: usize = 2;
 
 /// Most seeds are 32-bytes
 pub const SEEDSIZE: usize = 32;
 
 pub mod algebra;
 pub mod symmetric;
-
-/// Parameter sets
-/// NOTE: KYBER_K is a compile time parameter, but eta_1, eta_2, and a few other parameters are
-/// run-time parameters; it is difficult to use a run-time enum to configure a compile-time
-/// parameter
-///
-/// TODO: will only implement ML_KEM_768 for now
-#[allow(non_camel_case_types)]
-pub enum SecurityLevels {
-    ML_KEM_512,
-    ML_KEM_768,
-    ML_KEM_1024,
-}
 
 /// Algorithm 4: ByteEncode
 /// Encode an integer array into a byte array by encoding each integer using d bits
@@ -122,9 +112,33 @@ pub struct SecretKey {
 impl SecretKey {
     fn sample_sk(seed: [u8; SEEDSIZE]) -> Self {
         let mut ctr = 0;
-        let mut sols = [Poly::ZERO; KYBER_K];
-        let mut errs = [Poly::ZERO; KYBER_K];
+        let mut sols = [PolyNTT::ZERO; KYBER_K];
+        let mut errs = [PolyNTT::ZERO; KYBER_K];
 
+        for i in 0..KYBER_K {
+            sols[i] = Poly::sample_cbd_eta1(&seed, ctr).ntt();
+            ctr += 1;
+        }
+        
+        for i in 0..KYBER_K {
+            errs[i] = Poly::sample_cbd_eta1(&seed, ctr).ntt();
+            ctr += 1;
+        }
+
+        return Self { sols, errs };
+    }
+}
+
+pub struct KeyPair {
+    pub pubkey: PublicKey,
+    pub seckey: SecretKey,
+}
+
+impl KeyPair {
+    pub fn keygen(seed: [u8; SEEDSIZE]) -> Self {
+        let (rho, sigma) = hash_g(&seed);
+        let a = PublicKey::sample_a(rho);
+        let sk = SecretKey::sample_sk(sigma);
         todo!();
     }
 }
