@@ -694,15 +694,16 @@ impl Binary for Poly {
     }
 }
 
-pub struct PolyVec {
-    pub vec: [Poly; KYBER_K],
-}
-
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PolyNTTVec {
     pub vec: [PolyNTT; KYBER_K],
 }
 
 impl PolyNTTVec {
+    pub const ZERO: Self = Self {
+        vec: [PolyNTT::ZERO; KYBER_K],
+    };
+
     /// Dot product between two PolyNTT vectors
     /// TODO: need to test this
     pub fn dot(&self, other: &PolyNTTVec) -> PolyNTT {
@@ -717,12 +718,17 @@ impl PolyNTTVec {
 }
 
 /// A matrix of Polynomials in NTT domain.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PolyNTTMatrix {
     /// Each entry is a row
     pub rows: [PolyNTTVec; KYBER_K],
 }
 
 impl PolyNTTMatrix {
+    pub const ZERO: Self = Self {
+        rows: [PolyNTTVec::ZERO; KYBER_K],
+    };
+
     /// Mutiply a K * K matrix with a K vector
     /// TODO: need to test this
     pub fn dot(&self, other: &PolyNTTVec) -> PolyNTTVec {
@@ -733,6 +739,23 @@ impl PolyNTTMatrix {
         }
 
         return PolyNTTVec { vec: product };
+    }
+
+    pub fn sample_uniform(seed: [u8; SEEDSIZE]) -> Self {
+        let mut matrix = Self::ZERO;
+
+        for i in 0..KYBER_K {
+            for j in 0..KYBER_K {
+                let mut xof = crate::symmetric::shake128_xof(
+                    seed,
+                    i.try_into().expect("Unexpected overflow"),
+                    j.try_into().expect("Unexpected overflow"),
+                );
+                matrix.rows[i].vec[j] = PolyNTT::sample_uniform(&mut xof);
+            }
+        }
+
+        return matrix;
     }
 }
 
@@ -877,5 +900,23 @@ mod tests {
         let poly_sum = poly1.polyadd(&poly2);
 
         assert_eq!(poly_sum, ntt_sum.invert_ntt());
+    }
+
+    /// Sanity check for dot products
+    #[test]
+    fn nttvec_dot() {
+        assert_eq!(PolyNTTVec::ZERO.dot(&PolyNTTVec::ZERO), PolyNTT::ZERO);
+    }
+
+    /// Sanity check for matrix dot product
+    #[test]
+    fn matrix_dot() {
+        assert_eq!(PolyNTTMatrix::ZERO.dot(&PolyNTTVec::ZERO), PolyNTTVec::ZERO);
+    }
+
+    /// Sanity check for matrix uniform sampling
+    #[test]
+    fn matrix_uniform_sample() {
+        let _ = PolyNTTMatrix::sample_uniform([0u8; SEEDSIZE]);
     }
 }

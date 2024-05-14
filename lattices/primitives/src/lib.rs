@@ -75,6 +75,14 @@ pub fn byte_decode(coeffs: &mut [FieldElem], d: usize, buffer: &[u8]) {
     }
 }
 
+// TODO: the API design of the key pair:
+// 1. Client runs the keygen routine and obtains both the public key and the secret key
+// 2. The public key is encoded to be transmitted over the wire
+// 3. The secret key is encoded to be decoded later
+// 4. Server decode public key from a byte stream
+
+/// The public key includes the noisy linear system (A, t = As + e). In addition, the seed used to
+/// pseudorandomly generate A is tracked so the public key can be compactly encoded.
 pub struct PublicKey {
     /// The seed that generates A
     pub seed: [u8; SEEDSIZE],
