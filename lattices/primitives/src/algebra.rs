@@ -6,7 +6,7 @@ use sha3::{
 };
 use subtle::{Choice, ConditionallySelectable};
 
-use crate::{Word, KYBER_ETA_1, KYBER_ETA_2, KYBER_N, KYBER_Q, SEEDSIZE};
+use crate::{Word, KYBER_ETA_1, KYBER_ETA_2, KYBER_K, KYBER_N, KYBER_Q, SEEDSIZE};
 
 /// zeta (the 256-th primitive root of 3329) and its powers, up to 127
 pub const ZETA_POWS: [FieldElem; 256] = [
@@ -368,7 +368,6 @@ impl PolyNTT {
     /// is sampled from a random 12 bit string, but if the 12-bit integer is too large, it is
     /// rejected. Conditioned on the 12-bit integer being less than Q, the sampled coefficient
     /// follows a uniform distribution within Z_q
-    /// TODO: use shake128_xof to implement this
     pub fn sample_uniform(xof: &mut impl XofReader) -> Self {
         let mut j: usize = 0;
         let mut coeffs: [FieldElem; KYBER_N] = [FieldElem(0); KYBER_N];
@@ -692,6 +691,48 @@ impl Binary for Poly {
         write!(f, "}}")?;
 
         return Ok(());
+    }
+}
+
+pub struct PolyVec {
+    pub vec: [Poly; KYBER_K],
+}
+
+pub struct PolyNTTVec {
+    pub vec: [PolyNTT; KYBER_K],
+}
+
+impl PolyNTTVec {
+    /// Dot product between two PolyNTT vectors
+    /// TODO: need to test this
+    pub fn dot(&self, other: &PolyNTTVec) -> PolyNTT {
+        let mut product = PolyNTT::ZERO;
+
+        for i in 0..KYBER_K {
+            product = product.polyadd(&self.vec[i].polymul(&other.vec[i]));
+        }
+
+        return product;
+    }
+}
+
+/// A matrix of Polynomials in NTT domain.
+pub struct PolyNTTMatrix {
+    /// Each entry is a row
+    pub rows: [PolyNTTVec; KYBER_K],
+}
+
+impl PolyNTTMatrix {
+    /// Mutiply a K * K matrix with a K vector
+    /// TODO: need to test this
+    pub fn dot(&self, other: &PolyNTTVec) -> PolyNTTVec {
+        let mut product = [PolyNTT::ZERO; KYBER_K];
+
+        for i in 0..KYBER_K {
+            product[i] = self.rows[i].dot(other);
+        }
+
+        return PolyNTTVec { vec: product };
     }
 }
 

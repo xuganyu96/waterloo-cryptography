@@ -119,7 +119,7 @@ impl SecretKey {
             sols[i] = Poly::sample_cbd_eta1(&seed, ctr).ntt();
             ctr += 1;
         }
-        
+
         for i in 0..KYBER_K {
             errs[i] = Poly::sample_cbd_eta1(&seed, ctr).ntt();
             ctr += 1;
