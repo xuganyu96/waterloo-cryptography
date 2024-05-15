@@ -715,6 +715,18 @@ impl PolyNTTVec {
 
         return product;
     }
+
+    /// Coordinate-wise addition between two PolyNTT vectors
+    /// TODO: consider doing an in-place implementation, as well
+    pub fn add(&self, other: &Self) -> Self {
+        let mut sum = Self::ZERO;
+
+        for i in 0..KYBER_K {
+            sum.vec[i] = self.vec[i].polyadd(&other.vec[i]);
+        }
+
+        return sum;
+    }
 }
 
 /// A matrix of Polynomials in NTT domain.

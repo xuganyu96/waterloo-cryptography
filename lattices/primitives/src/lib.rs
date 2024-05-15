@@ -1,7 +1,7 @@
 //! Primitives used in lattice-based cryptography
 #![no_std]
 
-use algebra::{Poly, PolyNTT};
+use algebra::{Poly, PolyNTT, PolyNTTMatrix, PolyNTTVec};
 use symmetric::shake128_xof;
 
 use crate::{algebra::FieldElem, symmetric::hash_g};
@@ -81,6 +81,39 @@ pub fn byte_decode(coeffs: &mut [FieldElem], d: usize, buffer: &[u8]) {
 // 3. The secret key is encoded to be decoded later
 // 4. Server decode public key from a byte stream
 
+/// Given a seed d, return the full keypair
+///
+/// Keypair encoding will be performed at later stage
+pub fn keygen_with_seed(seed: [u8; SEEDSIZE]) -> (PublicKey, SecretKey) {
+    let (pub_seed, sec_seed) = hash_g(&seed); // correspond to rho, sigma respectively
+    let a = PolyNTTMatrix::sample_uniform(pub_seed);
+    let mut ctr = 0;
+    let mut sols = PolyNTTVec::ZERO;
+    let mut errs = PolyNTTVec::ZERO;
+
+    for i in 0..KYBER_K {
+        sols.vec[i] = Poly::sample_cbd_eta1(&sec_seed, ctr).ntt();
+        ctr += 1;
+    }
+
+    for i in 0..KYBER_K {
+        errs.vec[i] = Poly::sample_cbd_eta1(&sec_seed, ctr).ntt();
+        ctr += 1;
+    }
+
+    let t = a.dot(&sols).add(&errs);
+
+    let pk = PublicKey {
+        seed: pub_seed,
+        a,
+        t,
+    };
+
+    let sk = SecretKey { sols, errs };
+
+    return (pk, sk);
+}
+
 /// The public key includes the noisy linear system (A, t = As + e). In addition, the seed used to
 /// pseudorandomly generate A is tracked so the public key can be compactly encoded.
 pub struct PublicKey {
@@ -88,67 +121,18 @@ pub struct PublicKey {
     pub seed: [u8; SEEDSIZE],
 
     /// The k * k public matrix A
-    pub a: [[PolyNTT; KYBER_K]; KYBER_K],
+    pub a: PolyNTTMatrix,
 
     /// The noisy samples: t = A * s + e
-    pub t: [PolyNTT; KYBER_K],
-}
-
-impl PublicKey {
-    fn sample_a(seed: [u8; SEEDSIZE]) -> [[PolyNTT; KYBER_K]; KYBER_K] {
-        let mut a = [[PolyNTT::ZERO; KYBER_K]; KYBER_K];
-
-        for i in 0..KYBER_K {
-            for j in 0..KYBER_K {
-                let mut xof = shake128_xof(seed, i.try_into().unwrap(), j.try_into().unwrap());
-                a[i][j] = PolyNTT::sample_uniform(&mut xof);
-            }
-        }
-
-        return a;
-    }
+    pub t: PolyNTTVec,
 }
 
 pub struct SecretKey {
     /// The secret s
-    pub sols: [PolyNTT; KYBER_K],
+    pub sols: PolyNTTVec,
 
     /// The error e
-    pub errs: [PolyNTT; KYBER_K],
-}
-
-impl SecretKey {
-    fn sample_sk(seed: [u8; SEEDSIZE]) -> Self {
-        let mut ctr = 0;
-        let mut sols = [PolyNTT::ZERO; KYBER_K];
-        let mut errs = [PolyNTT::ZERO; KYBER_K];
-
-        for i in 0..KYBER_K {
-            sols[i] = Poly::sample_cbd_eta1(&seed, ctr).ntt();
-            ctr += 1;
-        }
-
-        for i in 0..KYBER_K {
-            errs[i] = Poly::sample_cbd_eta1(&seed, ctr).ntt();
-            ctr += 1;
-        }
-
-        return Self { sols, errs };
-    }
-}
-
-pub struct KeyPair {
-    pub pubkey: PublicKey,
-    pub seckey: SecretKey,
-}
-
-impl KeyPair {
-    pub fn keygen(seed: [u8; SEEDSIZE]) -> Self {
-        let (rho, sigma) = hash_g(&seed);
-        let a = PublicKey::sample_a(rho);
-        let sk = SecretKey::sample_sk(sigma);
-        todo!();
-    }
+    pub errs: PolyNTTVec,
 }
 
 #[cfg(test)]
@@ -207,5 +191,11 @@ mod tests {
         byte_decode(decoded_poly.as_mut_coeffs(), 12, &buffer);
 
         assert_eq!(poly, decoded_poly);
+    }
+
+    /// Sanity check for keygen with seed
+    #[test]
+    fn keygen_with_seed_sanity() {
+        let (_, _) = keygen_with_seed([0u8; SEEDSIZE]);
     }
 }
