@@ -17,6 +17,12 @@
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
 \newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
 \newcommand{\keygen}{\operatorname{KeyGen}}
+\newcommand{\pk}{\operatorname{pk}}
+\newcommand{\sk}{\operatorname{sk}}
+\newcommand{\pco}{\operatorname{PCO}}
+\newcommand{\cvo}{\operatorname{CVO}}
+\newcommand{\llbrack}{[\![}
+\newcommand{\rrbrack}{]\!]}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
@@ -38,7 +44,138 @@
 \maketitle
 
 \section{OW-PCVA transformation}\label{sec:ow-pcva-transformation}
-Let $(K, E, D)$ be a public-key encryption scheme defined over $(\mathcal{K}_\text{PKE}, \mathcal{M}_\text{PKE}, \mathcal{C})$
+Let $(K, E, D)$ be a public-key encryption scheme defined over $(\mathcal{K}_\text{PKE}, \mathcal{M}_\text{PKE}, \mathcal{C})$. Let $(S, V)$ be a message authentication code defined over $(\mathcal{K}_\text{MAC}, \mathcal{M}_\text{MAC}, \mathcal{T})$. Let $G: \mathcal{M}_\text{PKE} \rightarrow \mathcal{K}_\text{MAC}$ be a hash function. The transformation outputs a public-key encryption scheme $(K, E_1, D_1)$. The key generation routine and key space of the transformed scheme are identical to those of the input scheme. The encryption and decryption routines of the transformed scheme are as follows:
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \caption{$E_1$}
+        \SetAlgoLined
+        \KwIn{
+            $\pk, m \in \mathcal{M}_\text{PKE}$
+        }
+        $k \leftarrow G(m)$\;
+        $\sigma \leftarrow E(\pk, m)$\;
+        $t \leftarrow S(k, \sigma)$\;
+        \Return{$c = (\sigma, t)$}\;
+    \end{algorithm}
+
+    \begin{algorithm}[H]
+        \caption{$D_1$}
+        \SetAlgoLined
+        \KwIn{
+            $\sk, c = (\sigma \in \mathcal{C}, t \in \mathcal{T})$
+        }
+        $\hat{m} \leftarrow D(\sk, \sigma)$\;
+        $\hat{k} \leftarrow G(\hat{m})$\;
+        \If{
+            $V(\hat{k}, \sigma, t) \neq 1$
+        }{
+            \Return{$\bot$}\;
+        }
+        \Return{$\hat{m}$}\;
+    \end{algorithm}
+\end{multicols}
+
+If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the input MAC is existentially unforgeable, then the ``encrypt-then-MAC'' PKE is OW-PCVA secure. More specifically:
+
+\begin{theorem}\label{thm:if-ow-cpa-then-ow-pcva}
+    For every OW-PCVA adversary against the transformed scheme $(E_1, D_1)$ who makes $q_G$ hash queries, $q_P$ plaintext checking queries, and $q_V$ ciphertext validation queries, and who has advantage $\epsilon_\text{OW-PCVA}$, there exists an OW-CPA adversary against the underlying PKE with advantage $\epsilon_\text{OW-CPA}$, a correctness adversary against the underlying PKE with advantage $\delta$, and a existential forgery adversary against the MAC with advantage $\epsilon_\text{MAC}$ such that:
+
+    \begin{equation*}
+        \epsilon_\text{OW-PCVA} 
+        \leq (q_P + q_G) \cdot \delta
+        + q_V \cdot \epsilon_\text{MAC}
+        + 2 \cdot \epsilon_\text{OW-CPA}
+    \end{equation*}
+\end{theorem}
+
+\begin{proof}
+    To prove theorem \ref{thm:if-ow-cpa-then-ow-pcva}, we use a sequence of game.
+
+    Game 0 is the OW-PCVA game, as described in the section above.
+
+    In Game 1, the PCO is replaced with an alternative implementation $\pco_1$:
+
+    \begin{multicols}{2}
+        \begin{algorithm}[H]
+            \caption{$\pco$}
+            \SetAlgoLined
+            \KwIn{
+                $(m, c = (\sigma, t))$
+            }
+            $\hat{m} \leftarrow D(\sk, \sigma)$\;
+            $\hat{k} \leftarrow G(\hat{m})$\;
+            \Return{
+                $\llbrack \hat{m} = m \rrbrack$ 
+                and $\llbrack V(\hat{k}, \sigma, t) \rrbrack$
+            }
+        \end{algorithm}
+
+        \begin{algorithm}[H]
+            \caption{$\pco_1$}
+            \SetAlgoLined
+            \KwIn{
+                $(m, c = (\sigma, t))$
+            }
+            $k \leftarrow G(m)$\;
+            $\hat{\sigma} \leftarrow E(\pk, m)$\;
+            \Return{
+                $\llbrack \sigma = \hat{\sigma} \rrbrack$
+                and $\llbrack V(k, \sigma, t) \rrbrack$
+            }
+        \end{algorithm}
+    \end{multicols}
+
+    For any single plaintext checking query, the two oracles will disagree if and only if correctness of $(K, E, D)$ is broken, so such probability can be bounded by $\delta$. From the OW-PCVA adversary's perspective, the two games behave differently if and only if the two oracles disagree on at least one of the plaintext checking queries, which is at most $q_P \cdot \delta$:
+
+    \begin{equation*}
+        \epsilon_0 - \epsilon_1 \leq q_P \cdot \delta
+    \end{equation*}
+
+    In Game 2, the $\cvo$ is replaced with an alternative implementation $\cvo_1$, the latter of which checks the hash oracle's tape $\mathcal{L}^G$
+
+    \begin{multicols}{2}
+        \begin{algorithm}[H]
+            \caption{$\cvo$}
+            \SetAlgoLined
+            \KwIn{
+                $c = (\sigma, t)$
+            }
+            $\hat{m} \leftarrow D(\sk, \sigma)$\;
+            $\hat{k} \leftarrow G(\hat{m})$\;
+            \Return{
+                $\llbrack V(\hat{k}, \sigma, t) = 1 \rrbrack$
+            }
+        \end{algorithm}
+
+        \begin{algorithm}[H]
+            \caption{$\cvo_1$}
+            \SetAlgoLined
+            \KwIn{
+                $c = (\sigma, t)$
+            }
+            \If{
+                $\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G$ s.t.
+                $E(\pk, \tilde{m}) = c$ and $V(\tilde{k}, \sigma, t) = 1$
+            }{
+                \Return{$1$}\;
+            }
+            \Return{$0$}\;
+        \end{algorithm}
+    \end{multicols}
+
+    There are two scenarios in which the two oracles can disagree. First, there is a matching hash query $(\tilde{m}, \tilde{k}) \in \mathcal{L}^G$, but $\tilde{m}$ triggers a decryption failure, so the same $\sigma$ decrypts to $\hat{m} \neq \tilde{m}$. For a single hash query, the probability of decryption error is at most $\delta$, so across $q_G$ hash queries, the probability of at least one decryption error is at most $q_G \cdot \delta$. Second, $(\sigma, t)$ is a valid message-tag pair that will pass $\cvo$, but there is no matching hash query. Under the random oracle model, from the perspective of the adversary $k \leftarrow G(m)$ is a truly random and unknown MAC key, which means that $(\sigma, t)$ is a forgery. The probability of a single ciphertet validation query being a valid forgery is bounded by the advantage of a MAC adversary, so across all $q_V$ ciphertext validation queries, the probability of having at least one valid forgery is at most $q_V\cdot\epsilon_\text{MAC}$. Finally, the probability of the two implementations disagree is at most the sum of the probabilities of the two scenarios:
+
+    \begin{equation*}
+        \epsilon_1 - \epsilon_2 \leq q_G \cdot \delta + q_V \cdot \epsilon_\text{MAC}
+    \end{equation*}
+
+    % TODO: in game 3, the challenge encryption is done using a truly random MAC key
+    %   talk about QUERY*
+
+    % TODO: game 3 can be simulated by a OW-CPA adversary
+
+\end{proof}
 
 \section{OW-PCVA transformation}
 Let $(\keygen, E, D)$ define a probabilistic public-key encryption scheme, then $T$ is a transformation that takes this scheme and outputs a second public-key encryption scheme. The transformation makes use of two additional components:
