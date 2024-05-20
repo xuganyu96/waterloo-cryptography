@@ -170,8 +170,13 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
         \epsilon_1 - \epsilon_2 \leq q_G \cdot \delta + q_V \cdot \epsilon_\text{MAC}
     \end{equation*}
 
-    % TODO: in game 3, the challenge encryption is done using a truly random MAC key
-    %   talk about QUERY*
+    In game 3, the challenge encryption routine is modified. Instead of computing a pseudorandom MAC key $k^\ast \leftarrow G(m^\ast)$, a truly random MAC key is sampled uniformly from the message space $k^\ast \leftsample \mathcal{K}_\text{MAC}$. Under the random oracle model, game 3 and game 2 are indistinguishable from the adversary's perspective unless it makes a hash query on the value of $m^\ast$. Denote the probability that the adversary makes a hash query on $m^\ast$ by $P[\operatorname{QUERY}\ast]$, then:
+
+    \begin{equation*}
+        \epsilon_2 - \epsilon_3 \leq P[\operatorname{QUERY}\ast]
+    \end{equation*}
+
+    % TODO: Bound the probabiolity P[QUERY*]
 
     % TODO: game 3 can be simulated by a OW-CPA adversary
 
