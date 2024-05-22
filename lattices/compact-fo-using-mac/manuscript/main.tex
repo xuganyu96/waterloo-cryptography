@@ -176,9 +176,13 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
         \epsilon_2 - \epsilon_3 \leq P[\operatorname{QUERY}\ast]
     \end{equation*}
 
-    % TODO: Bound the probabiolity P[QUERY*]
+    we can bound $P[\operatorname{QUERY}\ast]$ by constructing an OW-CPA adversary that simulates game 3 for a OW-PCVA adversary as a sub-routine. After the OW-PCVA adversary halts, the OW-CPA adversary checks through the tape of the hash oracle. Since the encryption routine is deterministic, if $m^\ast$ exists in the hash oracle tape, then it can be identified for sure. In other words, if $m^\ast$ has been queried by the OW-PCVA sub-routine, then the OW-CPA adversary can be guaranteed to win its game
 
-    % TODO: game 3 can be simulated by a OW-CPA adversary
+    \begin{equation*}
+        P[\operatorname{QUERY}\ast] = \epsilon_\text{OW-CPA}
+    \end{equation*}
+
+    Finally, game 3 can be simulated by the OW-CPA 
 
 \end{proof}
 
