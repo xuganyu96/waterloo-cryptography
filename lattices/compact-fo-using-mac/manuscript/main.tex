@@ -21,8 +21,11 @@
 \newcommand{\sk}{\operatorname{sk}}
 \newcommand{\pco}{\operatorname{PCO}}
 \newcommand{\cvo}{\operatorname{CVO}}
+\newcommand{\coin}{\operatorname{COIN}}
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
+\newlength{\wdth}
+\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
@@ -93,6 +96,10 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
     To prove theorem \ref{thm:if-ow-cpa-then-ow-pcva}, we use a sequence of game.
 
     Game 0 is the OW-PCVA game, as described in the section above.
+
+    \begin{equation*}
+        \epsilon_\text{OW-PCVA} = \epsilon_0
+    \end{equation*}
 
     In Game 1, the PCO is replaced with an alternative implementation $\pco_1$:
 
@@ -170,7 +177,42 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
         \epsilon_1 - \epsilon_2 \leq q_G \cdot \delta + q_V \cdot \epsilon_\text{MAC}
     \end{equation*}
 
-    In game 3, the challenge encryption routine is modified. Instead of computing a pseudorandom MAC key $k^\ast \leftarrow G(m^\ast)$, a truly random MAC key is sampled uniformly from the message space $k^\ast \leftsample \mathcal{K}_\text{MAC}$. Under the random oracle model, game 3 and game 2 are indistinguishable from the adversary's perspective unless it makes a hash query on the value of $m^\ast$. Denote the probability that the adversary makes a hash query on $m^\ast$ by $P[\operatorname{QUERY}\ast]$, then:
+    In game 3, the challenge encryption routine is modified. Instead of computing a pseudorandom MAC key $k^\ast \leftarrow G(m^\ast)$, a truly random MAC key is sampled uniformly from the message space $k^\ast \leftsample \mathcal{K}_\text{MAC}$.
+
+    \begin{multicols}{2}
+        \begin{algorithm}[H]
+            \caption{OW-PCVA game 2}
+            \SetAlgoLined
+            $(\pk, \sk) \leftarrow \keygen(1^\lambda)$\;
+            $m^\ast \leftsample \mathcal{M}_\text{PKE}$\;
+            $k^\ast \leftarrow G(m^\ast)$\;
+            $\sigma^\ast \leftarrow E(\pk, m^\ast)$\;
+            $t^\ast \leftarrow S(k^\ast, \sigma^\ast)$\;
+            $c^\ast = (\sigma^\ast, t^\ast)$\;
+            $\hat{m} \leftarrow \mathcal{A}_\text{OW-PCVA}^{
+                \mathcal{O}^G, \pco_1, \cvo_1
+            }(1^\lambda, \pk, c^\ast)$\;
+            \Return{$\llbrack \hat{m} = m^\ast \rrbrack$}
+        \end{algorithm}
+
+        \begin{algorithm}[H]
+            \caption{OW-PCVA game 3}
+            \SetAlgoLined
+            $(\pk, \sk) \leftarrow \keygen(1^\lambda)$\;
+            $m^\ast \leftsample \mathcal{M}_\text{PKE}$\;
+            $k^\ast \leftsample \mathcal{K}_\text{MAC}$\;
+            $\sigma^\ast \leftarrow E(\pk, m^\ast)$\;
+            $t^\ast \leftarrow S(k^\ast, \sigma^\ast)$\;
+            $c^\ast = (\sigma^\ast, t^\ast)$\;
+            $\hat{m} \leftarrow \mathcal{A}_\text{OW-PCVA}^{
+                \mathcal{O}^G, \pco_1, \cvo_1
+            }(1^\lambda, \pk, c^\ast)$\;
+            \Return{$\llbrack \hat{m} = m^\ast \rrbrack$}
+        \end{algorithm}
+    \end{multicols}
+    
+    
+    Under the random oracle model, game 3 and game 2 are indistinguishable from the adversary's perspective unless it makes a hash query on the value of $m^\ast$. Denote the probability that the adversary makes a hash query on $m^\ast$ by $P[\operatorname{QUERY}\ast]$, then:
 
     \begin{equation*}
         \epsilon_2 - \epsilon_3 \leq P[\operatorname{QUERY}\ast]
@@ -182,245 +224,47 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
         P[\operatorname{QUERY}\ast] = \epsilon_\text{OW-CPA}
     \end{equation*}
 
-    Finally, game 3 can be simulated by the OW-CPA 
-
-\end{proof}
-
-\section{OW-PCVA transformation}
-Let $(\keygen, E, D)$ define a probabilistic public-key encryption scheme, then $T$ is a transformation that takes this scheme and outputs a second public-key encryption scheme. The transformation makes use of two additional components:
-
-\begin{enumerate}
-    \item A $\operatorname{MAC}: \mathcal{K}^\text{MAC} \times \{0,1\}^\ast \rightarrow \mathcal{T}$
-    \item A hash function $G: \mathcal{M} \rightarrow \text{Coin} \times \mathcal{K}^\text{MAC}$
-\end{enumerate}
-
-\begin{multicols}{2}
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{OW-PCVA encryption $E^T$}
-        \KwIn{
-            $\text{pk}$, $m \in \mathcal{M}$
-        }
-        $(r, k) \leftarrow G(m)$\;
-        $c \leftarrow E(\text{pk}, m, r)$\;
-        $t \leftarrow \operatorname{MAC}(k, c)$
-        \tcp*[h]{"encrypt-then-mac"}\;
-        \Return{$(c, t)$}\;
-    \end{algorithm}
-
-    \columnbreak
-
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{OW-PCVA decryption $D^T$}
-        \KwIn{
-            $\text{sk}, c \in \mathcal{C}, t \in \mathcal{T}$
-        }
-        $\hat{m} \leftarrow D(\text{sk}, c)$\;
-        $(\hat{r}, \hat{k}) \leftarrow G(\hat{m})$\;
-        \If{
-            $\operatorname{MAC}(\hat{k}, c) \neq t$
-        }{
-            \Return{$\bot$}\;
-        }
-        \Return{$\hat{m}$}\;
-    \end{algorithm}
-\end{multicols}
-
-Instead of using re-encryption to check for the integrity of the ciphertext, a MAC tag is used. At the cost of adding a fixed number of bytes to the ciphertext, the decryption routine becomes significantly faster and memory-efficient. The memory trade-off is especially important since in Kyber, re-encryption needs to compute the entire public key $A \in R_q^{k \times k}$ from the 32-byte seed.
-
-We claim that this transformation is still OW-PCVA. The proof will be largely similar to that of the original OW-PCVA transformation proof, but with some notable differences:
-
-\begin{itemize}
-    \item When queried on some authenticated ciphertext $(\tilde{c}, \tilde{t})$, the secret-key-less $\operatorname{CVO}_1$ searches the hash oracle $G$ for $(m, r, k)$ such that $\operatorname{MAC}(k, \tilde{c}) = \tilde{t}$. The diverging event between using $\operatorname{CVO}$ and using $\operatorname{CVO}_1$ is ``adversary produces valid authenticated ciphertext without consulting the hash oracle'', which is equivalent to selective forgery (or existential forgery, I am not sure which): $\epsilon_a - \epsilon_b \leq q_V \cdot \epsilon_\text{MAC}$
-\end{itemize}
-
-\begin{theorem}\label{mac-fo-theorem}
-    Let $(\keygen, E, D)$ be a public-key encryption scheme that is $\delta$-correct and that has $\gamma$-spread. For every OW-PCVA adversary against the transformed encryption scheme $(E^T, D^T)$ that makes $q_G$ hash queries and $q_V$ ciphertext validation queries and that has advantage $\epsilon_\text{OW-PCVA}$, there exists an IND-CPA adversary against $(\keygen, E, D)$ with advantage $\epsilon_\text{IND-CPA}$ and an EF-CMA adversary against the MAC with advantage $\epsilon_\text{MAC}$ such that:
+    Finally, game 3 can be simulated by another OW-CPA adversary. First, all three oracles $\pco_1, \cvo_1$ and $G$ can be simulated using the same public key. When the OW-CPA challenger produces the the challenge ciphertext $\sigma^\ast \in \mathcal{C}$, the OW-CPA adversary samples a random MAC key $k^\ast \leftarrow \mathcal{K}_\text{MAC}$ and computes the tag $t^\ast \leftarrow S(k^\ast, \sigma^\ast)$ before passing $c^\ast = (\sigma^\ast, t^\ast)$ to the OW-PCVA adversary as its challenge ciphertext. When the OW-PCVA adversary halts, the OW-CPA adversary passes OW-PCVA adversary's output as its own output. It's easy to see that the OW-CPA adversary wins if and only if the OW-PCVA adversary wins:
 
     \begin{equation*}
-        \epsilon_\text{OW-PCVA}
-        \leq q_G \cdot \delta 
-        + q_V \cdot \epsilon_\text{MAC}
-        + \frac{2q+1}{\norm{\mathcal{M}}} 
-        + \epsilon_\text{IND-CPA}
+        \epsilon_3 = \epsilon_\text{OW-CPA}
+    \end{equation*}
+
+    Putting all the inequalities above together gives us the desired inequality.
+\end{proof}
+
+\subsection{Deterministic OW-CPA transformation}
+In the OW-PCVA transformation, we required the input encryption scheme to be deterministic. In this section, we present a transformation that takes a probabilistic PKE and output a deterministic PKE that provides identical level of OW-CPA security.
+
+Let $(K, E, D)$ be a PKE defined over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$. We assume that the encryption routine is probabilistic and its randomness is derived from some seed $r \in \coin$. The encryption routine accepts as an argument a coin value that will be used to pseudorandomly derive all randomness in the routine. Let $H$ be a hash function $H: \mathcal{M} \rightarrow \coin$.
+
+The transformed PKE is defined over the same spaces and shares the key generation and decryption routine with the input PKE, The only difference lies with its encryption routine:
+
+\begin{algorithm}[H]
+    \caption{$E^{\strike{\$}}$}
+    \SetAlgoLined
+    \KwIn{
+        $(\pk, m)$
+    }
+    $r \leftarrow H(m)$\;
+    $\sigma \leftarrow E(\pk, m; r)$\;
+    \Return{$\sigma$}
+\end{algorithm}
+
+The transformed PKE is deterministic, and offers comparable level of OW-CPA security as the input PKE. More specifically:
+
+\begin{theorem}
+    For every OW-CPA adversary against $(K, E^{\strike{\$}}), D$ that makes $q_H$ hash queries to $H$ and has advantage $\epsilon_{\strike{\$}}$, there exists an OW-CPA adversary against $(K, E, D)$ with advantage $\epsilon_\text{OW-CPA}$ such that:
+
+    \begin{equation*}
+        \epsilon_{\strike{\$}} \leq (1 + q_H) \cdot \epsilon_\text{OW-CPA}
     \end{equation*}
 \end{theorem}
 
-The proof will be discussed in section \ref{proof-of-mac-fo-theorem}.
-
-\section{Proof techniques}
-Similar to the 2017 paper, we will use a sequence of games to incrementally replace PCO, CVO, and other aspects of the standard OW-PCVA game with some simulation. Then we will show that the total loss of security is negligible.
-
-\subsection{Replacing plaintext-checking oracle}\label{replacing-pco}
-The plaintext-checking oracle $\operatorname{PCO}$ takes as input a plaintext-ciphertext pair $(m, (c, t))$ and return ``reject'' if and only if the the ciphertext is a valid encryption of the plaintext and vice versa under the context of some fixed keypair.
-
-The simulated plaintext-checking oracle $\operatorname{PCO}_1$ removes the requirement for the secret key by removing the step that checks whether the queried ciphertext $(c, t)$ decrypts back to the queried plaintext $m$.
-
-From the OW-PCVA adversary's perspective, the two oracles are indistinguishable, except for when there is a decryption error $D(\text{sk}, E(\text{pk}, m, r)) \neq m$ for the input plaintext $m$ and the corresponding coin $r$. The MAC is not involved in this argument. The loss of security is still $q_G\cdot\delta$
-
-\begin{multicols}{2}
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{Vanilla PCO}
-        \KwIn{
-            $m \in \mathcal{M}, c \in \mathcal{C}, t \in \mathcal{T}$ 
-        }
-        \If{
-            $D^T(\text{sk}, (c, t)) \neq m$
-        }{
-            \Return{$\bot$}\;
-            \tcp*[h]{Decryption did not match}
-        }
-        \If{
-            $E^T(\text{pk}, m) \neq (c, t)$
-        }{
-            \Return{$\bot$}\;
-            \tcp*[h]{Encryption did not match}
-        }
-    \end{algorithm}
-
-    \columnbreak
-
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{Simulated $\operatorname{PCO}_1$}
-        \KwIn{
-            $m \in \mathcal{M}, c \in \mathcal{C}, t \in \mathcal{T}$
-        }
-        \If{
-            $E^T(\text{pk}, m) \neq (c, t)$
-        }{
-            \Return{$\bot$}\;
-            \tcp*[h]{Encryption did not match}
-        }
-    \end{algorithm}
-\end{multicols}
-
-\subsection{Replacing ciphertext-validation oracle}\label{replacing-cvo}
-This is a similar trick to what was used in the 2017 paper, as well. Where the ciphertext is honestly generated, both oracles will return accept. Where the vanilla CVO rejects the ciphertext (aka ciphertext is malformed or the tag doesn't match), the simulated CVO will also reject. Therefore, the diverging event is when the vanilla CVO accepts but the simulated CVO rejects. Since the vanilla CVO accepts the query, the tag $t$ must be valid for the queried ciphertext $c$; on the other hand, the simulated CVO's rejection means there is no matching query in the hash oracle. Under the random oracle assumption, $t$ is a valid tag for some data $c$ under some key that the adversary does not know. In other words, $(c, t)$ is some kind of forgery.
-
-\textbf{The argument on how the security of the MAC relates to this diverging event is still a bit fuzzy}, but here are two possible ways I can think of:
-
-\begin{itemize}
-    \item For each CVO query, the adversary is trying to forge tag for that specific ciphertext. This means there is a selective forgery attack, and over all $q_V$ validation queries, the probability of having at least one selective forgery attack that works is at most $q_V\epsilon_\text{SF}$
-    
-    \item Across all CVO query, the adversary wants to forge tag for some ciphertext, meaning there is a existential forgery attack, and the probability is at most $\epsilon_\text{EF}$
-\end{itemize}
-
-\begin{multicols}{2}
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{Vanilla CVO}
-        \KwIn{
-            $(c \in \mathcal{C}, t \in \mathcal{T})$
-        }
-        \If{
-            $D^T(\text{sk}, (c, t)) = \bot$
-        }{
-            \Return{$\bot$}\;
-        }
-    \end{algorithm}
-
-    \columnbreak
-
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{Simulated $\operatorname{CVO}_1$}
-        \KwIn{
-            $(c \in \mathcal{C}, t \in \mathcal{T})$
-        }
-        \If{
-            $\exists (m, r, k) \in \mathcal{O}^G$ such that $\operatorname{MAC}(k, c) = t$
-        }{
-            \Return{Accept}\;
-        }
-        \Return{$\bot$}
-    \end{algorithm}
-\end{multicols}
-
-\subsection{Random until queried}\label{random-until-queried}
-We then replace the pseudorandom coin and the MAC key with truly random coins and truly random keys in the challenge encryption. These two challenge encryption routines are identical, unless the adversary queries $G$ with the challenge plaintext $m^\ast$, but the probability of making such query can be bounded.
-
-\begin{multicols}{2}
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{Challenge encryption}
-        $m^\ast \leftsample \mathcal{M}$\;
-        $(c^\ast, t^\ast) \leftarrow E^T(\text{pk}, m^\ast)$\;
-        \Return{$(c^\ast, t^\ast)$}
-    \end{algorithm}
-
-    \begin{algorithm}[H]
-        \SetAlgoLined
-        \caption{Simulated challenge encryption}
-        $m^\ast \leftsample \mathcal{M}$\;
-        $r^\ast \leftsample \text{Coin}, k^\ast \leftsample \mathcal{K}_\text{MAC}$\;
-        $c^\ast \leftarrow E(\text{pk}, m^\ast, r^\ast)$\;
-        $t^\ast \leftarrow \operatorname{MAC}(k^\ast, c^\ast)$
-        \Return{$(c^\ast, t^\ast)$}
-    \end{algorithm}
-\end{multicols}
-
-Let the OW-PCVA adversary's advantage using the vanilla challenge encryption be $\epsilon_0$ and its advantage using the simulated challenge encryption be $\epsilon_1$. Denote the event that the adversary queries the hash oracle $G$ with the challenge plaintext $m^\ast$ by $\operatorname{QUERY}^\ast$, then:
-
-\begin{equation*}
-    \epsilon_0 - \epsilon_1 \leq P[\operatorname{QUERY}^\ast]
-\end{equation*}
-
-We can build an IND-CPA adversary against the underlying encryption scheme to bound $P[\operatorname{QUERY}^\ast]$: if the OW-PCVA adversary makes the magic query, then the IND-CPA adversary can find it in the hash oracle's tape and win the IND-CPA game; if the OW-PCVA adversary does not make the magic query, then the IND-CPA adversary outputs a blind guess:
-
-\begin{equation*}
-    P[\operatorname{QUERY}^\ast] \leq \epsilon_\text{IND-CPA}
-\end{equation*}
-
-\section{Complete proof of \ref{mac-fo-theorem}}\label{proof-of-mac-fo-theorem}
 \begin{proof}
-    We will prove using a sequence of games. Game 0 is the standard OW-PCVA game.
+    % Game 1: replace pseudorandom coin with random coin and use QUERY* argument, this time we will lose q_H * epsilon amount of security, probably
 
-    Game 1 is identical to game 0, except PCO is replaced with $\operatorname{PCO}_1$, the loss of security is described in section \ref{replacing-pco}:
-
-    \begin{equation*}
-        \epsilon_0 - \epsilon_1 \leq q_G \cdot \delta
-    \end{equation*}
-
-    Game 2 is identical to game 1, except CVO is replaced with $\operatorname{CVO}_1$, the loss of security is described in section \ref{replacing-cvo}. Here I put a placeholder $\epsilon_\text{MAC}$ to indicate that this quantity is tied to the security of the MAC, but I don't have a solid answer yet
-
-    \begin{equation*}
-        \epsilon_1 - \epsilon_2 \leq \epsilon_\text{MAC}
-    \end{equation*}
-
-    Game 3 is identical to game 2, except the challenge encryption is replaced with the simulated challenge encryption
-
-    \begin{equation*}
-        \epsilon_3 - \epsilon_2 \leq P[\operatorname{QUERY}^\ast]
-    \end{equation*}
-
-    From section \ref{random-until-queried} we know that $P[\operatorname{QUERY}^\ast] \leq \epsilon_\text{IND-CPA}$ for some IND-CPA adversary against the underlying PKE.
-
-    Game 3 can be entirely simulated by an OW-CPA adversary against the underlying PKE:
-
-    \begin{itemize}
-        \item The keypairs are identical between the two PKE's
-        \item The OW-CPA adversary can simulate PCO, CVO, and hash oracle $G$
-        \item The OW-CPA adversary receives challenge ciphertext $c^\ast$ which is computed from a truly random coin; it can then random a truly random MAC key and compute the tag $t^\ast$
-        \item The OW-CPA adversary passes $(c^\ast, t^\ast)$ to the OW-PCVA adversary and returns whatever the OW-PCVA adversary returns
-    \end{itemize}
-
-    The OW-CPA adversary wins if and only if the OW-PCVA adversary wins: $\epsilon_3 = \epsilon_\text{OW-CPA}$.
-
-    Putting everything together we have:
-
-    \begin{equation*}
-        \epsilon_0 
-        \leq q_G \cdot \delta 
-        + \epsilon_\text{MAC} 
-        + \epsilon_\text{IND-CPA} 
-        + \epsilon_\text{OW-CPA}
-    \end{equation*}
+    % Game 1 can be simulated by OW-CPA adversary
 \end{proof}
-
-\section{Open questions}
-Can we get rid of the coin and just let the encryption scheme be probabilistic? Do we need to?
 
 \end{document}
