@@ -212,16 +212,16 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
     \end{multicols}
     
     
-    Under the random oracle model, game 3 and game 2 are indistinguishable from the adversary's perspective unless it makes a hash query on the value of $m^\ast$. Denote the probability that the adversary makes a hash query on $m^\ast$ by $P[\operatorname{QUERY}\ast]$, then:
+    Under the random oracle model, game 3 and game 2 are indistinguishable from the adversary's perspective unless it makes a hash query on the value of $m^\ast$. Denote the probability that the adversary makes a hash query on $m^\ast$ by $P[\operatorname{QUERY}^\ast]$, then:
 
     \begin{equation*}
-        \epsilon_2 - \epsilon_3 \leq P[\operatorname{QUERY}\ast]
+        \epsilon_2 - \epsilon_3 \leq P[\operatorname{QUERY}^\ast]
     \end{equation*}
 
-    we can bound $P[\operatorname{QUERY}\ast]$ by constructing an OW-CPA adversary that simulates game 3 for a OW-PCVA adversary as a sub-routine. After the OW-PCVA adversary halts, the OW-CPA adversary checks through the tape of the hash oracle. Since the encryption routine is deterministic, if $m^\ast$ exists in the hash oracle tape, then it can be identified for sure. In other words, if $m^\ast$ has been queried by the OW-PCVA sub-routine, then the OW-CPA adversary can be guaranteed to win its game
+    we can bound $P[\operatorname{QUERY}^\ast]$ by constructing an OW-CPA adversary that simulates game 3 for a OW-PCVA adversary as a sub-routine. After the OW-PCVA adversary halts, the OW-CPA adversary checks through the tape of the hash oracle. Since the encryption routine is deterministic, if $m^\ast$ exists in the hash oracle tape, then it can be identified for sure. In other words, if $m^\ast$ has been queried by the OW-PCVA sub-routine, then the OW-CPA adversary can be guaranteed to win its game
 
     \begin{equation*}
-        P[\operatorname{QUERY}\ast] = \epsilon_\text{OW-CPA}
+        P[\operatorname{QUERY}^\ast] = \epsilon_\text{OW-CPA}
     \end{equation*}
 
     Finally, game 3 can be simulated by another OW-CPA adversary. First, all three oracles $\pco_1, \cvo_1$ and $G$ can be simulated using the same public key. When the OW-CPA challenger produces the the challenge ciphertext $\sigma^\ast \in \mathcal{C}$, the OW-CPA adversary samples a random MAC key $k^\ast \leftarrow \mathcal{K}_\text{MAC}$ and computes the tag $t^\ast \leftarrow S(k^\ast, \sigma^\ast)$ before passing $c^\ast = (\sigma^\ast, t^\ast)$ to the OW-PCVA adversary as its challenge ciphertext. When the OW-PCVA adversary halts, the OW-CPA adversary passes OW-PCVA adversary's output as its own output. It's easy to see that the OW-CPA adversary wins if and only if the OW-PCVA adversary wins:
@@ -254,17 +254,67 @@ The transformed PKE is defined over the same spaces and shares the key generatio
 The transformed PKE is deterministic, and offers comparable level of OW-CPA security as the input PKE. More specifically:
 
 \begin{theorem}
-    For every OW-CPA adversary against $(K, E^{\strike{\$}}), D$ that makes $q_H$ hash queries to $H$ and has advantage $\epsilon_{\strike{\$}}$, there exists an OW-CPA adversary against $(K, E, D)$ with advantage $\epsilon_\text{OW-CPA}$ such that:
+    For every OW-CPA adversary against the deterministic PKE $(K, E^{\strike{\$}}), D$ that makes $q_H$ hash queries to $H$ and has advantage $\epsilon_{\strike{\$}}$, there exists an OW-CPA adversary against the probabilistic PKE $(K, E, D)$ with advantage $\epsilon_\$$ such that:
 
     \begin{equation*}
-        \epsilon_{\strike{\$}} \leq (1 + q_H) \cdot \epsilon_\text{OW-CPA}
+        \epsilon_{\strike{\$}} \leq (1 + q_H) \cdot \epsilon_\$
     \end{equation*}
 \end{theorem}
 
 \begin{proof}
-    % Game 1: replace pseudorandom coin with random coin and use QUERY* argument, this time we will lose q_H * epsilon amount of security, probably
+    We prove using a sequence of game. Denote the OW-CPA adversary against the deterministic PKE by $\mathcal{A}_{\strike{\$}}$ and its advantage by $\epsilon_{\strike{\$}}$; denote the OW-CPA adversary against the probabilistic PKE by $\mathcal{A}_\$$ and its advantage by $\epsilon_\$$
+    
+    Game 0 is the standard OW-CPA game: $\epsilon_0 = \epsilon_{\strike{\$}}$
 
-    % Game 1 can be simulated by OW-CPA adversary
+    In game 1, the challenge encryption routine is modified. Instead of using a pseudorandom coin, a truly random coin is used.
+
+    \begin{multicols}{2}
+        \begin{algorithm}[H]
+            \caption{Game 0}
+            \SetAlgoLined
+            $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+            $m^\ast \leftsample \mathcal{M}$\;
+            $r^\ast \leftarrow H(m^\ast)$\;
+            $c^\ast \leftarrow E(\pk, m^\ast; r^\ast)$\;
+            $\hat{m} \leftsample \mathcal{A}_\text{OW-CPA}(1^\lambda, \pk, c^\ast)$\;
+            \Return{
+                $\llbrack \hat{m} = m^\ast\rrbrack$
+            }
+        \end{algorithm}
+
+        \begin{algorithm}[H]
+            \caption{Game 1}
+            \SetAlgoLined
+            $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+            $m^\ast \leftsample \mathcal{M}$\;
+            $r^\ast \leftsample \coin$\;
+            $c^\ast \leftarrow E(\pk, m^\ast; r^\ast)$\;
+            $\hat{m} \leftsample \mathcal{A}_\text{OW-CPA}(1^\lambda, \pk, c^\ast)$\;
+            \Return{
+                $\llbrack \hat{m} = m^\ast\rrbrack$
+            }
+        \end{algorithm}
+    \end{multicols}
+
+    Under the random oracle assumption, game 0 and game 1 are indistinguishable from the perspective of $\mathcal{A}_{\strike{\$}}$ except for when $\mathcal{A}_{\strike{\$}}$ makes a hash query $\tilde{m} = m^\ast$. Denote the event that $\mathcal{A}_{\strike{\$}}$ makes such a query by $\operatorname{QUERY}^\ast$, then by the difference lemma:
+
+    \begin{equation*}
+        \epsilon_0 - \epsilon_1 \leq P[\operatorname{QUERY}^\ast]
+    \end{equation*}
+
+    We can bound $P[\operatorname{QUERY}^\ast]$ by constructing a OW-CPA adversary against the probabilistic scheme that uses $\mathcal{A}_{\strike{\$}}$ as a sub-routine and simulates game 1 for $\mathcal{A}_{\strike{\$}}$. When $\mathcal{A}_\$$ receives the probabilistic challenge ciphertext $c^\ast$, it directly passes it to the sub-routine $\mathcal{A}_{\strike{\$}}$. After the sub-routine halts, $\mathcal{A}_\$$ samples from the hash oracle tape a random message as its output. If the sub-routine $\mathcal{A}_{\strike{\$}}$ indeed makes the correct query $m^\ast$, then the probability that a randomly chosen query value being the correct value is $\frac{1}{q_H}$:
+
+    \begin{equation*}
+        \epsilon_\$ = P[\operatorname{QUERY}^\ast] \cdot \frac{1}{q_H}
+    \end{equation*}
+
+    Game 1 can be simulated by an OW-CPA adversary against the probabilistic PKE:
+
+    \begin{equation*}
+        \epsilon_1 = \epsilon_\$
+    \end{equation*}
+
+    Putting the three equations above together gives us the desired inequality.
 \end{proof}
 
 \end{document}
