@@ -1,0 +1,172 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{multicol}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algpseudocode}
+
+% Common shortcuts
+\newcommand{\round}[1]{\lfloor {#1} \rceil}
+\newcommand{\Norm}[1]{\Vert {#1} \Vert}
+\newcommand{\norm}[1]{\vert {#1} \vert}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
+\newcommand{\keygen}{\operatorname{KeyGen}}
+\newcommand{\pk}{\operatorname{pk}}
+\newcommand{\sk}{\operatorname{sk}}
+\newcommand{\pco}{\operatorname{PCO}}
+\newcommand{\cvo}{\operatorname{CVO}}
+\newcommand{\coin}{\operatorname{COIN}}
+\newcommand{\llbrack}{[\![}
+\newcommand{\rrbrack}{]\!]}
+\newlength{\wdth}
+\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{Some clarification on security definitions}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{Spring, 2024}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+The confusion about what various security definition means seems to be caused by some inconsistencies between the popular textbooks and papers. I consulted two textbooks and found that indeed their security definitions are meaningfully different from what I am familiar with.
+
+\section{Textbook definitions}
+``A graduate course in applied cryptography''\cite{boneh2020graduate} introduced the concept of \textbf{CPA security} in section 5.3 (page 181):
+
+\begin{definition}[CPA security from Boneh and Shoup]
+    For a given cipher $\mathcal{E} = (E, D)$ defined over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$ and for a given adversary $\mathcal{A}$, we define experiments $b$ for $b = 0, 1$:
+
+    \begin{enumerate}
+        \item The challenge selects $k \leftsample \mathcal{K}$
+        \item The adversary submits a sequence of queries to the challenge. For $i = 1, 2, \ldots$, the $i$-th query is a pair of messages $m_{i, 0}, m_{i, 1}$ of the same length. The challenger computes $c_i \leftarrow E(k, m_{i, b})$ and return $c_i$ to the adversary
+        \item The adversary outputs a bit $\hat{b} \in \{0, 1\}$
+    \end{enumerate}
+
+    Let $W_b$ denote the event that $\mathcal{A}$ outputs 1 in experiment $b$. We define $\mathcal{A}$'s advantage with respect to $\mathcal{E}$ to be:
+
+    \begin{equation*}
+        \operatorname{CPAadv}[A, \mathcal{E}] = \norm{
+            P[W_0] - P[W_1]
+        }
+    \end{equation*}
+
+    A cipher $\mathcal{E}$ is called \textbf{semantically secure against chosen plaintext attack}, or simply \textbf{CPA secure} if for all efficient adversaries, $\operatorname{CPAadv}$ is negligible.
+\end{definition}
+
+
+``Introduction to modern cryptography''\cite{katz2007introduction} also introduced the concept of CPA security in the context of an adversarial game:
+
+\begin{definition}[CPA security from Katz and Lindell]
+    We first define an experiment for any encryption scheme, any adversary, and any value $\lambda$ for the security parameter:
+
+    \begin{enumerate}
+        \item A random key is generated
+        \item The adversary is given oracle access to the encryption routine and outputs a pair of messages of the same length
+        \item A random bit is chosen and a ciphertext computed and given to the adversary
+        \item The adversary outputs a bit
+        \item The adversary wins if the output bit is equal to the random bit
+    \end{enumerate}
+
+    An encryption scheme has \textbf{indistinguishable encryptions under a chosen-plaintext attack}, or is \textbf{CPA secure}, if for all PPT adversaries there exists a negligible function $\operatorname{negl}$ such that
+
+    \begin{equation*}
+        P[\hat{b} = b^\ast] \leq \frac{1}{2} + \operatorname{negl}(\lambda)
+    \end{equation*}
+\end{definition}
+
+\section{Security definition in research paper}
+In ``A modular analysis of the Fujisaki-Okamoto transformation''\cite{hofheinz2017modular} by Hofheinz et al, the security definitions are as follows:
+
+\begin{definition}[OW-ATK]
+    Let $\operatorname{PKE} = (\operatorname{Gen}, \operatorname{Enc}, \operatorname{Dec})$ be a public-key encryption scheme with message space $\mathcal{M}$. For $\operatorname{ATK} \in \{\operatorname{CPA}, \operatorname{PCA}, \operatorname{VA}, \operatorname{PCVA}\}$ we define OW-ATK game, where
+
+    \begin{equation*}
+        \mathcal{O}_{\operatorname{ATK}} = \begin{cases}
+            - & \operatorname{ATK} = \operatorname{CPA} \\
+            \operatorname{PCO} & \operatorname{ATK} = \operatorname{CPA} \\
+            \operatorname{CVO} & \operatorname{ATK} = \operatorname{VA} \\
+            \operatorname{PCO}, \operatorname{CVO} & \operatorname{ATK} = \operatorname{PCVA}
+        \end{cases}
+    \end{equation*}
+
+    \begin{multicols}{2}
+        \begin{algorithm}[H]
+            \caption{$\operatorname{OW-ATK}$ game}
+            $(\operatorname{pk}, \operatorname{sk}) \leftarrow \operatorname{Gen}()$\;
+            $m^\ast \leftsample \mathcal{M}$\;
+            $c^\ast \leftarrow E(\operatorname{pk}, m^\ast)$\;
+            $\hat{m} \leftarrow \mathcal{A}^{\mathcal{O}_{\operatorname{ATK}}}(\operatorname{pk}, c^\ast)$\;
+            \Return{$\llbrack \hat{m} = m^\ast \rrbrack$}
+        \end{algorithm}
+
+        \begin{algorithm}[H]
+            \caption{$\pco(m \in \mathcal{M}, c)$}
+            \Return{$\llbrack D(\sk, c) = m \rrbrack$}
+        \end{algorithm}
+
+        \begin{algorithm}[H]
+            \caption{$\cvo(c \neq c^\ast)$}
+            \Return{$\llbrack D(\sk, c) \in \mathcal{M} \rrbrack$}
+        \end{algorithm}
+    \end{multicols}
+\end{definition}
+
+\section{Conclusion}
+In the textbooks, ``\textbf{CPA secure}'' really means ``\textbf{IND-CPA} secure''. On the other hand, in research paper, the security definition is always explicitly spelled with both the goal (to break one-wayness or to break indistinguishability) and the adversary's capabilities (access to some specified set of oracles). My guess is that we got confused last week because in public-key cryptography, CPA is a rather meaningless notion because the adversary has the public key, so ``one-wayness'' automatically implies ``one-way security under CPA''.
+
+For an example, here is textbook RSA:
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \caption{RSA KeyGen}
+        $p, q \leftsample \operatorname{PrimeGen}()$\;
+        $N \leftarrow p \cdot q$\;
+        $\phi \leftarrow (p-1)\cdot(q-1)$\;
+        $e \leftarrow 3$\;
+        $d \leftarrow e^{-1} \mod \phi$\;
+        \Return{
+            $\pk = (N, e)$, $\sk = d$
+        }
+    \end{algorithm}
+
+    \begin{algorithm}[H]
+        \caption{Encryption $E(\pk, m)$}
+        \Return{
+            $m^e \mod N$
+        }
+    \end{algorithm}
+
+    \begin{algorithm}[H]
+        \caption{Decryption $D(\sk, c)$}
+        \Return{
+            $c^d \mod N$
+        }
+    \end{algorithm}
+\end{multicols}
+
+From the textbooks, \textbf{textbook RSA achieves one-wayness but is not CPA secure}, because its encryption is deterministic. On the other hand, using explicit game definitions, we say that RSA is OW-CPA secure but not IND-CPA secure.
+
+OW-CPA and IND-CPA security are commonly accepted standard security notions in. Both Hofheinz\cite{hofheinz2017modular} and the Kyber team\cite{bos2018crystals} make use of OW-CPA and IND-CPA in their papers. In any case, since I will introduce non-standard security notions, I will explicitly spell out the security games, including the adversary's goal and the adversary's capabilities, so there should be no confusion about the meaning of any terms.
+
+\bibliographystyle{plain}
+\bibliography{./references.bib}
+
+\end{document}
