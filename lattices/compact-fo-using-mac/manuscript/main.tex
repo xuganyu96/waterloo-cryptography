@@ -22,6 +22,8 @@
 \newcommand{\pco}{\operatorname{PCO}}
 \newcommand{\cvo}{\operatorname{CVO}}
 \newcommand{\coin}{\operatorname{COIN}}
+\newcommand{\encap}{\operatorname{Encap}}
+\newcommand{\decap}{\operatorname{Decap}}
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
 \newlength{\wdth}
@@ -38,7 +40,7 @@
 \newtheorem{lemma}{Lemma}[theorem]
 
 
-\title{Mermory-efficient Fujisaki-Okamoto transformation}
+\title{Mermory-efficient FO transform using ``encrypt-then-MAC''}
 \author{Ganyu (Bruce) Xu (g66xu)}
 % \date{Fall 2023}
 
@@ -46,7 +48,133 @@
 %%%% TITLE %%%%%
 \maketitle
 
+\section{Preliminaries}
+\subsection{Security definitions}
+The security of public-key encryption schemes (PKE) and message authentication code (MAC) is defined using an number of adversarial games, where each game is defined by the adversary's goal and objectives.
+
+For PKE, we define the $\operatorname{OW-ATK}$ and $\operatorname{IND-ATK}$ security game as follows:
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \caption{OW-ATK security game}
+        \KwIn{
+            Security parameter $\lambda$, adversary $\mathcal{A}$
+        }
+        \SetAlgoLined
+        $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+        $m^\ast \leftsample \mathcal{M}$\;
+        $c^\ast \leftsample E(\pk, m^\ast)$\;
+        $\hat{m} \leftarrow \mathcal{A}(1^\lambda, \pk, c^\ast, \mathcal{O}_{\operatorname{ATK}})$\;
+        \Return{
+            $\llbrack m = \hat{m} \rrbrack$
+        }
+    \end{algorithm}
+
+    \begin{algorithm}[H]
+        \caption{IND-ATK security game}
+        \KwIn{
+            Security param $\lambda$, adversary $\mathcal{A}$
+        }
+        \SetAlgoLined
+        $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+        $(m_0, m_1) \leftsample \mathcal{A}(1^\lambda, \pk, \mathcal{O}_{\operatorname{ATK}})$\;
+        $b \leftsample \{0, 1\}$\;
+        $c^\ast \leftarrow E(\pk, m_b)$\;
+        $\hat{b} \leftarrow \mathcal{A}(1^\lambda, \pk, c^\ast, \mathcal{O}_{\operatorname{ATK}})$\;
+        \Return{
+            $\llbrack \hat{b} = b \rrbrack$
+        }
+    \end{algorithm}
+\end{multicols}
+
+Where $\mathcal{O}_{\operatorname{ATK}}$ depends on the choice of $\operatorname{ATK}$:
+
+\begin{equation*}
+    \mathcal{O}_{\operatorname{ATK}} =\begin{cases}
+        - & \operatorname{ATK} = \operatorname{CPA} \\
+        \pco & \operatorname{ATK} = \operatorname{PCA} \\
+        \cvo & \operatorname{ATK} = \operatorname{VA} \\
+        (\pco, \cvo) & \operatorname{ATK} = \operatorname{PCVA} \\
+    \end{cases}
+\end{equation*}
+
+From a high level, $\pco(m, c)$ returns 1 if and only if $m$ is a valid decryption of $c$, and $\cvo(c)$ returns 1 if and only if $c$ is a valid ciphertext.
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \caption{$\pco(m, c)$}
+        \Return{
+            $\llbrack D(\sk, c) = m \rrbrack$
+        }
+    \end{algorithm}
+
+    \begin{algorithm}[H]
+        \caption{$\cvo(c)$}
+        \Return{
+            $\llbrack D(\sk, c) \in \mathcal{M} \rrbrack$
+        }
+    \end{algorithm}
+\end{multicols}
+
+\subsection{$\delta$-correctness}
+We define the correctness of a PKE using an adversarial game in which an adversary tries to produce plaintext that triggers decryption failures.
+
+\begin{algorithm}[H]
+    \caption{Correctness game $\operatorname{CORS}$}
+    \SetAlgoLined
+    $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+    $m \leftarrow \mathcal{A}(1^\lambda, \pk)$\;
+    \Return{
+        $\llbrack D(\sk, E(\pk, m)) \neq m \rrbrack$\;
+    }
+\end{algorithm}
+
+\begin{definition}
+    A public-key encryption scheme $\mathcal{E}=(E, D)$ is $\delta$-correct if for any efficient adversary $\mathcal{A}$, the probability of winning the correctness game is bounded by $\delta$:
+
+    \begin{equation*}
+        P[\operatorname{CORS}(\mathcal{A}) \rightarrow 1] \leq \delta
+    \end{equation*}
+\end{definition}
+
+\subsection{The IND-CCA KEM transformation}
+A key encapsulation mechanism (KEM) is defined by three routines $(\keygen, \encap, \decap)$, where $\keygen$ outputs a keypair $(\pk, \sk)$, $\encap$ takes the public key and outputs a pair of ciphertext $c$ and shared secret $K$, and $\decap$ takes the secret key $\sk$ and ciphertext $c$ and outputs the shared secret $K$.
+
+The security of a KEM is defined by an adversarial game. In the IND-CCA game, the adversary has access to a decapsulation oracle $\mathcal{O}^{\decap}$ and tries to distinguish whether the challenge shared secret is pseudorandom or truly random:
+
+\begin{multicols}{2}
+    \begin{algorithm}[H]
+        \caption{IND-CCA KEM game}
+        $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+        $(c^\ast, K_0) \leftarrow \encap(\pk)$\;
+        $K_1 \leftsample \mathcal{K}$\;
+        $b \leftsample \{0, 1\}$\;
+        $\hat{b} \leftarrow \mathcal{A}^{\mathcal{O}^{\decap}}(1^\lambda, \pk, c^\ast, K_b)$\;
+        \Return{
+            $\llbrack \hat{b} = b \rrbrack$
+        }
+    \end{algorithm}
+
+    \begin{algorithm}[H]
+        \caption{Decapsulation oracle $O^{\decap}$}
+        \KwIn{$c \in \mathcal{C}$}
+        \Return{
+            $\decap(\sk, c)$
+        }
+    \end{algorithm}
+\end{multicols}
+
+The advantage of an adversary in the IND-CCA KEM game is defined by 
+
+$$\epsilon = \norm{P[\operatorname{IND-CCA-KEM}(\mathcal{A}) = 1] - \frac{1}{2}}$$
+
+A KEM is IND-CCA secure if for any efficient adversary, the advantage is negligible with respect to $\lambda$.
+
+A key result from Hofheinz, Hovelmann, and Kiltz\cite{hofheinz2017modular} is a generic transformation from a PKE to a KEM. If the PKE is OW-PCVA secure, then the KEM is IND-CCA secure with tight security bounds. In this paper, we focus on the OW-PCVA transformation and use the transformation from OW-PCVA PKE to IND-CCA KEM as described by Hofheinz et al.
+
 \section{OW-PCVA transformation}\label{sec:ow-pcva-transformation}
+
+\subsection{From deterministic encryption scheme to OW-PCVA security}
 Let $(K, E, D)$ be a public-key encryption scheme defined over $(\mathcal{K}_\text{PKE}, \mathcal{M}_\text{PKE}, \mathcal{C})$. Let $(S, V)$ be a message authentication code defined over $(\mathcal{K}_\text{MAC}, \mathcal{M}_\text{MAC}, \mathcal{T})$. Let $G: \mathcal{M}_\text{PKE} \rightarrow \mathcal{K}_\text{MAC}$ be a hash function. The transformation outputs a public-key encryption scheme $(K, E_1, D_1)$. The key generation routine and key space of the transformed scheme are identical to those of the input scheme. The encryption and decryption routines of the transformed scheme are as follows:
 
 \begin{multicols}{2}
@@ -233,7 +361,7 @@ If the input PKE is deterministic, OW-CPA secure, and $\delta$-correct, and the 
     Putting all the inequalities above together gives us the desired inequality.
 \end{proof}
 
-\subsection{Deterministic OW-CPA transformation}
+\subsection{From probabilistic encryption to deterministic encryption}
 In the OW-PCVA transformation, we required the input encryption scheme to be deterministic. In this section, we present a transformation that takes a probabilistic PKE and output a deterministic PKE that provides identical level of OW-CPA security.
 
 Let $(K, E, D)$ be a PKE defined over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$. We assume that the encryption routine is probabilistic and its randomness is derived from some seed $r \in \coin$. The encryption routine accepts as an argument a coin value that will be used to pseudorandomly derive all randomness in the routine. Let $H$ be a hash function $H: \mathcal{M} \rightarrow \coin$.
@@ -282,6 +410,8 @@ The transformed PKE is deterministic, and offers comparable level of OW-CPA secu
             }
         \end{algorithm}
 
+        \columnbreak
+
         \begin{algorithm}[H]
             \caption{Game 1}
             \SetAlgoLined
@@ -316,5 +446,8 @@ The transformed PKE is deterministic, and offers comparable level of OW-CPA secu
 
     Putting the three equations above together gives us the desired inequality.
 \end{proof}
+
+\bibliographystyle{plain}
+\bibliography{./references.bib}
 
 \end{document}
