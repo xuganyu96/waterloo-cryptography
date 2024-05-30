@@ -24,6 +24,9 @@
 \newcommand{\coin}{\operatorname{COIN}}
 \newcommand{\encap}{\operatorname{Encap}}
 \newcommand{\decap}{\operatorname{Decap}}
+\newcommand{\pke}{\operatorname{PKE}}
+\newcommand{\mac}{\operatorname{MAC}}
+\newcommand{\cors}{\operatorname{CORS}}
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
 \newlength{\wdth}
@@ -49,13 +52,48 @@
 \maketitle
 
 \section{Preliminaries}
-\subsection{Security definitions}
-The security of public-key encryption schemes (PKE) and message authentication code (MAC) is defined using an number of adversarial games, where each game is defined by the adversary's goal and objectives.
+\subsection{Public-key encryption}
+A public key encryption scheme $\pke$ consists of three algorithms $(\keygen, E, D)$ defined over the collection of key space, message space, and ciphertext space $(\mathcal{K}, \mathcal{E}, \mathcal{D})$. The $\keygen$ routines takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk)$. The encryption routine $E$ takes a public key $\pk$ and a plaintext message $m \in \mathcal{M}$, and outputs a ciphertext $c \in \mathcal{C}$. Where the encryption routine is probabilistic, we denote the source of randomness by a coin sampled from the coin space $r \in \mathcal{R}$ such that $c \leftsample E(\pk, m; r)$. When $m, r$ is both specified, $E$ must be deterministic and injective. The decryption routine $D(\sk, c)$ takes a secret key and a ciphertext, and outputs the corresponding plaintext. Decryption routine is always deterministic. Where appropriate, the decryption routine could also output the rejection symbol $\bot$ to indicate that the ciphertext is invalid.
 
-For PKE, we define the $\operatorname{OW-ATK}$ and $\operatorname{IND-ATK}$ security game as follows:
+Correctness is commonly required of all $\pke$'s, which means that for all possible key pairs $(\pk, \sk)$ and messages $m \in \mathcal{M}$, $D(\sk, E(\sk, m)) = m$. However, with lattice-based schemes (such as CRYSTALS-Kyber), for randomly sampled keypairs and messages, there is a non-zero probability that $D(\sk, E(\pk, m)) \neq m$. Furthermore, decryption failures could be an attack vector through which an adversary learns partial information about the keys or ciphertext\cite{bos2018crystals}. To account for this possibility, we define a correctness game, then model the probability of decryption failure on this game.
+
+In the correctness game $\cors$, an adversary is given the security parameter and some public key and outputs a plaintext message and a coin. The adversary wins the $\cors$ game if and only if $m$ triggers a decryption failure for the specified keypair. Note that this game can be trivially adapted for deterministic encryption scheme, so we will skip the discussion here.
+
+\begin{algorithm}[H]
+    \caption{The correctness game $\cors$}
+    \KwIn{
+        The correctness adversary $\mathcal{A}$
+    }
+    $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
+    $(m, r) \leftsample \mathcal{A}(1^\lambda, \pk)$\;
+    \Return{
+        $\llbrack D(\sk, E(\pk, m; r)) \neq m \rrbrack$
+    }
+\end{algorithm}
+
+\begin{definition}[$\delta$-correctness]\label{def:delta-correctness}
+    A public-key encryption scheme $\pke$ is $\delta$-correct if no (possibly unbounded) adversary can win the $\cors$ game with probability greater than $\delta$.
+\end{definition}
+
+For some concrete instantiation, the value of $\delta$ for Kyber\cite{avanzi2019crystals} is shown in table \ref{table:kyber-delta-vals}:
+
+\begin{table}
+    \centering
+    \begin{tabular}{cc}
+        Security level & $\delta$ \\
+        Kyber512 & $2^{-139}$ \\
+        Kyber768 & $2^{-164}$ \\
+        Kyber1024 & $2^{-174}$ \\
+    \end{tabular}
+    \caption{Concrete $\delta$ value for CRYSTAL-Kyber}
+    \label{table:kyber-delta-vals}
+\end{table}
+
+
+The security of a $\pke$ is defined using an number of adversarial games, where each game is defined by the adversary's goal and objectives. We define the $\operatorname{OW-ATK}$ and $\operatorname{IND-ATK}$ security game in algorithm \ref{alg:ow-atk-game} and algorithm \ref{alg:ind-atk-game}:
 
 \begin{multicols}{2}
-    \begin{algorithm}[H]
+    \begin{algorithm}[H]\label{alg:ow-atk-game}
         \caption{OW-ATK security game}
         \KwIn{
             Security parameter $\lambda$, adversary $\mathcal{A}$
@@ -70,7 +108,7 @@ For PKE, we define the $\operatorname{OW-ATK}$ and $\operatorname{IND-ATK}$ secu
         }
     \end{algorithm}
 
-    \begin{algorithm}[H]
+    \begin{algorithm}[H]\label{alg:ind-atk-game}
         \caption{IND-ATK security game}
         \KwIn{
             Security param $\lambda$, adversary $\mathcal{A}$
@@ -116,25 +154,39 @@ From a high level, $\pco(m, c)$ returns 1 if and only if $m$ is a valid decrypti
     \end{algorithm}
 \end{multicols}
 
-\subsection{$\delta$-correctness}
-We define the correctness of a PKE using an adversarial game in which an adversary tries to produce plaintext that triggers decryption failures.
+\subsection{Message authentication code}
+A message authentication code $\mac$ consists of a pair of routines $(S, V)$ defined over a collection $(\mathcal{K}, \mathcal{M}, \mathcal{T})$ of key space, message, space, and tag space. The signing routine $S(k, m)$ takes the secret key $k$ and a message $m$, and outputs a tag $t$. The verfiying routine $V(k, m, t)$ takes the triplet of secret key $k$, message $m$, and tag $t$, and outputs 1 if the message-tag pair is valid for the given secret key or 0 otherwise.
 
-\begin{algorithm}[H]
-    \caption{Correctness game $\operatorname{CORS}$}
-    \SetAlgoLined
-    $(\pk, \sk) \leftsample \keygen(1^\lambda)$\;
-    $m \leftarrow \mathcal{A}(1^\lambda, \pk)$\;
-    \Return{
-        $\llbrack D(\sk, E(\pk, m)) \neq m \rrbrack$\;
-    }
-\end{algorithm}
+One common notion of security for $\mac$ is ``existential forgery under chosen message attack'' (EF-CMA), which is defined using an adversarial game. In the EF-CMA game, an adversary is given access to a signing oracle $\mathcal{O}^S$ and tries to forge valid message-tag pairs that have not be recorded in the signing oracle before.
 
-\begin{definition}
-    A public-key encryption scheme $\mathcal{E}=(E, D)$ is $\delta$-correct if for any efficient adversary $\mathcal{A}$, the probability of winning the correctness game is bounded by $\delta$:
+\begin{multicols}{2}
+    \begin{algorithm}[H]\label{alg:euf-cma-game}
+        \caption{
+            EF-CMA game
+        }
+        $k^\ast \leftsample \mathcal{K}$\;
+        $(m, t) \leftarrow \mathcal{A}^{\mathcal{O}^S}()$\;
+        \Return{
+            $\llbrack (m, t) \not\in \mathcal{O}^{S} \rrbrack$
+            and $\llbrack V(k^\ast, m, t) \rrbrack$
+        }
+    \end{algorithm}
 
-    \begin{equation*}
-        P[\operatorname{CORS}(\mathcal{A}) \rightarrow 1] \leq \delta
-    \end{equation*}
+    \begin{algorithm}[H]\label{alg:mac-signing-oracle}
+        \caption{The signing oracle $\mathcal{O}^S$}
+        \KwIn{
+            $m \in \mathcal{M}$
+        }
+        $t \leftarrow S(k^\ast, m)$\;
+        \If{$(m, t) \not\in \mathcal{O}^S$}{
+            Append $(m, t)$ to $\mathcal{O}^S$
+        }
+        \Return{$t$}
+    \end{algorithm}
+\end{multicols}
+
+\begin{definition}[Existential unforgeability]\label{def:euf-cma}
+    A $\mac$ is existentially unforgeable under chosen message attack if for all efficient adversary, the probability of winning the EF-CMA game is negligible with respect to the security parameter.
 \end{definition}
 
 \subsection{The IND-CCA KEM transformation}
