@@ -97,9 +97,28 @@ impl<const L: usize> Uint<L> {
         let mut self_loc = 0;
 
         while self_loc < L {
+            let self_val = self.0[self_loc];
+
             let mut other_loc = 0;
             while other_loc < L {
-                todo!("need Word::widening_mul");
+                let other_val = other.0[other_loc];
+                let (tmp_high, tmp_low) = widening_mul(self_val, other_val);
+                let tmp_high_loc = self_loc + other_loc + 1;
+                let tmp_low_loc = self_loc + other_loc;
+
+                if tmp_high_loc >= L {
+                    // TODO: this will cause overflow in many cases
+                    // We should have a dedicated "add word and pow to big integer"
+                    high[tmp_high_loc - L] += tmp_high;
+                } else {
+                    low[tmp_high_loc] += tmp_high;
+                }
+
+                if tmp_low_loc >= L {
+                    high[tmp_low_loc - L] += tmp_low;
+                } else {
+                    low[tmp_low_loc] += tmp_low;
+                }
 
                 other_loc += 1;
             }
@@ -150,5 +169,19 @@ mod tests {
         let expected_prod = (Word::MAX as LongWord) * (Word::MAX as LongWord);
         assert_eq!(expected_prod as Word, low);
         assert_eq!((expected_prod >> 32) as Word, high);
+    }
+
+    #[test]
+    fn u256_widening_mul() {
+        let (high, low) = U256::ZERO.widening_mul(&U256::MAX);
+        assert_eq!(high, U256::ZERO);
+        assert_eq!(low, U256::ZERO);
+
+        let (high, low) = U256::one().widening_mul(&U256::one());
+        assert_eq!(high, U256::ZERO);
+        assert_eq!(low, U256::one());
+
+        // TODO: this doesn't work
+        // let (high, low) = U256::MAX.widening_mul(&U256::MAX);
     }
 }
