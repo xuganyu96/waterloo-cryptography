@@ -58,6 +58,30 @@ impl<const L: usize> Uint<L> {
         return Self(arr);
     }
 
+    /// Add "word * (base ** pow)" to self in-place. Return True iff the sum overflows the
+    /// representable range by Self
+    fn add_word_inplace(&mut self, word: Word, pow: usize) -> bool {
+        assert!(
+            pow < L,
+            "Attempted to add unrepresentable power {} to Uint<{}>",
+            pow,
+            L
+        );
+        let (sum, carry) = self.0[pow].overflowing_add(word);
+        self.0[pow] = sum;
+
+        if carry {
+            if pow == L - 1 {
+                return true;
+            } else {
+                // TODO: probably want to get rid of this recursive call
+                return self.add_word_inplace(1, pow + 1);
+            }
+        }
+
+        return false;
+    }
+
     /// Return (sum, carry) where carry is true if and only if the true sum overflows the capacity
     /// of the big integer
     pub const fn overflowing_add(&self, other: &Self) -> (Self, bool) {
@@ -93,7 +117,7 @@ impl<const L: usize> Uint<L> {
 
     /// Schoolbook multiplication O(n^2), return (high, low)
     pub fn widening_mul(&self, other: &Self) -> (Self, Self) {
-        let (mut high, mut low) = ([0; L], [0; L]);
+        let (mut high, mut low) = (Uint([0; L]), Uint([0; L]));
         let mut self_loc = 0;
 
         while self_loc < L {
@@ -107,17 +131,15 @@ impl<const L: usize> Uint<L> {
                 let tmp_low_loc = self_loc + other_loc;
 
                 if tmp_high_loc >= L {
-                    // TODO: this will cause overflow in many cases
-                    // We should have a dedicated "add word and pow to big integer"
-                    high[tmp_high_loc - L] += tmp_high;
+                    high.add_word_inplace(tmp_high, tmp_high_loc - L);
                 } else {
-                    low[tmp_high_loc] += tmp_high;
+                    low.add_word_inplace(tmp_high, tmp_high_loc);
                 }
 
                 if tmp_low_loc >= L {
-                    high[tmp_low_loc - L] += tmp_low;
+                    high.add_word_inplace(tmp_low, tmp_low_loc - L);
                 } else {
-                    low[tmp_low_loc] += tmp_low;
+                    low.add_word_inplace(tmp_low, tmp_low_loc);
                 }
 
                 other_loc += 1;
@@ -125,7 +147,7 @@ impl<const L: usize> Uint<L> {
             self_loc += 1;
         }
 
-        return (Self(high), Self(low));
+        return (high, low);
     }
 }
 
@@ -182,6 +204,16 @@ mod tests {
         assert_eq!(low, U256::one());
 
         // TODO: this doesn't work
-        // let (high, low) = U256::MAX.widening_mul(&U256::MAX);
+        let (high, low) = U256::MAX.widening_mul(&U256::MAX);
+        assert_eq!(high, U256::MAX.overflowing_sub(&U256::one()).0);
+        assert_eq!(low, U256::one());
+    }
+
+    #[test]
+    fn u256_add_word_inplace() {
+        let mut val = U256::MAX;
+        let carry = val.add_word_inplace(1, 0);
+        assert!(carry);
+        assert_eq!(val, U256::ZERO);
     }
 }
