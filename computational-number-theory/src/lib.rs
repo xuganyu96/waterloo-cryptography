@@ -188,9 +188,8 @@ mod tests {
     #[test]
     fn word_widening_mul() {
         let (high, low) = widening_mul(Word::MAX, Word::MAX);
-        let expected_prod = (Word::MAX as LongWord) * (Word::MAX as LongWord);
-        assert_eq!(expected_prod as Word, low);
-        assert_eq!((expected_prod >> 32) as Word, high);
+        assert_eq!(high, Word::MAX - 1);
+        assert_eq!(low, 1);
     }
 
     #[test]
@@ -203,6 +202,11 @@ mod tests {
         assert_eq!(high, U256::ZERO);
         assert_eq!(low, U256::one());
 
+        // U256::MAX * U256::MAX = (2 ** 256 - 1)(2 ** 256 - 1)
+        //   = 2 ** 512 - 2 ** 257 + 1
+        //   = (2 ** 256 - 2) * (2 ** 256) + 1
+        //   = (U256::MAX - 1) * (2 ** 256) + 1
+        // so high should be (U256::MAX - 1), and low should be 1
         // TODO: this doesn't work
         let (high, low) = U256::MAX.widening_mul(&U256::MAX);
         assert_eq!(high, U256::MAX.overflowing_sub(&U256::one()).0);
