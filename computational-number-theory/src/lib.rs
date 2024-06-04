@@ -133,13 +133,19 @@ impl<const L: usize> Uint<L> {
                 if tmp_high_loc >= L {
                     high.add_word_inplace(tmp_high, tmp_high_loc - L);
                 } else {
-                    low.add_word_inplace(tmp_high, tmp_high_loc);
+                    let carry = low.add_word_inplace(tmp_high, tmp_high_loc);
+                    if carry {
+                        high.add_word_inplace(1, 0);
+                    }
                 }
 
                 if tmp_low_loc >= L {
                     high.add_word_inplace(tmp_low, tmp_low_loc - L);
                 } else {
-                    low.add_word_inplace(tmp_low, tmp_low_loc);
+                    let carry = low.add_word_inplace(tmp_low, tmp_low_loc);
+                    if carry {
+                        high.add_word_inplace(1, 0);
+                    }
                 }
 
                 other_loc += 1;
@@ -207,7 +213,6 @@ mod tests {
         //   = (2 ** 256 - 2) * (2 ** 256) + 1
         //   = (U256::MAX - 1) * (2 ** 256) + 1
         // so high should be (U256::MAX - 1), and low should be 1
-        // TODO: this doesn't work
         let (high, low) = U256::MAX.widening_mul(&U256::MAX);
         assert_eq!(high, U256::MAX.overflowing_sub(&U256::one()).0);
         assert_eq!(low, U256::one());
