@@ -50,13 +50,11 @@ pub struct Uint<const L: usize>([Word; L]);
 impl<const L: usize> Uint<L> {
     pub const ZERO: Self = Self([0; L]);
     pub const MAX: Self = Self([Word::MAX; L]);
-
-    /// There is no easy way to specify a "1" using just the array notation, so we use a const fn
-    pub const fn one() -> Self {
+    pub const ONE: Self = {
         let mut arr = [0; L];
         arr[0] = 1;
-        return Self(arr);
-    }
+        Self(arr)
+    };
 
     /// Add "word * (base ** pow)" to self in-place. Return True iff the sum overflows the
     /// representable range by Self
@@ -166,27 +164,27 @@ mod tests {
     #[test]
     fn uint_overflowing_add() {
         // A non-overflowing addition
-        let (sum, c) = U256::one().overflowing_add(&U256::one());
+        let (sum, c) = U256::ONE.overflowing_add(&U256::ONE);
         let mut two = U256::ZERO;
         two.0[0] = 2;
         assert_eq!(sum, two);
         assert!(!c);
 
         // An overflowing addition
-        let (sum, c) = U256::MAX.overflowing_add(&U256::one());
+        let (sum, c) = U256::MAX.overflowing_add(&U256::ONE);
         assert_eq!(sum, U256::ZERO);
         assert!(c);
     }
 
     #[test]
     fn u256_overflowing_sub() {
-        let (diff, b) = U256::MAX.overflowing_sub(&U256::one());
+        let (diff, b) = U256::MAX.overflowing_sub(&U256::ONE);
         let mut minus_one = U256::MAX;
         minus_one.0[0] = Word::MAX - 1;
         assert_eq!(diff, minus_one);
         assert!(!b);
 
-        let (diff, b) = U256::ZERO.overflowing_sub(&U256::one());
+        let (diff, b) = U256::ZERO.overflowing_sub(&U256::ONE);
         assert_eq!(diff, U256::MAX);
         assert!(b);
     }
@@ -204,9 +202,9 @@ mod tests {
         assert_eq!(high, U256::ZERO);
         assert_eq!(low, U256::ZERO);
 
-        let (high, low) = U256::one().widening_mul(&U256::one());
+        let (high, low) = U256::ONE.widening_mul(&U256::ONE);
         assert_eq!(high, U256::ZERO);
-        assert_eq!(low, U256::one());
+        assert_eq!(low, U256::ONE);
 
         // U256::MAX * U256::MAX = (2 ** 256 - 1)(2 ** 256 - 1)
         //   = 2 ** 512 - 2 ** 257 + 1
@@ -214,8 +212,8 @@ mod tests {
         //   = (U256::MAX - 1) * (2 ** 256) + 1
         // so high should be (U256::MAX - 1), and low should be 1
         let (high, low) = U256::MAX.widening_mul(&U256::MAX);
-        assert_eq!(high, U256::MAX.overflowing_sub(&U256::one()).0);
-        assert_eq!(low, U256::one());
+        assert_eq!(high, U256::MAX.overflowing_sub(&U256::ONE).0);
+        assert_eq!(low, U256::ONE);
     }
 
     #[test]
