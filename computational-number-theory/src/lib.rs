@@ -55,6 +55,8 @@ impl<const L: usize> Uint<L> {
         arr[0] = 1;
         Self(arr)
     };
+    pub const BITS: u32 = 32 * (L as u32);
+    pub const BYTES: u32 = 4 * (L as u32);
 
     /// Add "word * (base ** pow)" to self in-place. Return True iff the sum overflows the
     /// representable range by Self
@@ -153,6 +155,34 @@ impl<const L: usize> Uint<L> {
 
         return (high, low);
     }
+
+    pub const fn overflowing_shl(&self, shift: usize) -> (Self, bool) {
+        let mut shifted = Self::ZERO;
+
+        let word_shift = shift / (Word::BITS as usize);
+        let overflow = shift % (Word::BITS as usize);
+
+        let mut i = 0;
+        while i < L {
+            if i + word_shift < L {
+                shifted.0[i + word_shift] |= self.0[i] << overflow;
+            }
+            if i + word_shift + 1 < L && (overflow != 0) {
+                shifted.0[i + word_shift + 1] |= self.0[i] >> (Word::BITS as usize - overflow);
+            }
+
+            i += 1;
+        }
+
+        return (shifted, shift >= (Self::BITS as usize));
+    }
+
+    #[allow(unused_variables, unused_mut, unreachable_code)]
+    pub fn overflowing_shr(&self, shift: usize) -> (Self, bool) {
+        let mut shifted = Self::ZERO;
+
+        return (shifted, false);
+    }
 }
 
 pub type U256 = Uint<8>;
@@ -222,5 +252,21 @@ mod tests {
         let carry = val.add_word_inplace(1, 0);
         assert!(carry);
         assert_eq!(val, U256::ZERO);
+    }
+
+    #[test]
+    fn bitshifting() {
+        assert_eq!(
+            U256::ONE.overflowing_shl(1),
+            U256::ONE.overflowing_add(&U256::ONE)
+        );
+        assert_eq!(
+            U256::ONE.overflowing_shl(U256::BITS as usize),
+            (U256::ZERO, true)
+        );
+
+        let mut expected = U256::MAX;
+        expected.0[0] = 0;
+        assert_eq!(U256::MAX.overflowing_shl(32), (expected, false));
     }
 }
