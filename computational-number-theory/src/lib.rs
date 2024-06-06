@@ -181,7 +181,26 @@ impl<const L: usize> Uint<L> {
     pub fn overflowing_shr(&self, shift: usize) -> (Self, bool) {
         let mut shifted = Self::ZERO;
 
-        return (shifted, false);
+        let word_shift = shift / (Word::BITS as usize);
+        let overflow = shift % (Word::BITS as usize);
+
+        let mut i = L - 1;
+        loop {
+            if i >= word_shift {
+                shifted.0[i - word_shift] |= self.0[i] >> overflow;
+            }
+            if i >= word_shift + 1 && (overflow != 0) {
+                shifted.0[i - word_shift - 1] |= self.0[i] << (Word::BITS as usize - overflow);
+            }
+
+            if i == 0 {
+                break;
+            } else {
+                i -= 1;
+            }
+        }
+
+        return (shifted, shift >= (Self::BITS as usize));
     }
 }
 
@@ -254,19 +273,42 @@ mod tests {
         assert_eq!(val, U256::ZERO);
     }
 
+    /// Test bit shifting using the following cases:
+    /// shift by zero
+    /// shift by one
+    /// shift by word size
+    /// shift by word size + some overflow
+    /// shift by more than Uint::BITS
     #[test]
     fn bitshifting() {
-        assert_eq!(
-            U256::ONE.overflowing_shl(1),
-            U256::ONE.overflowing_add(&U256::ONE)
-        );
-        assert_eq!(
-            U256::ONE.overflowing_shl(U256::BITS as usize),
-            (U256::ZERO, true)
-        );
+        let max = U256::MAX;
+
+        assert_eq!(max.overflowing_shl(0), (max, false));
+        assert_eq!(max.overflowing_shr(0), (max, false));
+
+        let (minus_one, _) = max.overflowing_sub(&U256::ONE);
+        assert_eq!(max.overflowing_shl(1), (minus_one, false));
+        let mut expected = U256::MAX;
+        expected.0[7] = 0b01111111_11111111_11111111_11111111;
+        assert_eq!(max.overflowing_shr(1), (expected, false));
 
         let mut expected = U256::MAX;
         expected.0[0] = 0;
-        assert_eq!(U256::MAX.overflowing_shl(32), (expected, false));
+        assert_eq!(max.overflowing_shl(u32::BITS as usize), (expected, false));
+        let mut expected = U256::MAX;
+        expected.0[7] = 0;
+        assert_eq!(max.overflowing_shr(u32::BITS as usize), (expected, false));
+
+        let mut expected = U256::MAX;
+        expected.0[0] = 0;
+        expected.0[1] = 0b11111111_11111111_11111111_11111110;
+        assert_eq!(max.overflowing_shl(33), (expected, false));
+        let mut expected = U256::MAX;
+        expected.0[7] = 0;
+        expected.0[6] = 0b01111111_11111111_11111111_11111111;
+        assert_eq!(max.overflowing_shr(33), (expected, false));
+
+        assert_eq!(max.overflowing_shl(U256::BITS as usize), (U256::ZERO, true));
+        assert_eq!(max.overflowing_shr(U256::BITS as usize), (U256::ZERO, true));
     }
 }
