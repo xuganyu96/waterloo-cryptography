@@ -1,6 +1,8 @@
 //! My implementation of computational number theory
 //! Follows Henri Cohen's [A Course in Computational Algebraic Number Theory]
 
+use std::{fmt::UpperHex, num::ParseIntError};
+
 /// 32-bit architecture
 pub type Word = u32;
 /// Twice the size of Word, useful for widening multiplication
@@ -57,6 +59,21 @@ impl<const L: usize> Uint<L> {
     };
     pub const BITS: u32 = 32 * (L as u32);
     pub const BYTES: u32 = 4 * (L as u32);
+
+    /// Parse from hexadecimal string to big integer. Will panic if the string is invalid, such as
+    /// incorrect length or invalid encoding
+    pub fn from_be_hex(hexstr: &str) -> Result<Self, ParseIntError> {
+        assert_eq!(hexstr.len(), (Self::BYTES as usize) * 2);
+
+        let mut val = Self::ZERO;
+        for i in 0..L {
+            let start = (L - 1 - i) * 8;
+            let stop = (L - i) * 8;
+            val.0[i] = Word::from_str_radix(&hexstr[start..stop], 16)?;
+        }
+
+        return Ok(val);
+    }
 
     /// Add "word * (base ** pow)" to self in-place. Return True iff the sum overflows the
     /// representable range by Self
@@ -206,9 +223,49 @@ impl<const L: usize> Uint<L> {
 
 pub type U256 = Uint<8>;
 
+impl<const L: usize> UpperHex for Uint<L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..L {
+            write!(f, "{:08X}", self.0[L - i - 1])?;
+        }
+        return Ok(());
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_from_be_hex() {
+        assert_eq!(
+            U256::from_be_hex("0000000000000000000000000000000000000000000000000000000000000000")
+                .unwrap(),
+            U256::ZERO,
+        );
+
+        assert_eq!(
+            U256::from_be_hex("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+                .unwrap(),
+            U256::MAX,
+        );
+
+        assert_eq!(
+            U256::from_be_hex("3333333322222222111111110000000076543210FEDCBA9889ABCDEF01234567")
+                .unwrap(),
+            Uint([
+                0x01234567, 0x89ABCDEF, 0xFEDCBA98, 0x76543210, 0x00000000, 0x11111111, 0x22222222,
+                0x33333333,
+            ])
+        );
+    }
+
+    #[test]
+    fn format_upper_hex() {
+        let expected_hexstr = "3333333322222222111111110000000076543210FEDCBA9889ABCDEF01234567";
+        let val = U256::from_be_hex(expected_hexstr).unwrap();
+        assert_eq!(format!("{:X}", val), expected_hexstr,);
+    }
 
     #[test]
     fn uint_overflowing_add() {
