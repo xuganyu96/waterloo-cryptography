@@ -275,6 +275,34 @@ impl<const L: usize> Uint<L> {
 
         return cnt;
     }
+
+    /// Euclidean division (self / other), returning the quotient and the remainder such that
+    /// `self = other * quotient + remainder`
+    /// There is no constant-time guarantee of any sort
+    /// It is probably also very inefficient
+    pub fn div_rem_vartime(&self, other: &Self) -> (Self, Self) {
+        let mut quo = Self::ZERO;
+        let mut rem = self.clone();
+        // TODO: this is the source of timing variability
+        let leading_zeros: usize = other.leading_zeros() as usize;
+        let mut i = 0;
+
+        while i <= leading_zeros {
+            let other_shift = leading_zeros - i;
+            let (shifted, _) = other.overflowing_shl(other_shift);
+            let (multiplier, _) = Self::ONE.overflowing_shl(other_shift);
+            if rem >= shifted {
+                let (diff, _) = rem.overflowing_sub(&shifted);
+                let (sum, _) = quo.overflowing_add(&multiplier);
+                rem = diff;
+                quo = sum;
+            }
+
+            i += 1;
+        }
+
+        return (quo, rem);
+    }
 }
 
 pub type U256 = Uint<8>;
@@ -455,5 +483,18 @@ mod tests {
         assert_eq!(U256::MAX.leading_zeros(), 0);
         assert_eq!(U256::ONE.leading_zeros(), 255);
         assert_eq!(U256::ZERO.leading_zeros(), 256);
+    }
+
+    #[test]
+    fn uint_div_rem() {
+        let (quo, rem) = U256::MAX.div_rem_vartime(&U256::ONE);
+        assert_eq!(quo, U256::MAX);
+        assert_eq!(rem, U256::ZERO);
+
+        let (two, _) = U256::ONE.overflowing_shl(1);
+        let (quo, rem) = U256::MAX.div_rem_vartime(&two);
+        let (half, _) = U256::MAX.overflowing_shr(1);
+        assert_eq!(quo, half);
+        assert_eq!(rem, U256::ONE);
     }
 }
