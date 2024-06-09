@@ -1,7 +1,7 @@
 //! My implementation of computational number theory
 //! Follows Henri Cohen's [A Course in Computational Algebraic Number Theory]
 
-use std::{fmt::UpperHex, num::ParseIntError};
+use std::{cmp::Ordering, fmt::UpperHex, num::ParseIntError};
 
 /// 32-bit architecture
 pub type Word = u32;
@@ -46,7 +46,7 @@ fn widening_mul(a: Word, b: Word) -> (Word, Word) {
 /// A big integer is an array of words
 /// We will tentatively use little-endian: lower index encodes less significant digits
 /// num = sum_{i=0}^{L-1}(Uint[i] * (Word ** i))
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Uint<const L: usize>([Word; L]);
 
 impl<const L: usize> Uint<L> {
@@ -194,7 +194,6 @@ impl<const L: usize> Uint<L> {
         return (shifted, shift >= (Self::BITS as usize));
     }
 
-    #[allow(unused_variables, unused_mut, unreachable_code)]
     pub fn overflowing_shr(&self, shift: usize) -> (Self, bool) {
         let mut shifted = Self::ZERO;
 
@@ -219,6 +218,26 @@ impl<const L: usize> Uint<L> {
 
         return (shifted, shift >= (Self::BITS as usize));
     }
+
+    /// Comparison, but running through all digits
+    pub fn cmp(&self, other: &Self) -> Ordering {
+        let mut i = L - 1;
+        let mut ordering = Ordering::Equal;
+        loop {
+            let local_cmp = self.0[i].cmp(&other.0[i]);
+            if ordering == Ordering::Equal {
+                ordering = local_cmp;
+            }
+
+            if i == 0 {
+                break;
+            } else {
+                i -= 1;
+            }
+        }
+
+        return ordering;
+    }
 }
 
 pub type U256 = Uint<8>;
@@ -229,6 +248,12 @@ impl<const L: usize> UpperHex for Uint<L> {
             write!(f, "{:08X}", self.0[L - i - 1])?;
         }
         return Ok(());
+    }
+}
+
+impl<const L: usize> PartialOrd for Uint<L> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -367,5 +392,16 @@ mod tests {
 
         assert_eq!(max.overflowing_shl(U256::BITS as usize), (U256::ZERO, true));
         assert_eq!(max.overflowing_shr(U256::BITS as usize), (U256::ZERO, true));
+    }
+
+    #[test]
+    fn ordering_and_equality() {
+        assert!(U256::ONE >= U256::ZERO);
+        assert!(U256::ZERO <= U256::ONE);
+        assert!(U256::ONE == U256::ONE);
+        assert!(U256::ONE != U256::ZERO);
+
+        assert_eq!(U256::ONE.cmp(&U256::ZERO), Ordering::Greater);
+        assert!(U256::ZERO < U256::ONE);
     }
 }
