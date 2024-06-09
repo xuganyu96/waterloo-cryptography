@@ -43,6 +43,26 @@ fn widening_mul(a: Word, b: Word) -> (Word, Word) {
     return (high, low);
 }
 
+/// Count the number of leading zero bits
+/// TODO: there is probably more efficient implementation but oh well
+const fn leading_zeros(word: Word) -> u32 {
+    let mut cnt = 0;
+    let mask = 1 << 31;
+    let mut shift = 0;
+
+    while shift < 32 {
+        if word & (mask >> shift) == 0 {
+            cnt += 1;
+        } else {
+            return cnt;
+        }
+
+        shift += 1;
+    }
+
+    return cnt;
+}
+
 /// A big integer is an array of words
 /// We will tentatively use little-endian: lower index encodes less significant digits
 /// num = sum_{i=0}^{L-1}(Uint[i] * (Word ** i))
@@ -224,9 +244,8 @@ impl<const L: usize> Uint<L> {
         let mut i = L - 1;
         let mut ordering = Ordering::Equal;
         loop {
-            let local_cmp = self.0[i].cmp(&other.0[i]);
             if ordering == Ordering::Equal {
-                ordering = local_cmp;
+                ordering = self.0[i].cmp(&other.0[i]);
             }
 
             if i == 0 {
@@ -237,6 +256,24 @@ impl<const L: usize> Uint<L> {
         }
 
         return ordering;
+    }
+
+    /// The number of leading zero bits
+    pub const fn leading_zeros(&self) -> u32 {
+        let mut cnt = 0;
+        let mut i = 0;
+
+        while i < L {
+            let word = self.0[L - i - 1];
+            let word_leading_zeros = leading_zeros(word);
+            cnt += word_leading_zeros;
+            if word != 0 {
+                return cnt;
+            }
+            i += 1;
+        }
+
+        return cnt;
     }
 }
 
@@ -403,5 +440,20 @@ mod tests {
 
         assert_eq!(U256::ONE.cmp(&U256::ZERO), Ordering::Greater);
         assert!(U256::ZERO < U256::ONE);
+    }
+
+    #[test]
+    fn word_leading_zeros() {
+        for cnt in 0..32 {
+            let (shifted, _) = Word::MAX.overflowing_shr(cnt);
+            assert_eq!(leading_zeros(shifted), cnt);
+        }
+    }
+
+    #[test]
+    fn uint_leading_zeros() {
+        assert_eq!(U256::MAX.leading_zeros(), 0);
+        assert_eq!(U256::ONE.leading_zeros(), 255);
+        assert_eq!(U256::ZERO.leading_zeros(), 256);
     }
 }
