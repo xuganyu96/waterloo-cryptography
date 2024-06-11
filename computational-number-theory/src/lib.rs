@@ -305,8 +305,6 @@ impl<const L: usize> Uint<L> {
     }
 }
 
-pub type U256 = Uint<8>;
-
 impl<const L: usize> UpperHex for Uint<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for i in 0..L {
@@ -321,6 +319,10 @@ impl<const L: usize> PartialOrd for Uint<L> {
         Some(self.cmp(other))
     }
 }
+
+pub mod ring;
+
+pub type U256 = Uint<8>;
 
 #[cfg(test)]
 mod tests {
