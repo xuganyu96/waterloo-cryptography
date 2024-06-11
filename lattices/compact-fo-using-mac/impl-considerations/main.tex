@@ -1,0 +1,87 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+\usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algpseudocode}
+\usepackage{multicol}
+
+% Common shortcuts
+\newcommand{\round}[1]{\left\lfloor {#1} \right\rceil}
+\newcommand{\abs}[1]{\left\lvert {#1} \right\rvert}
+\newcommand{\norm}[1]{\left\lvert {#1} \right\rvert}
+\newcommand{\Norm}[1]{\left\lVert {#1} \right\rVert}
+\newcommand{\monospace}{\texttt}
+\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
+% \newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
+\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
+\newcommand{\pke}{\monospace{PKE}}
+\newcommand{\keygen}{\monospace{KeyGen}}
+\newcommand{\encrypt}{\monospace{E}}
+\newcommand{\decrypt}{\monospace{D}}
+\newcommand{\kem}{\monospace{KEM}}
+\newcommand{\encap}{\monospace{Encap}}
+\newcommand{\decap}{\monospace{Decap}}
+\newcommand{\mac}{\monospace{MAC}}
+\newcommand{\sign}{\monospace{S}}
+\newcommand{\verify}{\monospace{V}}
+\newcommand{\pk}{\monospace{pk}}
+\newcommand{\sk}{\monospace{sk}}
+\newcommand{\llbrack}{[\![}
+\newcommand{\rrbrack}{]\!]}
+\newlength{\wdth}
+\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{Some implementation considerations}
+\author{Ganyu (Bruce) Xu (g66xu)}
+\date{June, 2024}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+Here are some considerations when implementing Kyber using ``encrypt-then-mac''
+
+\begin{enumerate}
+    \item Strong candidates for $\mac$ are HMAC and KMAC. From an efficiency standpoint KMAC is preferable because $\monospace{HMAC}(k, m) = H(k \Vert H(k \Vert m))$ makes two calls to the hash function, but $\monospace{KMAC}$ makes only one call to $\monospace{Shake}$. From a security and usability standpoint, HMAC is more widely used than KMAC. We can simply try both and report the results.
+    
+    \item Since the $\mac$ key is derived from the message, and in Kyber, the message $m \in \mathcal{M} = \{0,1\}^{256}$ is exactly 256-bit in length, we should choose the $\mac$ key to also be exactly 256-bit in length. Any longer key is unnecessary, since it then because easier to simply search for the message.
+    
+    \item There is argument about how HMAC is not affected by weakness in collision resistance in the underlying hash function\cite{krawczyk1997hmac} (the idea is that an adversary can only obtain a tag online, which is much slower than computing hash offline). In addition, collision resistance is less affected by quantum computing than preimage resistance is. The best classical attack on collision resistance is the birthday attack, with the expected number of steps being $2^{\frac{n}{2}}$ for an $n$-bit hash; the best quantum attack\cite{brassard1997quantum} is expected to take $2^{\frac{n}{3}}$ steps for an $n$-bit hash.
+\end{enumerate}
+
+With the three points above, I came up with this table for the recommended parameters. For classical 128-bit security and 256-bit security, I chose a 256-bit and 384-bit hash for the tag because TLS 1.2 pairs SHA-256 with AES-128 and SHA-384 with AES-256. For quantum computing, we can choose more conservative parameters (such as using 384-bit hash for 128-bit security and 512-bit hash for 256-bit security).
+
+\begin{table}[h]
+    \begin{center}
+        \begin{tabular}{c|c|c|c|c}
+            & key size & tag size & pre-image resistance & collision resistance \\
+            \hline
+            classical, 128-bit security & 256 & 256 & 256 & 128 \\
+            classical, 256-bit security & 256 & 384 & 384 & 192 \\
+            quantum, optimistic & 256 & 256 & 128 & $\approx 86$\\
+            quantum, moderate & 256 & 384 & 192 & 128\\
+            quantum, conservative & 256 & 512 & 256 & $\approx 171$\\
+        \end{tabular}
+    \end{center}
+    \caption{Parameter sizes and estimated security levels, all in bits}
+\end{table}
+
+\bibliographystyle{plain}
+\bibliography{./references.bib}
+\end{document}
