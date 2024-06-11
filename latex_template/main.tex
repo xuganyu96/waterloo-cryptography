@@ -11,17 +11,26 @@
 \usepackage{multicol}
 
 % Common shortcuts
-\newcommand{\round}[1]{\lfloor {#1} \rceil}
-\newcommand{\Norm}[1]{\Vert {#1} \Vert}
-\newcommand{\norm}[1]{\vert {#1} \vert}
+\newcommand{\round}[1]{\left\lfloor {#1} \right\rceil}
+\newcommand{\abs}[1]{\left\lvert {#1} \right\rvert}
+\newcommand{\norm}[1]{\left\lvert {#1} \right\rvert}
+\newcommand{\Norm}[1]{\left\lVert {#1} \right\rVert}
+\newcommand{\monospace}{\texttt}
 \newcommand{\var}[1]{\operatorname{Var}[{#1}]}
-\newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
-\newcommand{\keygen}{\operatorname{KeyGen}}
-\newcommand{\pk}{\operatorname{pk}}
-\newcommand{\sk}{\operatorname{sk}}
-\newcommand{\pco}{\operatorname{PCO}}
-\newcommand{\cvo}{\operatorname{CVO}}
-\newcommand{\coin}{\operatorname{COIN}}
+% \newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
+\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
+\newcommand{\pke}{\monospace{PKE}}
+\newcommand{\keygen}{\monospace{KeyGen}}
+\newcommand{\encrypt}{\monospace{E}}
+\newcommand{\decrypt}{\monospace{D}}
+\newcommand{\kem}{\monospace{KEM}}
+\newcommand{\encap}{\monospace{Encap}}
+\newcommand{\decap}{\monospace{Decap}}
+\newcommand{\mac}{\monospace{MAC}}
+\newcommand{\sign}{\monospace{S}}
+\newcommand{\verify}{\monospace{V}}
+\newcommand{\pk}{\monospace{pk}}
+\newcommand{\sk}{\monospace{sk}}
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
 \newlength{\wdth}
