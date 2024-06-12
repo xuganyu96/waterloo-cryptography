@@ -55,6 +55,53 @@
 %%%% TITLE %%%%%
 \maketitle
 
+\section{June 12, 2024 considerations}
+Since ML-KEM as defined in FIPS 203 uses the SHA3 family of hash functions and XOFs, we will continue using SHA3 instead of introducing new families of hash functions so the code size can be reduced (and so the codebase can be more manageable).
+
+Using HMAC with SHA3 does not make much sense from an efficiency perspective, especially given that KMAC exists and is approved by NIST\cite{kelsey2016sha}. We can use the SHA2 family in \monospace{HMAC-SHA256} for 128-bit classical security and \monospace{HMAC-SHA384} for 256-bit classical security to modify the \textit{90s-variant} of Kyber, but I doubt how meaningful this modification can be, given that NIST gave up on it anyways.
+
+NIST SP.800.185\cite{kelsey2016sha} specified two approved variations of KMAC. \monospace{KMAC-128} uses \monospace{Shake128} as the underlying XOF, and \monospace{KMAC-256} uses \monospace{Shake256} as the underlying XOF. \monospace{Shake128} and \monospace{Shake256} respectively claim 128-bit and 256-bit (classical) collision resistance, though \textbf{citation is needed}. I also don't know about \textbf{quantum attacks on Shake}. If time permits I will look into security under quantum attacks.
+
+So here are the updated parameter recommendations
+
+\begin{table}[h]
+    \begin{center}
+        \begin{tabular}{c|c|c|c|c|c}
+            Security level 
+                & \monospace{MAC} 
+                & Key size
+                & Tag size
+                & Preimage resistance
+                & Collision resistance \\
+                \hline
+            \monospace{Kyber512}
+                & \monospace{KMAC-128}
+                & 256
+                & 256
+                & 256 (c), 128 (q)
+                & 128 (c), 85.3 (q) \\
+                \hline
+            \monospace{Kyber768}
+                & \monospace{KMAC-256}
+                & 256
+                & 384
+                & 384 (c), 192 (q)
+                & 192 (c), 128 (q) \\
+                \hline
+            \monospace{Kyber1024}
+                & \monospace{KMAC-256}
+                & 256
+                & 512
+                & 512 (c), 256(q)
+                & 256 (c), 170.6 (q) \\
+                \hline
+        \end{tabular}
+    \end{center}
+    \caption{MAC recommendations}
+\end{table}
+
+
+\section{June 11, 2024 consdierations}
 Here are some considerations when implementing Kyber using ``encrypt-then-mac''
 
 \begin{enumerate}
@@ -67,7 +114,7 @@ Here are some considerations when implementing Kyber using ``encrypt-then-mac''
 
 With the three points above, I came up with this table for the recommended parameters. For classical 128-bit security and 256-bit security, I chose a 256-bit and 384-bit hash for the tag because TLS 1.2 pairs SHA-256 with AES-128 and SHA-384 with AES-256. For quantum computing, we can choose more conservative parameters (such as using 384-bit hash for 128-bit security and 512-bit hash for 256-bit security).
 
-\begin{table}[h]
+\begin{table}
     \begin{center}
         \begin{tabular}{c|c|c|c|c}
             & key size & tag size & pre-image resistance & collision resistance \\
