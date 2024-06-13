@@ -93,3 +93,12 @@ Finally, there are $2k + 1$ NTT operations. In summary, the cost of $\texttt{CPA
 |Kyber768|3|2|2|36 rounds|14 rounds|50 rounds|7|
 |Kyber1024|4|2|2|64 rounds|18 rounds|82 rounds|9|
 
+## `CPAPKE.decrypt` cost
+The decryption costs $2k$ $\texttt{NTT}$ operations. No Keccak permutation is needed.
+
+## `CCAKEM.encap` cost
+The encapsulation algorithm calls hash function $H$ and $G$, then calls $\texttt{CPAPKE.encrypt}$.
+
+Hash function $H$ and $G$ are instantiated with $\texttt{SHA3-256}$ (rate 1088 bits) and $\texttt{SHA3-512}$ (rate 576 bits) respectively.
+
+## `CCAKEM.decap` cost
