@@ -56,7 +56,11 @@ The challenge encryption $c^\ast$ in the \monospace{OW-PCVA} game is computed us
 
 Furthermore, I propose that the \monospace{OW-PCVA} adversary also has no way of issuing signing queries for $k^\ast_\mac$. The adversary can run $\encrypt$ or $\encap$ offline, but the tags generated from $\encrypt$ or $\encap$ will be associated with a chosen message or a random message, which has $\frac{1}{\norm{\mathcal{M}_\pke}}$ probability of being $m^\ast$. In other words, for the challenge $\mac$ key, the adversary will only see one valid message-tag pair, which is the challenge message $(c^\ast, t^\ast)$.
 
+This is the literal definition of a one-time MAC. All many-time MAC are valid one-time MAC, but there are specific one-time MAC constructions that might be even more computationally efficient. \textbf{GMAC and Poly1305 with 256-bit keys and 128-bit tag} are great candidates, as are any Carter-Wegman constructions $t = h(m) \oplus \monospace{PRF}(r, k)$.
 
+We need 256 bits for the $\mac$ key, because checking a $\mac$ key can be done offline (the adversary takes a guess at the key, computes the tag using the guessed key and see if it matches the known tag) and is therefore vulnerable to Grover's algorithm.
+
+On the other hand, a 128-bit tag is not a security concern. This is because for one, the adversary has no way to issuing additional signing queries, so there is no concern for collision. The adversary can use the decapsulation oracle to check whether a forgery $(\hat{c}, \hat{t})$ is valid, but assuming that the $\mac$ is an ideal PRF, the adversary will have no better way of forgery than random guesses at the tag value. In an actual setting, it is easy for the peer to implement some rate limiting such that after only a small number of invalid ciphertext-tag pairs the adversary will simply be blocked.
 
 \section{Choice of MAC}
 When thinking about choosing a MAC there are two parameters that we need to care about: the key size and the tag size.
