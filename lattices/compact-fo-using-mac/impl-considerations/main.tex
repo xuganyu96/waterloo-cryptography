@@ -11,14 +11,7 @@
 \usepackage{multicol}
 
 % Common shortcuts
-\newcommand{\round}[1]{\left\lfloor {#1} \right\rceil}
-\newcommand{\abs}[1]{\left\lvert {#1} \right\rvert}
-\newcommand{\norm}[1]{\left\lvert {#1} \right\rvert}
-\newcommand{\Norm}[1]{\left\lVert {#1} \right\rVert}
 \newcommand{\monospace}{\texttt}
-\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
-% \newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
-\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
 \newcommand{\pke}{\monospace{PKE}}
 \newcommand{\keygen}{\monospace{KeyGen}}
 \newcommand{\encrypt}{\monospace{E}}
@@ -26,15 +19,18 @@
 \newcommand{\kem}{\monospace{KEM}}
 \newcommand{\encap}{\monospace{Encap}}
 \newcommand{\decap}{\monospace{Decap}}
+\newcommand{\etm}{\monospace{EtM}}  % encrypt-then-mac
 \newcommand{\mac}{\monospace{MAC}}
-\newcommand{\sign}{\monospace{S}}
-\newcommand{\verify}{\monospace{V}}
+\newcommand{\sign}{\monospace{MAC}}
+\newcommand{\verify}{\monospace{MAC.Verify}}
 \newcommand{\pk}{\monospace{pk}}
 \newcommand{\sk}{\monospace{sk}}
+\newcommand{\pco}{\monospace{PCO}}
+\newcommand{\cvo}{\monospace{CVO}}
+\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
-\newlength{\wdth}
-\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
+\newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
@@ -49,85 +45,37 @@
 
 \title{Some implementation considerations}
 \author{Ganyu (Bruce) Xu (g66xu)}
-\date{June, 2024}
+% \date{June, 2024}
 
 \begin{document}
 %%%% TITLE %%%%%
 \maketitle
 
-\section{June 12, 2024 considerations}
-Since ML-KEM as defined in FIPS 203 uses the SHA3 family of hash functions and XOFs, we will continue using SHA3 instead of introducing new families of hash functions so the code size can be reduced (and so the codebase can be more manageable).
+\section{One-time MAC}
+The challenge encryption $c^\ast$ in the \monospace{OW-PCVA} game is computed using a uniformly randomly sampled plaintext message $m^\ast \leftsample \mathcal{M}_\pke$, and a $\mac$ key $k_\mac$ derived from said plaintext $m^\ast$. Assuming that $m^\ast$ is not already known (otherwise the \monospace{OW-CPA} security of the underlying $\pke$ is already broken), then $k^\ast_\mac$ is also not known, so the \monospace{OW-PCVA} adversary has no way to evaluate the $\mac$ under $k^\ast_\mac$ offline.
 
-Using HMAC with SHA3 does not make much sense from an efficiency perspective, especially given that KMAC exists and is approved by NIST\cite{kelsey2016sha}. We can use the SHA2 family in \monospace{HMAC-SHA256} for 128-bit classical security and \monospace{HMAC-SHA384} for 256-bit classical security to modify the \textit{90s-variant} of Kyber, but I doubt how meaningful this modification can be, given that NIST gave up on it anyways.
-
-NIST SP.800.185\cite{kelsey2016sha} specified two approved variations of KMAC. \monospace{KMAC-128} uses \monospace{Shake128} as the underlying XOF, and \monospace{KMAC-256} uses \monospace{Shake256} as the underlying XOF. \monospace{Shake128} and \monospace{Shake256} respectively claim 128-bit and 256-bit (classical) collision resistance, though \textbf{citation is needed}. I also don't know about \textbf{quantum attacks on Shake}. If time permits I will look into security under quantum attacks.
-
-So here are the updated parameter recommendations
-
-\begin{table}[h]
-    \begin{center}
-        \begin{tabular}{c|c|c|c|c|c}
-            Security level 
-                & \monospace{MAC} 
-                & Key size
-                & Tag size
-                & Preimage resistance
-                & Collision resistance \\
-                \hline
-            \monospace{Kyber512}
-                & \monospace{KMAC-128}
-                & 256
-                & 256
-                & 256 (c), 128 (q)
-                & 128 (c), 85.3 (q) \\
-                \hline
-            \monospace{Kyber768}
-                & \monospace{KMAC-256}
-                & 256
-                & 384
-                & 384 (c), 192 (q)
-                & 192 (c), 128 (q) \\
-                \hline
-            \monospace{Kyber1024}
-                & \monospace{KMAC-256}
-                & 256
-                & 512
-                & 512 (c), 256(q)
-                & 256 (c), 170.6 (q) \\
-                \hline
-        \end{tabular}
-    \end{center}
-    \caption{MAC recommendations}
-\end{table}
+Furthermore, I propose that the \monospace{OW-PCVA} adversary also has no way of issuing signing queries for $k^\ast_\mac$. The adversary can run $\encrypt$ or $\encap$ offline, but the tags generated from $\encrypt$ or $\encap$ will be associated with a chosen message or a random message, which has $\frac{1}{\norm{\mathcal{M}_\pke}}$ probability of being $m^\ast$. In other words, for the challenge $\mac$ key, the adversary will only see one valid message-tag pair, which is the challenge message $(c^\ast, t^\ast)$.
 
 
-\section{June 11, 2024 consdierations}
-Here are some considerations when implementing Kyber using ``encrypt-then-mac''
 
-\begin{enumerate}
-    \item Strong candidates for $\mac$ are HMAC and KMAC. From an efficiency standpoint KMAC is preferable because $\monospace{HMAC}(k, m) = H(k \Vert H(k \Vert m))$ makes two calls to the hash function, but $\monospace{KMAC}$ makes only one call to $\monospace{Shake}$. From a security and usability standpoint, HMAC is more widely used than KMAC. We can simply try both and report the results.
-    
-    \item Since the $\mac$ key is derived from the message, and in Kyber, the message $m \in \mathcal{M} = \{0,1\}^{256}$ is exactly 256-bit in length, we should choose the $\mac$ key to also be exactly 256-bit in length. Any longer key is unnecessary, since it then because easier to simply search for the message.
-    
-    \item There is argument about how HMAC is not affected by weakness in collision resistance in the underlying hash function\cite{krawczyk1997hmac} (the idea is that an adversary can only obtain a tag online, which is much slower than computing hash offline). In addition, collision resistance is less affected by quantum computing than preimage resistance is. The best classical attack on collision resistance is the birthday attack, with the expected number of steps being $2^{\frac{n}{2}}$ for an $n$-bit hash; the best quantum attack\cite{brassard1997quantum} is expected to take $2^{\frac{n}{3}}$ steps for an $n$-bit hash.
-\end{enumerate}
+\section{Choice of MAC}
+When thinking about choosing a MAC there are two parameters that we need to care about: the key size and the tag size.
 
-With the three points above, I came up with this table for the recommended parameters. For classical 128-bit security and 256-bit security, I chose a 256-bit and 384-bit hash for the tag because TLS 1.2 pairs SHA-256 with AES-128 and SHA-384 with AES-256. For quantum computing, we can choose more conservative parameters (such as using 384-bit hash for 128-bit security and 512-bit hash for 256-bit security).
+Whether working with Round 3 Kyber \cite{avanzi2019crystals} or ML-KEM \cite{key2023mechanism}, the message is always 256 bits in size, and since the MAC key is derived from the message, the MAC key should also always be 256 bits. A 256-bit MAC key is great since both GCM and Poly1305 accepts 256-bit MAC keys.
 
-\begin{table}
-    \begin{center}
-        \begin{tabular}{c|c|c|c|c}
-            & key size & tag size & pre-image resistance & collision resistance \\
-            \hline
-            classical, 128-bit security & 256 & 256 & 256 & 128 \\
-            classical, 256-bit security & 256 & 384 & 384 & 192 \\
-            quantum, optimistic & 256 & 256 & 128 & $\approx 86$\\
-            quantum, moderate & 256 & 384 & 192 & 128\\
-            quantum, conservative & 256 & 512 & 256 & $\approx 171$\\
-        \end{tabular}
-    \end{center}
-    \caption{Parameter sizes and estimated security levels, all in bits}
-\end{table}
+Reasoning about the security implication of the tag size is more nuanced.
+
+\subsection{Generic collision resistance}
+We can model a MAC has a keyed hash function, which means that for a fixed MAC key, we can argue about the seurity of a MAC using the standard security notions for hash function: pre-image resistance, 2nd pre-image resistance, and collision resistance.
+
+However, there is an important distinction between the security of a MAC as a keyed hash function and the security of a hash function. With MAC as a keyed hash function, assuming that the adversary doesn't already have a way to evaluating this function offline (otherwise forgery is trivial), \textbf{it has to query the signing oracle to evaluate the hash function}. Given an n-bit tag, a generic birthday attack takes $2^{\frac{n}{2}}$ evaluations to find a collision, and the BHT algorithm \cite{brassard1997quantum} takes $2^{\frac{n}{3}}$ evaluations to find a collision, but neither attack is relevant, because "evaluation" means that the message-tag pair is queried from the signing oracle and \textbf{does not count as forgery}.
+
+This means that we only need to care about preimage resistance for our MAC (as a keyed hash function), 
+
+\subsection{Offline versus online attacks}
+There should be a distinction between attacks that involve interaction with another party (online) versus attacks that can be done without such interaction (offline). When we measure the security of a scheme by the number of computational steps needed to carry out an attack, we specifically mean an offline attack. \textbf{An online attack with substantial number of interactions can be trivially thwarted} because the other party can implement rate limiting with exponential backoff, so after only a few (think fewer than 10 password tries) invalid interactions, the other party will effectively block the adversary from further interactions, thus stopping the attack in the track.
+
+\textbf{Adversary obtains $(c, t)$}, tampers with $c$ to obtain $c^\prime$ which still correspond with the same plaintext $m$, which means that $t^\prime$ should be created under the same key $(c, t)$ is created.
 
 \bibliographystyle{plain}
 \bibliography{./references.bib}
