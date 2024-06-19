@@ -1,3 +1,6 @@
+# ML-KEM with MAC
+I copied this implementation from [RustCrypto/ML-KEM](https://github.com/RustCrypto/kems) for research purposes. Mostly I want to change the implementation to use a MAC for ciphertext integrity and replace the expensive re-encryption with a MAC computation, which is hopefully faster.
+
 # [RustCrypto]: ML-KEM
 
 [![crate][crate-image]][crate-link]
