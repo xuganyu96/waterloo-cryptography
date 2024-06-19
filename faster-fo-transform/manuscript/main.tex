@@ -1,0 +1,533 @@
+% TODO: instead of signing the ciphertext, how about signing a hash of the ciphertext?
+% TODO: Kyber round 3's implementation already contains H(c), we can just use that for the MAC
+% TODO: need to look into using GCM as a more efficient MAC
+% TODO: what is the quantum security of the various hash functions and how do they impact the strength of the FO transform?
+% TODO: Need to read the rest of the U transformation since Kyber round 3 uses U^{\not\bot} but ML-KEM (FIPS 203) uses U^{\not\bot}_m, which removed the hash of the ciphertext
+
+%%%% IACR Transactions TEMPLATE %%%%
+% This file shows how to use the iacrtrans class to write a paper.
+% Written by Gaetan Leurent gaetan.leurent@inria.fr (2020)
+% Public Domain (CC0)
+
+
+%%%% 1. DOCUMENTCLASS %%%%
+% \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
+\documentclass[floatrow,journal=tches,submission]{iacrtrans}
+%%%% NOTES:
+% - Change "journal=tosc" to "journal=tches" if needed
+% - Change "submission" to "final" for final version
+% - Add "notanonymous" to reveal authors
+% - Add "spthm" for LNCS-like theorems
+
+
+%%%% 2. PACKAGES %%%%
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+% \usepackage[demo]{graphicx}
+
+%%%% 3. AUTHOR, INSTITUTE %%%%
+\author{
+    Ganyu Xu\inst{1}
+    \and Guang Gong\inst{1}
+    \and Kalikinkar Mandal\inst{2}
+}
+\institute{
+  University of Waterloo, Waterloo, Canada, \email{{g66xu,ggong}@uwaterloo.ca}
+  \and
+  University of New Brunswick, New Brunswick, Canada, \email{kmandal@unb.ca}
+}
+%%%% NOTES:
+% - We need a city name for indexation purpose, even if it is redundant
+%   (eg: University of Atlantis, Atlantis, Atlantis)
+% - \inst{} can be omitted if there is a single institute,
+%   or exactly one institute per author
+
+% Custom commands
+\newcommand{\monospace}{\texttt}
+\newcommand{\pke}{\monospace{PKE}}
+\newcommand{\keygen}{\monospace{KeyGen}}
+\newcommand{\encrypt}{\monospace{E}}
+\newcommand{\decrypt}{\monospace{D}}
+\newcommand{\kem}{\monospace{KEM}}
+\newcommand{\encap}{\monospace{Encap}}
+\newcommand{\decap}{\monospace{Decap}}
+\newcommand{\etm}{\monospace{EtM}}  % encrypt-then-mac
+\newcommand{\mac}{\monospace{MAC}}
+\newcommand{\sign}{\monospace{MAC}}
+\newcommand{\verify}{\monospace{MAC.Verify}}
+\newcommand{\pk}{\monospace{pk}}
+\newcommand{\sk}{\monospace{sk}}
+\newcommand{\pco}{\monospace{PCO}}
+\newcommand{\cvo}{\monospace{CVO}}
+\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
+\newcommand{\llbrack}{[\![}
+\newcommand{\rrbrack}{]\!]}
+\newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
+\newcommand{\fotplus}{$\monospace{FOT}^+$}
+
+%%%% 4. TITLE %%%%
+\title{
+Fast Fujisaki-Okamoto transformation  using encrypt-then-mac and applications to Kyber}
+%%%% NOTES:
+% - If the title is too long, or includes special macro, please
+%   provide a "running title" as optional argument: \title[Short]{Long}
+% - You can provide an optional subtitle with \subtitle.
+
+\begin{document}
+
+\maketitle
+
+
+%%%% 5. KEYWORDS %%%%
+\keywords{
+    Key encapsulation mechanism, 
+    post-quantum cryptography,
+    lattice cryptography,
+    Fujisaki-Okamoto transformation
+}
+
+
+%%%% 6. ABSTRACT %%%%
+\begin{abstract}
+  The modular Fujisaki-Okamoto (FO) transformation takes public-key encryption with weaker security and constructs a key encapsulation mechanism (KEM) with indistinguishability under adaptive chosen ciphertext attacks. While the modular FO transform enjoys tight security bound and quantum resistance, it also suffers from computational inefficiency due to using de-randomization and re-encryption for providing ciphertext integrity. In this work, we propose an alternative modular FO transformation that replaces re-encryption with a message authentication code (MAC) and prove the security bound of our construction. We then instantiate a concrete instance with ML-KEM and show that when re-encryption incurs significant computational cost, our construction provides substantial runtime speedup and reduced memory footprint.
+\end{abstract}
+
+
+%%%% 7. PAPER CONTENT %%%%
+\section{Introduction}
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals} (standardized by NIST into ML-KEM \cite{key2023mechanism}).
+
+The current state of the FO transformation enjoys tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many open questions. One such problem is the use of re-encryption for providing ciphertext integrity \cite{bernstein2018towards}, which requires the decryption/decapsulation to run the encryption routine as a subroutine. In many post-quantum schemes, such as Kyber, the encryption routine is substantially computationally more expensive than the decryption routine.
+
+The problem of ciphertext integrity was solved in symmetric cryptography. Given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using ``encrypt-then-mac'' provides authenticated encryption \cite{bellare2000authenticated}. We took inspiration from this strategy and applied a similar technique to provide ciphertext integrity for a public-key encryption scheme, which then translates to an \monospace{IND-CCA} secure $\kem$. Using a message authentication code for ciphertext integrity replaces the re-encryption step in decryption with the computation of a tag, which should offer significant performance improvements while maintaining comparable level of security.
+
+The main challenge in applying ``encrypt-then-mac'' to public-key cryptography is the lack of a pre-shared $\mac$ key. We proposed to derive the shared $\mac$ key by hashing the plaintext message. We will prove in section \ref{sec:main-results} that, under the random oracle model, the $\mac$ key is securely hidden behind the hash function, and producing a valid pair of ciphertext and tag without full knowledge of the plaintext constitutes a forgery attack on the message authentication code. Thanks to the modular construction in \cite{hofheinz2017modular}, providing ciphertext integrity in the underlying encryption scheme gives us an \monospace{IND-CCA} secure $\kem$ for free.
+
+In section \ref{sec:exp-results}, we instantiate concrete instances of our proposed transformation by modifying ML-KEM. We will demonstrate that, at the cost of small increase in encryption runtime and ciphertext size, our construction reduces both the runtime and memory footprint of the decryption routine. % TODO: need to write more?
+
+\section{Preliminaries and previous results}
+
+\subsection{Public-key encryption scheme}
+We define a public key encryption scheme $\pke$ to be a collection of three routines $(\keygen, \encrypt, \decrypt)$ defined over a finite message space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Many encryption routines are probabilistic, and we define their source of randomness to come from some coin space $\mathcal{R}$.
+
+The encryption routine $\encrypt(\pk, m)$ takes a public key, a plaintext message, and outputs a ciphertext $c \in \mathcal{C}$. Where the encryption routine is probabilistic, specifying a pseudorandom seed $r \in \mathcal{R}$ will make the encryption routine behave deterministically. The decryption routine $\decrypt(\sk, c)$ takes a secret key, a ciphertext, and outputs the decryption $\hat{m}$ if the ciphertext is valid under the given secret key, or the rejection symbol $\bot$ if the ciphertext is invalid.
+
+\subsubsection{Correctness}
+It is common to require a $\pke$ to be perfectly correct, meaning that for all possible keypairs $(\pk, \sk)$ and plaintext messages $m \in \mathcal{M}$, $\decrypt(\sk, \encrypt(\pk, m)) = m$ at all times. However, some encryption schemes, including many popular lattice-based schemes, admit a non-zero probability of decryption failure: $\decrypt(\sk, \encrypt(\pk, m)) \neq m$. Furthermore, \cite{hofheinz2017modular} and \cite{avanzi2019crystals} explained how decryption failure played a role in an adversary's advantage. In this paper, we inherit the definition for correctness from \cite{hofheinz2017modular}:
+
+\begin{definition}[$\delta$-correctness]\label{def:delta-correctness}
+    A public key encryption scheme $\pke$ is $\delta$-correct if
+
+    \begin{equation*}
+        \mathbf{E}[
+            \max_{m \in \mathcal{M}} P[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)]
+        ] \leq \delta
+    \end{equation*}
+
+    Where the expectation is taken over the probability distribution of keypairs $(\pk, \sk) \leftsample \keygen()$
+\end{definition}
+
+\subsubsection{Security}
+We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\monospace{OW-ATK}$ and the $\monospace{IND-CPA}$ game as they pertain to a public key encryption scheme. In later section we will define the $\monospace{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
+
+In the \monospace{OW-ATK} game, an adversary's goal is to recover the decryption of a randomly generated ciphertext.
+
+\begin{figure}
+    \centering
+
+    \begin{algorithm}[H]
+        \caption{
+            The $\monospace{OW-ATK}$ game
+        }\label{alg:pke-ow-atk-game}
+        \begin{algorithmic}[1]
+            \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+            \State $m^\ast \leftsample \mathcal{M}$
+            \State $c^\ast \leftsample \encrypt(\pk, m)^\ast$
+            \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\monospace{ATK}}(1^\lambda, \pk, c^\ast)$
+            \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+    
+    \caption{The \monospace{OW-ATK} game}
+    \label{fig:pke-ow-atk-game}
+\end{figure}
+
+The adversary $\mathcal{A}$ with access to oracle(s) $\mathcal{O}_\monospace{ATK}$ wins the game if its guess $\hat{m}$ is equal to the challenge plaintext $m^\ast$. The \textit{advantage} $\epsilon_\monospace{OW-ATK}$ of an adversary in this game is the probability that it wins the game.
+
+The choice of oracle(s) $\mathcal{O}_\monospace{ATK}$ depends on the choice of $\monospace{ATK}$. Specifically:
+
+\begin{equation*}
+    \mathcal{O}_\monospace{ATK} = \begin{cases}
+        - & \monospace{ATK} = \monospace{CPA} \\
+        \monospace{PCO} & \monospace{ATK} = \monospace{PCA} \\
+        \monospace{CVO} & \monospace{ATK} = \monospace{VA} \\
+        \monospace{PCO, CVO} & \monospace{ATK} = \monospace{PCVA}
+    \end{cases}
+\end{equation*}
+
+Where the definitions of plaintext-checking oracle $\monospace{PCO}$ and the ciphertext-validation oracle $\monospace{CVO}$ are inherited from \cite{hofheinz2017modular}
+
+\begin{figure}
+    \begin{floatrow}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}\label{alg:pco}
+                \begin{algorithmic}[1]
+                    \State \Return $\llbrack \decrypt(\sk, c) = m \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        }
+        {\caption{The Plaintext-Checking Oracle $\pco$}}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\cvo(c \in \mathcal{C})$}\label{alg:cvo}
+                \begin{algorithmic}[1]
+                    \State \Return $\llbrack \decrypt(\sk, c) \in \mathcal{M} \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        }
+        {\caption{the Ciphertext-Validation Oracle $\cvo$}}
+    \end{floatrow}
+    \label{fig:pco-and-cvo}
+\end{figure}
+
+In the \monospace{IND-CPA} game, an adversary's goal is to distinguish the encryption of one message from the encryption of another message. Given the public key, the adversary outputs two adversarially chosen messages and obtains the encryption of a random choice between these two messages. The adversary wins the \monospace{IND-CPA} game if it correctly identifies which message the encryption is obtained from.
+
+\begin{algorithm}
+    \caption{The $\monospace{IND-CPA}$ game}\label{alg:pke-ind-cpa-game}
+
+    \begin{algorithmic}[1]
+        \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+        \State $(m_0, m_1) \leftsample \mathcal{A}(a^\lambda, \pk)$
+        \State $b \leftsample \{0, 1\}$
+        \State $c^\ast \leftsample \encrypt(\pk, m_b)$
+        \State $\hat{b} \leftsample \mathcal{A}(1^\lambda, \pk, c^\ast)$
+        \State \Return $\llbrack b = \hat{b} \rrbrack$
+    \end{algorithmic}
+\end{algorithm}
+
+The \textit{advantage} $\epsilon_\monospace{IND-CPA}$ of an \monospace{IND-CPA} adversary $\mathcal{A}$ is defined by
+
+\begin{equation*}
+    \epsilon_\monospace{IND-CPA} = \norm{
+        P[\hat{b} = b] - \frac{1}{2}
+    }
+\end{equation*}
+
+\subsection{Key encapsulation mechanism}
+A key encapsulation mechanism $\kem$ is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the encapsulation (or ciphertext) of the shared secret $k \in \mathcal{K}$. $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $k$ if the ciphertext is valid, or the rejection symbol $\bot$ if the ciphertext is invalid.
+
+The IND-CCA security of a $\kem$ is defined by an adversarial game in which an adversary's goal is to distinguish pseudorandom shared secret (generated by running the $\encap$ routine) and a truly random value.
+
+\begin{algorithm}
+    \caption{
+        \monospace{IND-CCA} game for \kem
+    }\label{alg:kem-ind-cca-game}
+    
+    \begin{algorithmic}[1]
+        \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+        \State $(c^\ast, k_0) \leftsample \encap(\pk)$
+        \State $k_1 \leftsample \mathcal{K}$
+        \State $b \leftsample \{0, 1\}$
+        \State $\hat{b} \leftsample \mathcal{A}_\monospace{IND-CCA}^{\mathcal{O}_\decap}(
+            1^\lambda, \pk, c^\ast, k_b
+        )$
+        \State \Return $\llbrack \hat{b} = b \rrbrack$
+    \end{algorithmic}
+\end{algorithm}
+
+The decapsulation oracle $\mathcal{O}^\decap$ takes a ciphertext $c$ and returns the output of the $\decap$ routine using the secret key. The advantage $\epsilon_\monospace{IND-CCA}$ of an IND-CCA adversary $\mathcal{A}_\monospace{IND-CCA}$ is defined by
+
+\begin{equation*}
+    \epsilon_\monospace{IND-CCA} = \norm{
+        P[\hat{b} = b] - \frac{1}{2}
+    }
+\end{equation*}
+
+\subsection{Message authentication code}
+A message authentication code $\mac$ is a collection of routines $(\sign, \verify)$ defined over some key space $\mathcal{K}$, some message space $\mathcal{M}$, and some tag space $\mathcal{T}$. The signing routine $\sign(k, m)$ takes the secret key $k \in \mathcal{K}$ and some message, and outputs a tag $t$. The verification routine $\verify(k, m, t)$ takes the triplet of secret key, message, and tag, and outputs $\monospace{1}$ if the message-tag pair is valid under the secret key, or $\monospace{0}$ otherwise.
+
+The security of a MAC is defined in an adversarial game in which an adversary, with access to some signing oracle $\mathcal{O}_\sign(m)$, tries to forge a new valid message-tag pair that has never been queried before. The existential unforgeability under chosen message attack (EUF-CMA) game is shown below:
+
+\begin{algorithm}
+    \caption{The EUF-CMA game}\label{alg:mac-euf-cma-game}
+
+    \begin{algorithmic}[1]
+        \State $k^\ast \leftsample \mathcal{K}$
+        \State $(\hat{m}, \hat{t}) \leftsample \mathcal{A}^{\mathcal{O}_\sign}()$
+        \State \Return $
+            \llbrack \verify(k^\ast, \hat{m}, \hat{t}) 
+            \monospace{ and } (\hat{m}, \hat{t}) \not\in \mathcal{O}_\sign
+            \rrbrack
+        $
+    \end{algorithmic}
+\end{algorithm}
+
+The advantage $\epsilon_\monospace{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
+
+\subsection{Modular Fujisaki-Okamoto transformation}
+The Fujisaki-Okamoto transformation (FOT) \cite{fujisaki1999secure} is a generic transformation that takes a $\pke$ with weaker security (such as \monospace{OW-CPA} or \monospace{IND-CPA}) and outputs a $\pke$ with stronger security. A later variation \cite{hofheinz2017modular} improved the original construction in \cite{fujisaki1999secure} by accounting for decryption failures, tightening security bounds, and providing a modular construction that first transforms \monospace{OW-CPA}/\monospace{IND-CPA} $\pke$ into \monospace{OW-PCVA} $\pke$ by providing ciphertext integrity through re-encryption (the \monospace{T} transformation), then transforming the \monospace{OW-PCVA} $\pke$ into an \monospace{IND-CCA} $\kem$ (the \monospace{U} transformation).
+
+% TODO: Restating the algorithm seems redundant
+
+Particularly relevant to our results are two variations of the \monospace{U} transformation: $\monospace{U}^\bot$ (KEM with explicit rejection) and $\monospace{U}^{\not\bot}$ (KEM with implicit rejection). If $\pke$ is \monospace{OW-PCVA} secure, then $\monospace{U}^\bot$ transforms $\pke$ into an \monospace{IND-CCA} secure $\kem^\bot$:
+
+\begin{theorem}\label{thm:u-bot}
+    For any \monospace{IND-CCA} adversary $\mathcal{A}_\kem$ against $\kem^\bot$ with advantage $\epsilon_\kem$ issuing at most $q_D$ decapsulation queries and at most $q_H$ hash queries, there exists an \monospace{OW-PCVA} adversary $\mathcal{A}_\pke$ against the underlying $\pke$ with advantage $\epsilon_\pke$ that makes at most $q_H$ queries to $\pco$ and $\cvo$ such that
+
+    \begin{equation*}
+        \epsilon_\kem \leq \epsilon_\pke
+    \end{equation*}
+\end{theorem}
+
+Similarly, if $\pke$ is \monospace{OW-PCA} secure, then $\monospace{U}^{\not\bot}$ transforms $\pke$ into an \monospace{IND-CCA} secure $\kem^{\not\bot}$
+
+\begin{theorem}\label{thm:u-notbot}
+    For any \monospace{IND-CCA} adversary $\mathcal{A}_\kem$ against $\kem^{\not\bot}$ with advantage $\epsilon_\kem$ issuing at most $q_D$ decapsulation queries and at most $q_H$ hash queries, there exists an \monospace{OW-CPA} adversary $\mathcal{A}_\pke$ against the underlying $\pke$ with advantage $\epsilon_\pke$ issuing at most $q_H$ queries to $\pco$ such that:
+
+    \begin{equation*}
+        \epsilon_\kem \leq \frac{q_H}{\norm{\mathcal{M}_\pke}} + \epsilon_\pke
+    \end{equation*}
+\end{theorem}
+
+The modularity of the \monospace{T} and \monospace{U} transformation allows us to tweak only the \monospace{T} transformation (see section \ref{sec:main-results}), obtain \monospace{OW-PCVA} security, then automatically get \monospace{IND-CCA} security for free. This means that we can directly apply our contribution to existing KEM's already using this modular transformation, such as ML-KEM \cite{key2023mechanism}, and obtain performance improvements while maintaining comparable levels of security (see section \ref{sec:exp-results}).
+
+\section{FO transform with encrypt-then-mac for achieving ciphertext integrity}\label{sec:main-results}
+In this section, we present two different encrypt-then-mac modes using symmetric-key approaches   to achieve ciphertext integrity, which result in two different fast FOTs.  The first method is to apply an MAC over ciphertext [???], referred to as \emph{standard Enc-then-MAC}, and the second method is adopted from GCM [??] mode in authenticated encryption (AE) using polynomial hash, referred to as \emph{poly Enc-then-MAC}. In other words, we will replace the public-key re-encryption  in FOT  by symmetric-key MAC approaches, and the resulting transform is referred to as \emph{FOT+}. 
+
+\subsection{FOT+ in standard encrypt-then-MAC}
+
+
+Let $\pke(\keygen, \encrypt, \decrypt)$ be a probabilistic public-key encryption scheme defined over message space $\mathcal{M}_\pke$, ciphertext space $\mathcal{C}$, and coin space $\mathcal{R}$. Let $\mac$ be a deterministic and perfectly correct message authentication code defined over key space $\mathcal{K}_\mac$, message space $\mathcal{M}_\mac$, and tag space $\mathcal{T}_\mac$. Let $G: \mathcal{M}_\pke \rightarrow \mathcal{R} \times \mathcal{K}_\mac$ be a hash function that hashes a plaintext message into a pseudorandom coin and a $\mac$ key. The $\monospace{T}_\etm[\pke, \mac, G]$ transformation takes the input $\pke$, $\mac$, and hash function $G$, and outputs a public-key encryption scheme $\pke_\etm(\keygen, \encrypt_\etm, \decrypt_\etm)$ where as the key generation routine remains unchanged, and the encryption/decryption routines are as follows:
+
+\begin{algorithm}
+    \caption{$\encrypt_\etm$(\pk, m)}\label{alg:encrypt-etm}
+
+    \begin{algorithmic}[1]
+        \State $(r, k) \leftarrow G(m)$
+        \State $c \leftarrow \encrypt(\pk, m; r)$
+        \State $t \leftarrow \sign(k, c)$
+        \State \Return $(c, t)$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}
+    \caption{$\decrypt_\etm$(\sk, (c, t))}\label{alg:decrypt-etm}
+
+    \begin{algorithmic}[1]
+        \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+        \State $(\hat{r}, \hat{k}) \leftarrow G(m)$
+        \If {$\verify(\hat{k}, c, t) = 0$}
+            \State \Return $\bot$
+        \EndIf
+        \State \Return $\hat{m}$
+    \end{algorithmic}
+\end{algorithm}
+
+We claim that if the input $\pke$ is OW-CPA secure and $\mac$ is existentially unforgeable, then under the random oracle model, $\pke_\etm$ is OW-PCVA secure with non-tight security reduction.
+
+\begin{theorem}\label{thm:if-owcpa-then-owpcva}
+    If $\pke$ is $\delta$-correct, then $\pke_\etm$ is $\delta$-correct. In addition, for every \monospace{OW-PCVA} adversary $\mathcal{A}_\monospace{OW-PCVA}$ against $\pke_\etm$ that makes $q_P$ PCO queries, $q_V$ CVO queries, $q_G$ hash queries to $G$, and that has advantage $\epsilon_\monospace{OW-PCVA}$ there exists an existential forgery adversary $\mathcal{A}_\mac$ against the underlying $\mac$ with advantage $\epsilon_\mac$ and some $\monospace{OW-CPA}$ adversary $\mathcal{A}_\monospace{OW-CPA}$ against the underlying $\pke$ with advantage $\epsilon_\monospace{OW-CPA}$ such that
+
+    \begin{equation*}
+        \epsilon_\monospace{OW-PCVA}
+        \leq (q_G + q_P) \cdot \delta
+            + q_V \cdot \epsilon_\mac
+            + (q_G + q_P + 1) \cdot \epsilon_\monospace{OW-CPA}
+    \end{equation*}
+\end{theorem}
+
+Furthermore, if the input $\pke$ is additionally IND-CPA secure, then $\pke_\etm$ is OW-PCVA secure with tight security reduction.
+
+\begin{corollary}\label{thm:if-indcpa-then-owpcva}
+    For every \monospace{OW-PCVA} adversary $\mathcal{A}_\monospace{OW-PCVA}$ against $\pke_\etm$ that makes $q_P$ PCO queries, $q_V$ CVO queries, $q_G$ hash queries to $G$, and that has advantage $\epsilon_\monospace{OW-PCVA}$ there exists an existential forgery adversary $\mathcal{A}_\mac$ against the underlying $\mac$ with advantage $\epsilon_\mac$ and some $\monospace{IND-CPA}$ adversary $\mathcal{A}_\monospace{IND-CPA}$ against the underlying $\pke$ with advantage $\epsilon_\monospace{IND-CPA}$ such that
+
+    \begin{equation*}
+        \epsilon_\monospace{OW-PCVA}
+        \leq (q_G + q_P) \cdot \delta
+            + q_V \cdot \epsilon_\mac
+            + \frac{1 + 2q_G}{\norm{\mathcal{M}_\pke}}
+            + 3\epsilon_\monospace{IND-CPA}
+    \end{equation*}
+\end{corollary}
+
+\begin{proof}
+    Since no modification was made to the internals of the input $\pke$, the correctness of the transformed scheme is trivially identical to the correctness of the input scheme.
+
+    We will prove the security claim using a sequence of games \cite{shoup2004sequences}, then prove the security claim in the corollary \ref{thm:if-indcpa-then-owpcva} by making a few modifications. This proof borrows heavily from the proof presented in \cite{hofheinz2017modular}.
+
+    \begin{figure}
+        \centering
+
+        \begin{algorithm}[H]
+            \caption{Sequence of games}\label{alg:sequence-of-games}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $m^\ast \leftsample \mathcal{M}_\pke$
+                \State $(r^\ast, k^\ast) \leftarrow G(m^\ast)$
+                    \Comment{Game 0-2}
+                \State $r^\ast \leftsample \mathcal{R}, k^\ast \leftsample \mathcal{K}_\mac$
+                    \Comment{Game 3}
+                \State $c^\ast \leftarrow \encrypt(\pk, m^\ast; r^\ast)$
+                \State $t^\ast \leftarrow \sign(k^\ast, c^\ast)$
+                \State $
+                    \hat{m} \leftarrow \mathcal{A}^{\mathcal{O}^G, \pco, \cvo}_\monospace{OW-PCVA}(
+                        1^\lambda, \pk, (c^\ast, t^\ast)
+                    )
+                $
+                    \Comment{Game 0}
+                \State $
+                    \hat{m} \leftarrow \mathcal{A}^{\mathcal{O}^G, \pco_1, \cvo}_\monospace{OW-PCVA}(
+                        1^\lambda, \pk, (c^\ast, t^\ast)
+                    )
+                $
+                    \Comment{Game 1}
+                \State $
+                    \hat{m} \leftarrow \mathcal{A}^{\mathcal{O}^G, \pco_1, \cvo_1}_\monospace{OW-PCVA}(
+                        1^\lambda, \pk, (c^\ast, t^\ast)
+                    )
+                $
+                    \Comment{Game 2-3}
+                \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+        
+        \caption{Sequence of \monospace{Game 0} to \monospace{Game 3} in proof of theorem \ref{thm:if-owcpa-then-owpcva}}
+        \label{fig:enter-label}
+    \end{figure}
+
+    \begin{algorithm}
+        \caption{$\pco(m, (c, t))$}\label{alg:etm-pco}
+        \begin{algorithmic}[1]
+            \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+            \State $(\hat{r}, \hat{k}) \leftarrow G(\hat{m})$
+            \If{$\verify(\hat{k}, c, t) = 0$}
+                \State \Return $0$
+            \EndIf
+            \State \Return $\llbrack \hat{m} = m \rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+
+    \begin{algorithm}
+        \caption{$\pco_1(m, (c, t))$}\label{alg:etm-pco1}
+        \begin{algorithmic}[1]
+            \State $(r, k) \leftarrow G(\hat{m})$
+            \State \Return $\llbrack 
+                \encrypt(\pk, m; r) = c
+            \rrbrack \monospace{ and } \llbrack
+                \verify(k, c, t) = 1
+            \rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+
+    \begin{algorithm}
+        \caption{$\cvo(c, t)$}\label{alg:etm-cvo}
+        \begin{algorithmic}[1]
+            \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+            \State $(\hat{r}, \hat{k}) \leftarrow G(\hat{m})$
+            \State \Return $\verify(\hat{k}, c, t)$
+        \end{algorithmic}
+    \end{algorithm}
+
+    \begin{algorithm}
+        \caption{$\cvo_1(c, t)$}\label{alg:etm-cvo1}
+
+        \begin{algorithmic}[1]
+            \If{
+                $\exists (\tilde{m}, \tilde{r}, \tilde{k}) \in \mathcal{O}^G$ such that
+                $\encrypt(\pk, \tilde{m}; \tilde{r}) = c$
+                and $\verify(\tilde{k}, c, t)$
+            }
+                \State \Return 1
+            \EndIf
+            \State \Return 0
+        \end{algorithmic}
+    \end{algorithm}
+
+    \monospace{Game 0} is the \monospace{OW-PCVA} game. Let $\epsilon_0$ denote the \monospace{OW-PCVA} adversary's advantage in \monospace{Game 0}, then $\epsilon_0 = \epsilon_\monospace{OW-PCVA}$
+
+    \monospace{Game 1} is identical to \monospace{Game 0}, except $\pco$ is replaced with $\pco_1$. Because $\encrypt_\etm$ is a deterministic encryption routine, the two games differ from the adversary's perspective if and only if any of the $\pco$ query $(m, (c, t))$ causes decryption failure $\decrypt(\sk, \encrypt(\pk, m; r)) \neq m$. The probability of decryption failure for any single $\pco$ query is bounded by $\delta$, so the overall probability of having at least one query causing decryption failure is at most $q_P \cdot \delta$. Let $\epsilon_0$ and $\epsilon_1$ respectively denote $\mathcal{A}_\monospace{OW-PCVA}$'s advantage in \monospace{Game 0} and \monospace{Game 1} respectively, then by the difference lemma \cite{shoup2004sequences}:
+
+    \begin{equation}\label{eq:ep0-ep1}
+        \epsilon_0 - \epsilon_1 \leq q_P \cdot \delta
+    \end{equation}
+
+    \monospace{Game 2} is identical to \monospace{Game 1} except $\cvo$ is replaced with $\cvo_1$. $\cvo_1$ replaces the decryption routine with the deterministic encryption routine and the $\mac$ key derivation with ``searching through hash oracle records''. Therefore, there are exactly two scenarios in which \monospace{Game 2} differ from \monospace{Game 1} from the adversary's perspective.
+
+    In the first scenario, the queried ciphertext $(c, t)$ has a matching hash query $(\tilde{m}, \tilde{r}, \tilde{k})$, but $(\tilde{m}, \tilde{r})$ causes decryption failure: $\decrypt(\sk, \encrypt(\pk, m; r)) \neq m$. For each hash query, the probability that $(\tilde{m}, \tilde{r})$ causes decryption failure is bounded by $\delta$, so the probability of having at least one such hash query is at most $q_G \cdot \delta$.
+
+    In the second scenario, the queried ciphertext $(c, t)$ has no matching hash query. Under the random oracle model, this means that the $\mac$ key $k$ used to sign $c$ is an unknown and uniformly random key from the adversary's perspective. In other words, $(c, t)$ is an existential forgery. The probability of producing a single forgery is bounded by the advantage of a MAC adversary, so the probability of having at least one dishonest $\cvo$ query is at most $q_V \cdot \epsilon_\mac$.
+
+    Denote the $\monospace{OW-PCVA}$ adversary's advantage in game 2 by $\epsilon_2$, then by the difference lemma:
+
+    \begin{equation}\label{eq:ep1-ep2}
+        \epsilon_1 - \epsilon_2 \leq q_G \cdot \delta + q_V \cdot \epsilon_\mac
+    \end{equation}
+
+    In \monospace{Game 3}, the challenge encryption routine is modified. Instead of pseudorandomly deriving the coin $r^\ast$ and the $\mac$ key $k^\ast$ from $G$, the coin and the $\mac$ key are uniformly sampled from their respective domain. Under the random oracle model, \monospace{Game 3} and \monospace{Game 2} are indistinguishable from the adversary's perspective unless the adversary queries $G$ or $\pco$ with the value $m^\ast$. Denote the probability of ``adversary querying $G$ or $\pco$ with $m^\ast$'' by $P[\monospace{QUERY}^\ast]$, and the adversary's advantage in \monospace{Game 3} by $\epsilon_3$, then by the difference lemma:
+
+    \begin{equation}\label{eq:ep2-ep3}
+        \epsilon_2 - \epsilon_3 \leq P[\monospace{QUERY}^\ast]
+    \end{equation}
+
+    A standard \monospace{OW-CPA} adversary against the underlying $\pke$ can simulate \monospace{Game 3} for an \monospace{OW-PCVA} adversary, since $\pco_1$ and $\cvo_1$ only make use of the public key $\pk$ and the hash oracle $\mathcal{O}^G$, the challenge encryption $c^\ast$ is obtained using a truly random coin, and the $\mac$ key can be uniformly sampled. After the \monospace{OW-PCVA} adversary outputs a guess, the \monospace{OW-CPA} adversary can simply pass \monospace{OW-PCVA}'s output. The \monospace{OW-CPA} adversary wins if and only if the \monospace{OW-CPA} adversary wins \monospace{Game 3}:
+
+    \begin{equation}\label{eq:ep3-owcpa}
+        \epsilon_3 = \epsilon_\monospace{OW-CPA}
+    \end{equation}
+
+    We can construct another \monospace{OW-CPA} adversary that simulates \monospace{Game 3} for an \monospace{OW-PCVA} adversary. After the \monospace{OW-PCVA} adversary halts, this \monospace{OW-CPA} adversary picks and outputs a random value $\tilde{m}$ from all possible values recorded on the tape of the hash oracle $\mathcal{O}^G$ and $\pco_1$. If $\monospace{QUERY}^\ast$ occurs, then the \monospace{OW-CPA} adversary wins the game with probability $\frac{1}{q_G + q_P}$. In other words:
+
+    \begin{equation}\label{eq:querystar-owcpa}
+        \epsilon_\monospace{OW-CPA} = \frac{1}{q_G + q_P} \cdot P[\monospace{QUERY}^\ast]
+    \end{equation}
+
+    Combining equations \ref{eq:ep0-ep1}, \ref{eq:ep1-ep2}, \ref{eq:ep2-ep3}, \ref{eq:ep3-owcpa}, and \ref{eq:querystar-owcpa} gives the security bound in theorem \ref{thm:if-owcpa-then-owpcva}.
+
+    We make two modifications to prove corollary \ref{thm:if-indcpa-then-owpcva}. First, we invoke a well-known result that the IND-CPA security of a $\pke$ with sufficiently large message space implies its OW-CPA security.
+
+    \begin{lemma}
+        For every \monospace{OW-CPA} adversary with advantage $\epsilon_\monospace{OW-CPA}$ there exists an \monospace{IND-CPA} adversary with advantage $\epsilon_\monospace{IND-CPA}$ such that
+
+        \begin{equation}\label{eq:indcpa-implies-owcpa}
+            \epsilon_\monospace{OW-CPA} \leq \frac{1}{\norm{\mathcal{M}_\pke}} + \epsilon_\monospace{IND-CPA}
+        \end{equation}
+    \end{lemma}
+
+    Second, we borrow results from \cite{hofheinz2017modular} and construct an \monospace{IND-CPA} adversary to bound $P[\monospace{QUERY}^\ast]$:
+
+    \begin{equation}\label{eq:querystar-indcpa}
+        \frac{1}{2}P[\monospace{QUERY}^\ast] 
+        \leq \epsilon_\monospace{IND-CPA} + \frac{q_G}{\norm{\mathcal{M}_\pke}}
+    \end{equation}
+
+    Combining equations \ref{eq:ep0-ep1}, \ref{eq:ep1-ep2}, \ref{eq:ep2-ep3}, \ref{eq:ep3-owcpa}, \ref{eq:indcpa-implies-owcpa}, and \ref{eq:querystar-indcpa} into theorem \ref{thm:if-owcpa-then-owpcva} completes the proof of the corollary.
+\end{proof}
+
+\subsection{FO Transform+ in poly Enc-then-MAC}
+
+
+\section{Applications to Kyber}
+
+\subsection{Kyber using FO Transform+}
+\subsection{Performance comparisons}\label{sec:exp-results}
+% TODO: Count how many Keccak permutations
+% TODO: Count how many NTT operations
+% 
+Comparisons will do for Kyber and Kyber$^+$, define it. 
+
+\subsection{Experimental results}
+
+
+\section{Conclusions and future works}\label{sec:future-works}
+
+%%%% 8. BILBIOGRAPHY %%%%
+% TODO: figure out how to use bibliography
+\bibliographystyle{alpha}
+\bibliography{abbrev3,crypto,biblio}
+%%%% NOTES
+% - Download abbrev3.bib and crypto.bib from https://cryptobib.di.ens.fr/
+% - Use bilbio.bib for additional references not in the cryptobib database.
+%   If possible, take them from DBLP.
+
+\end{document}
