@@ -17,6 +17,14 @@ It's easy to see that if both Alice and Bob are honest, then the transformed sch
 
 From here, it is easy to use the results from the modular FO transform to construct IND-CCA secure key encapsulation mechanism (KEM).
 
+## Adding ciphertext integrity
+The modular FO transform is **modular** because the authors broke the full KEM construction into two steps. The first step is called the $\texttt{T}$ transformation, which takes a OW-CPA secure public-key encryption scheme and transforms it into a OW-PCVA secure public-key encryption scheme by adding mechanism for ensuring ciphertext integrity. The second step is called the $\texttt{U}$ transformation, which takes an OW-PCVA secure public-key encryption scheme (or OW-PCA if using implicit rejection) and outputs an IND-CCA secure KEM.
+
+We propose an alternative $\texttt{T}$ transformation that also achieves OW-PCVA security. Thanks to the modularity of the modular FO transform, the alternative transformation can plug right into the existing construction and produce an IND-CCA secure KEM.
+
+> I have a crazy, probabilistic $(\texttt{E}_\texttt{EtM}, \texttt{D}_\texttt{EtM})$ that might work. This is a work in progress
+
+
 ## Performance with KMAC
 On June 14 my colleagues reported performance measurements of our initial design. Kyber implementation is taken from the reference implementation submitted to round 3. We chose KMAC to be the message authentication code. Runtime cost is measured in CPU cycles. Ciphertext and tag sizes are measured in bytes.
 
