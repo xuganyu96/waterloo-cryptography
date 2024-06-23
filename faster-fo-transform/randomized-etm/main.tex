@@ -1,0 +1,133 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+% \usepackage{listings}
+
+% Algorithms and pseudocode
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% \usepackage{floatrow}
+
+\newcommand{\monospace}{\texttt}
+\newcommand{\pke}{\monospace{PKE}}
+\newcommand{\keygen}{\monospace{KeyGen}}
+\newcommand{\encrypt}{\monospace{E}}
+\newcommand{\decrypt}{\monospace{D}}
+\newcommand{\kem}{\monospace{KEM}}
+\newcommand{\encap}{\monospace{Encap}}
+\newcommand{\decap}{\monospace{Decap}}
+\newcommand{\etm}{\monospace{EtM}}  % encrypt-then-mac
+\newcommand{\mac}{\monospace{MAC}}
+\newcommand{\sign}{\monospace{MAC}}
+\newcommand{\verify}{\monospace{MAC.Verify}}
+\newcommand{\pk}{\monospace{pk}}
+\newcommand{\sk}{\monospace{sk}}
+\newcommand{\pco}{\monospace{PCO}}
+\newcommand{\cvo}{\monospace{CVO}}
+\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
+\newcommand{\llbrack}{[\![}
+\newcommand{\rrbrack}{]\!]}
+\newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
+\newlength{\wdth}
+\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
+\newcommand{\notrand}{{\strike{\$}}}
+\newcommand{\rand}{\$}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{Randomized encrypt-then-MAC}
+\author{Ganyu (Bruce) Xu (g66xu)}
+% \date{Fall 2023}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{Introduction}
+In the modular FO transform\cite{hofheinz2017modular}, the authors constructed IND-CCA KEM using two steps. The first step is adding ciphertext integrity to a one-way secure encryption scheme (the \monospace{T} transformation). The second step is constructing the IND-CCA KEM out of the OW-PCVA secure encryption scheme (the \monospace{U} transformation). The \monospace{T} transformation uses two techniques for achieving ciphertext integrity, which the authors called ``\emph{de-randomization}'' and ``\emph{re-encryption}''.
+
+Our current proposal is to replace re-encryption with a message authentication code (MAC), but we maintained the deterministic encryption routine. For clarity we will call this ``\emph{de-randomized encrypt-then-MAC}''. The algorithm is specified in figure \ref{fig:derand-etm}.
+
+\begin{figure}[h]
+  \begin{minipage}{.49\textwidth}  % Adjust width as needed
+    \begin{algorithm}[H]
+      \caption{$\encrypt^\notrand_\etm(\pk, m)$}
+      \begin{algorithmic}[1]
+        \State $(r, k_\mac) \leftarrow G(m)$
+        \State $c \leftarrow \encrypt(\pk, m; r)$
+        \State $t \leftarrow \sign(k_\mac, c)$
+        \State \Return $(c, t)$
+      \end{algorithmic}
+    \end{algorithm}
+  \end{minipage}
+  \hfill  % Add space between algorithms
+  \begin{minipage}{.49\textwidth}  % Adjust width as needed
+    \begin{algorithm}[H]
+      \caption{$\decrypt^\notrand_\etm(\sk, (c, t))$}
+      \begin{algorithmic}[1]
+        \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+        \State $(\hat{r}, \hat{k}_\mac) \leftarrow G(\hat{m})$
+        \If{$\verify(\hat{k}_\mac, c, t) \neq 1$}
+          \State \Return $\bot$
+        \EndIf
+        \State \Return $\hat{m}$
+      \end{algorithmic}
+    \end{algorithm}
+  \end{minipage}
+  \caption{Derandomized encrypt-then-MAC}\label{fig:derand-etm}
+\end{figure}
+
+For the past week I have been thinking about removing the de-randomization, as well. This means that we no longer derive the pseudorandom coin from the message. If the input $\pke$ has a randomized encryption routine, then the transformed encrypt-then-mac scheme will also be randomized. We call this ``\emph{randomized encrypt-then-MAC}''. The algorithm is specified in figure \ref{fig:rand-etm}
+
+\begin{figure}[h]
+    \center
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\encrypt^\rand_\etm(\pk, m)$}\label{alg:rand-etm-encrypt}
+            \begin{algorithmic}[1]
+                \State $k_\mac \leftarrow G(m)$
+                \State $c \leftarrow \encrypt(\pk, m)$
+                \State $t \leftarrow \sign(k_\mac, c)$
+                \State \Return $(c, t)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decrypt^\rand_\etm(\sk, (c, t))$}\label{alg:rand-etm-decrypt}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+                \State $\hat{k}_\mac \leftarrow G(\hat{m})$
+                \If{$\verify(\hat{k}_\mac, c, t) \neq 1$}
+                    \State \Return $\bot$
+                \EndIf
+                \State \Return $\hat{m}$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{Randomized encrypt-then-MAC}\label{fig:rand-etm}
+\end{figure}
+
+\section{Security of MAC}
+Intuitively, if the unauthenticated ciphertext is tempered with, then the tag should change unpredictably. Since the MAC key is derived from the plaintext message, and the plaintext message is hidden behind the OW-CPA security of the input scheme, it is safe to assume that the adversary does not have information on the MAC key. If the adversary does not have the MAC key, then it will not be able to produce the correct tag. Therefore, the adversary cannot produce valid authenticated ciphertexts without knowing the corresponding plaintext in the first place.
+
+However, formalizing this idea into a security proof is surprisingly difficult. The most popular methods of formal security proof is 
+
+\bibliographystyle{plain}
+\bibliography{./references.bib}
+
+\end{document}
