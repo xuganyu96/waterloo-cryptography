@@ -1,0 +1,134 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+% \usepackage{listings}
+
+% Algorithms and pseudocode
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% \usepackage{floatrow}
+
+\newcommand{\monospace}{\texttt}
+\newcommand{\pke}{\monospace{PKE}}
+\newcommand{\keygen}{\monospace{KeyGen}}
+\newcommand{\encrypt}{\monospace{E}}
+\newcommand{\decrypt}{\monospace{D}}
+\newcommand{\kem}{\monospace{KEM}}
+\newcommand{\encap}{\monospace{Encap}}
+\newcommand{\decap}{\monospace{Decap}}
+\newcommand{\etm}{\monospace{EtM}}  % encrypt-then-mac
+\newcommand{\mac}{\monospace{MAC}}
+\newcommand{\sign}{\monospace{MAC}}
+\newcommand{\verify}{\monospace{MAC.Verify}}
+\newcommand{\pk}{\monospace{pk}}
+\newcommand{\sk}{\monospace{sk}}
+\newcommand{\pco}{\monospace{PCO}}
+\newcommand{\cvo}{\monospace{CVO}}
+\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
+\newcommand{\llbrack}{[\![}
+\newcommand{\rrbrack}{]\!]}
+\newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
+\newlength{\wdth}
+\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
+\newcommand{\notrand}{{\strike{\$}}}
+\newcommand{\rand}{\$}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{Randomized encrypt-then-MAC}
+\author{Ganyu (Bruce) Xu (g66xu)}
+% \date{Fall 2023}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{Encrypt-then-MAC transformation}
+In this section, we introduce two ``encrypt-then-MAC'' ($\etm$ for short) transformations. For a given input public-key encryption scheme $\pke = (\keygen, \encrypt, \decrypt)$, the de-randomized $\etm$ transformation returns a a public-key encryption scheme $\pke^\notrand_\etm = (\keygen, \encrypt^\notrand_\etm, \decrypt^\notrand_\etm)$ such that $\encrypt^\notrand_\etm$ is deterministic. On the other hand, the randomized $\etm$ transformation returns a public-key encryption scheme $\pke_\etm = (\keygen, \encrypt_\etm, \decrypt_\etm)$ whose encryption routine preserves the randomization of the input encryption routine.
+
+The encryption routine of both transformations uses the plaintext $m \in \mathcal{M}_\pke$ to derive a MAC key $k_\mac$, then after using the input encryption routine $\encrypt$ to produce an unauthenticated ciphertext $c \in \mathcal{C}_\pke$, the MAC key is used to compute a tag $t$ on the unauthenticated ciphertext. The tuple $(c, t)$ is the authenticated ciphertext that the transformed encryption routine outputs. The decryption routine of both transformations first decrypt the unauthenticated ciphertext to recover the plaintext, then uses the decryption to derive a MAC key, which is used to verify the tag.
+
+Because the tag is computed on the unauthenticated ciphertext, if the unauthenticated ciphertext is tempered with, then the tag must be recomputed. Because of the one-way security of the underlying encryption scheme, it is safe to assume that no adversary can use the unauthenticated ciphertext to recover the message, which means that producing valid tags for new message constitutes a forgery attack. Therefore, mounting any meaningful chosen ciphertext attacks is at least as hard as producing a forgery against the underlying $\mac$ scheme.
+
+The transformed routines $(\encrypt_\etm, \decrypt_\etm)$ and $(\encrypt^\notrand_\etm, \decrypt^\notrand_\etm)$ are described in figure \ref{fig:rand-etm} and \ref{fig:derand-etm} respectively.
+
+\begin{figure}[h]
+    \center
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\encrypt_\etm(\pk, m)$}\label{alg:rand-etm-encrypt}
+            \begin{algorithmic}[1]
+                \State $k_\mac \leftarrow G(m)$  % Need to distinguish from the other G
+                \State $c \leftarrow \encrypt(\pk, m)$
+                    \Comment{If $\encrypt$ is randomized, then $\encrypt_\etm$ is randomized}
+                \State $t \leftarrow \sign(k_\mac, c)$
+                \State \Return $(c, t)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decrypt_\etm(\sk, (c, t))$}\label{alg:rand-etm-decrypt}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+                \State $\hat{k}_\mac \leftarrow G(\hat{m})$
+                \If{$\verify(\hat{k}_\mac, c, t) \neq 1$}
+                    \State \Return $\bot$
+                \EndIf
+                \State \Return $\hat{m}$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{
+        $\etm$ transformation.
+    }\label{fig:rand-etm}
+\end{figure}
+
+\begin{figure}[h]
+  \begin{minipage}{0.49\textwidth}  % Adjust width as needed
+    \begin{algorithm}[H]
+      \caption{$\encrypt^\notrand_\etm(\pk, m)$}
+      \begin{algorithmic}[1]
+        \State $k_\mac \leftarrow G(m)$
+        \State $r \leftarrow H(m)$
+        \State $c \leftarrow \encrypt(\pk, m; r)$
+        \State $t \leftarrow \sign(k_\mac, c)$
+        \State \Return $(c, t)$
+      \end{algorithmic}
+    \end{algorithm}
+  \end{minipage}
+  \hfill  % Add space between algorithms
+  \begin{minipage}{.49\textwidth}  % Adjust width as needed
+    \begin{algorithm}[H]
+      \caption{$\decrypt^\notrand_\etm(\sk, (c, t))$}
+      \begin{algorithmic}[1]
+        \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+        \State $\hat{k}_\mac \leftarrow G(\hat{m})$
+        \If{$\verify(\hat{k}_\mac, c, t) \neq 1$}
+          \State \Return $\bot$
+        \EndIf
+        \State \Return $\hat{m}$
+      \end{algorithmic}
+    \end{algorithm}
+  \end{minipage}
+  \caption{Derandomized encrypt-then-MAC}\label{fig:derand-etm}
+\end{figure}
+
+% \bibliographystyle{plain}
+% \bibliography{./references.bib}
+
+\end{document}
