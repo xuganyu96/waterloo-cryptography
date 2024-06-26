@@ -22,8 +22,8 @@
 \newcommand{\decap}{\monospace{Decap}}
 \newcommand{\etm}{\monospace{EtM}}  % encrypt-then-mac
 \newcommand{\mac}{\monospace{MAC}}
-\newcommand{\sign}{\monospace{MAC}}
-\newcommand{\verify}{\monospace{MAC.Verify}}
+\newcommand{\sign}{\monospace{Sign}}
+\newcommand{\verify}{\monospace{Verify}}
 \newcommand{\pk}{\monospace{pk}}
 \newcommand{\sk}{\monospace{sk}}
 \newcommand{\pco}{\monospace{PCO}}
@@ -48,7 +48,7 @@
 \newtheorem{lemma}{Lemma}[theorem]
 
 
-\title{Randomized encrypt-then-MAC}
+\title{The ``encrypt-then-MAC'' transformations}
 \author{Ganyu (Bruce) Xu (g66xu)}
 % \date{Fall 2023}
 
@@ -56,16 +56,10 @@
 %%%% TITLE %%%%%
 \maketitle
 
-\section{Encrypt-then-MAC transformation}
-In this section, we introduce two ``encrypt-then-MAC'' ($\etm$ for short) transformations. For a given input public-key encryption scheme $\pke = (\keygen, \encrypt, \decrypt)$, the de-randomized $\etm$ transformation returns a a public-key encryption scheme $\pke^\notrand_\etm = (\keygen, \encrypt^\notrand_\etm, \decrypt^\notrand_\etm)$ such that $\encrypt^\notrand_\etm$ is deterministic. On the other hand, the randomized $\etm$ transformation returns a public-key encryption scheme $\pke_\etm = (\keygen, \encrypt_\etm, \decrypt_\etm)$ whose encryption routine preserves the randomization of the input encryption routine.
+\section{Encrypt-then-MAC transformations}
+In this section we describe two ``encrypt-then-MAC'' transformations and discuss their security properties.
 
-The encryption routine of both transformations uses the plaintext $m \in \mathcal{M}_\pke$ to derive a MAC key $k_\mac$, then after using the input encryption routine $\encrypt$ to produce an unauthenticated ciphertext $c \in \mathcal{C}_\pke$, the MAC key is used to compute a tag $t$ on the unauthenticated ciphertext. The tuple $(c, t)$ is the authenticated ciphertext that the transformed encryption routine outputs. The decryption routine of both transformations first decrypt the unauthenticated ciphertext to recover the plaintext, then uses the decryption to derive a MAC key, which is used to verify the tag.
-
-Because the tag is computed on the unauthenticated ciphertext, if the unauthenticated ciphertext is tempered with, then the tag must be recomputed. Because of the one-way security of the underlying encryption scheme, it is safe to assume that no adversary can use the unauthenticated ciphertext to recover the message, which means that producing valid tags for new message constitutes a forgery attack. Therefore, mounting any meaningful chosen ciphertext attacks is at least as hard as producing a forgery against the underlying $\mac$ scheme.
-
-The transformed routines $(\encrypt_\etm, \decrypt_\etm)$ and $(\encrypt^\notrand_\etm, \decrypt^\notrand_\etm)$ are described in figure \ref{fig:rand-etm} and \ref{fig:derand-etm} respectively.
-
-\begin{figure}[h]
+\begin{figure}[H]
     \center
     \begin{minipage}{0.49\textwidth}
         \begin{algorithm}[H]
@@ -98,7 +92,7 @@ The transformed routines $(\encrypt_\etm, \decrypt_\etm)$ and $(\encrypt^\notran
     }\label{fig:rand-etm}
 \end{figure}
 
-\begin{figure}[h]
+\begin{figure}[H]
   \begin{minipage}{0.49\textwidth}  % Adjust width as needed
     \begin{algorithm}[H]
       \caption{$\encrypt^\notrand_\etm(\pk, m)$}
@@ -126,6 +120,123 @@ The transformed routines $(\encrypt_\etm, \decrypt_\etm)$ and $(\encrypt^\notran
     \end{algorithm}
   \end{minipage}
   \caption{Derandomized encrypt-then-MAC}\label{fig:derand-etm}
+\end{figure}
+
+\begin{figure}[H]
+    \center
+
+    \begin{algorithm}[H]
+        \caption{Sequence of games}\label{alg:sequence-of-games}
+
+        \begin{algorithmic}
+            \State $(\pk, sk) \leftsample \keygen(1^\lambda)$
+            \State $m^\ast \leftsample \mathcal{M}_\pke$
+            \State $k^\ast_\mac \leftarrow H(m^\ast)$
+                \Comment{Game 0-2}
+            \State $k^\ast_\mac \leftsample \mathcal{K}_\mac$
+                \Comment{Game 3}
+            \State $c^\ast \leftsample \encrypt(\pk, m)$
+            \State $t^\ast \leftarrow \sign(k^\ast_\mac, c^\ast)$
+            \State $
+                \hat{m} \leftarrow 
+                \mathcal{A}^{
+                    \pco, \cvo, \mathcal{O}^H
+                }(1^\lambda, \pk, (c^\ast, t^\ast))
+            $
+                \Comment{Game 0}
+            \State $
+                \hat{m} \leftarrow 
+                \mathcal{A}^{
+                    \pco_1, \cvo, \mathcal{O}^H
+                }(1^\lambda, \pk, (c^\ast, t^\ast))
+            $
+                \Comment{Game 1}
+            \State $
+                \hat{m} \leftarrow 
+                \mathcal{A}^{
+                    \pco_1, \cvo_1, \mathcal{O}^H
+                }(1^\lambda, \pk, (c^\ast, t^\ast))
+            $
+                \Comment{Game 2-3}
+            \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+
+    \caption{Sequence of games 0-3}\label{fig:sequence-of-games}
+\end{figure}
+
+\begin{figure}[H]
+    \center
+
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\pco(m, (c, t))$}\label{alg:pco-etm}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+                \State $\hat{k}_\mac \leftarrow H(\hat{m})$
+                \If{$\sign(\hat{k}_\mac, c) \neq t$}
+                    \State \Return 0
+                \EndIf
+                \State \Return $\llbrack \hat{m} = m \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\pco_1(m, (c, t))$}\label{alg:pco1-etm}
+            
+            \begin{algorithmic}[1]
+                \If{
+                    $\exists (\tilde{m}, \tilde{k}) \in \mathcal{O}^H :
+                        \tilde{m} = m \land \sign(\tilde{k}, c) = t
+                    $
+                }
+                    \State \Return $1$
+                \EndIf
+                \State \Return $0$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{True $\pco$ and simulated $\pco$}\label{fig:pco-and-pco1}
+\end{figure}
+
+\begin{figure}[H]
+    \center
+
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\cvo(c, t)$}\label{alg:cvo-etm}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+                \State $\hat{k}_\mac \leftarrow H(\hat{m})$
+                \If{$\sign(\hat{k}_\mac, c) \neq t$}
+                    \State \Return 0
+                \EndIf
+                \State \Return 1
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\cvo_1(c, t)$}\label{alg:cvo1-etm}
+            
+            \begin{algorithmic}[1]
+                \If{
+                    $\exists (\tilde{m}, \tilde{k}) \in \mathcal{O}^H :
+                        \sign(\tilde{k}, c) = t
+                    $
+                }
+                    \State \Return $1$
+                \EndIf
+                \State \Return $0$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{True $\cvo$ and simulated $\cvo_1$}\label{fig:cvo-and-cvo1}
 \end{figure}
 
 % \bibliographystyle{plain}
