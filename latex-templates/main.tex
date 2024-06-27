@@ -10,31 +10,8 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
-% Common shortcuts
-\newcommand{\round}[1]{\left\lfloor {#1} \right\rceil}
-\newcommand{\abs}[1]{\left\lvert {#1} \right\rvert}
-\newcommand{\norm}[1]{\left\lvert {#1} \right\rvert}
-\newcommand{\Norm}[1]{\left\lVert {#1} \right\rVert}
-\newcommand{\monospace}{\texttt}
-\newcommand{\var}[1]{\operatorname{Var}[{#1}]}
-% \newcommand{\leftsample}{\overset{{\scriptscriptstyle\$}}{\leftarrow}}
-\newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
-\newcommand{\pke}{\monospace{PKE}}
-\newcommand{\keygen}{\monospace{KeyGen}}
-\newcommand{\encrypt}{\monospace{E}}
-\newcommand{\decrypt}{\monospace{D}}
-\newcommand{\kem}{\monospace{KEM}}
-\newcommand{\encap}{\monospace{Encap}}
-\newcommand{\decap}{\monospace{Decap}}
-\newcommand{\mac}{\monospace{MAC}}
-\newcommand{\sign}{\monospace{S}}
-\newcommand{\verify}{\monospace{V}}
-\newcommand{\pk}{\monospace{pk}}
-\newcommand{\sk}{\monospace{sk}}
-\newcommand{\llbrack}{[\![}
-\newcommand{\rrbrack}{]\!]}
-\newlength{\wdth}
-\newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
+% Custom commands
+\usepackage{mystyle}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
@@ -94,7 +71,7 @@ A lattice is a discrete subgroup of $\mathbb{R}^n$
 
 Here is some citation\cite{fujisaki1999secure}
 
-\bibliographystyle{plain}
+\bibliographystyle{alpha}
 \bibliography{./references.bib}
 
 \end{document}
