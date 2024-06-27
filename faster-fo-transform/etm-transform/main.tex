@@ -28,10 +28,14 @@
 \newcommand{\sk}{\monospace{sk}}
 \newcommand{\pco}{\monospace{PCO}}
 \newcommand{\cvo}{\monospace{CVO}}
+\newcommand{\lwe}{\monospace{LWE}}
+\newcommand{\cbd}{\monospace{CBD}}
+\newcommand{\oracle}[1]{\mathcal{O}^{#1}}
 \newcommand{\leftsample}{\stackrel{\$}{\leftarrow}}
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
 \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
+\newcommand{\round}[1]{\lceil #1 \rfloor}
 \newlength{\wdth}
 \newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
 \newcommand{\notrand}{{\strike{\$}}}
@@ -54,27 +58,30 @@
 
 \begin{document}
 %%%% TITLE %%%%%
-\maketitle
-
+% \maketitle
 \section{Encrypt-then-MAC transformations}
-In this section we describe two ``encrypt-then-MAC'' transformations and discuss their security properties.
+Let $\pke(\keygen, \encrypt, \decrypt)$ be a probabilistic public-key encryption scheme defined over message space $\mathcal{M}_\pke$, ciphertext space $\mathcal{C}_\pke$, and coin space $\mathcal{R}_\pke$. Where the encryption routine is deterministic, we simply set the coin space to contain a single element $\mathcal{R} = \{r\}$. Let $\mac(\sign, \verify)$ be a message authentication code defined over key space $\mathcal{K}_\mac$. The message space of the $\mac$ should contain the ciphertext space of the $\pke$: $\mathcal{C}_\pke \subseteq \mathcal{M}_\mac$. Let $G: \mathcal{M}_\pke \rightarrow \mathcal{R}_\pke$ and $H: \mathcal{M}_\pke \rightarrow \mathcal{K}_\mac$ be hash functions.
+
+The ``encrypt-then-MAC'' transformation $\pke_\etm(\keygen, \encrypt_\etm, \decrypt_\etm) = T_\etm(\pke, \mac, H)$ outputs a public-key encryption scheme where the key generation routine is identical to the input $\pke$'s key generation routine. The de-randomized ``encrypt-then-MAC'' transformation $\pke^\notrand_\etm(\keygen, \encrypt_\etm^\notrand, \decrypt^\notrand_\etm) = T^\notrand_\etm(\pke, \mac, G, H)$ similarly outputs a public-key encryption scheme. In both transformations, the key generation routine remains unchanged. The modified encryption and decryption routines are described in figure \ref{fig:rand-etm} and \ref{fig:derand-etm}.
+
 
 \begin{figure}[H]
     \center
-    \begin{minipage}{0.49\textwidth}
+    \begin{minipage}{0.59\textwidth}
         \begin{algorithm}[H]
             \caption{$\encrypt_\etm(\pk, m)$}\label{alg:rand-etm-encrypt}
             \begin{algorithmic}[1]
-                \State $k_\mac \leftarrow G(m)$  % Need to distinguish from the other G
-                \State $c \leftarrow \encrypt(\pk, m)$
+                \State $r \leftsample \mathcal{R}_\pke$
                     \Comment{If $\encrypt$ is randomized, then $\encrypt_\etm$ is randomized}
+                \State $k_\mac \leftarrow H(m)$  % Need to distinguish from the other G
+                \State $c \leftarrow \encrypt(\pk, m; r)$
                 \State $t \leftarrow \sign(k_\mac, c)$
                 \State \Return $(c, t)$
             \end{algorithmic}
         \end{algorithm}
     \end{minipage}
     \hfill
-    \begin{minipage}{0.49\textwidth}
+    \begin{minipage}{0.39\textwidth}
         \begin{algorithm}[H]
             \caption{$\decrypt_\etm(\sk, (c, t))$}\label{alg:rand-etm-decrypt}
             \begin{algorithmic}[1]
@@ -88,7 +95,7 @@ In this section we describe two ``encrypt-then-MAC'' transformations and discuss
         \end{algorithm}
     \end{minipage}
     \caption{
-        $\etm$ transformation.
+        ``encrypt-then-MAC'' transformation
     }\label{fig:rand-etm}
 \end{figure}
 
@@ -97,8 +104,8 @@ In this section we describe two ``encrypt-then-MAC'' transformations and discuss
     \begin{algorithm}[H]
       \caption{$\encrypt^\notrand_\etm(\pk, m)$}
       \begin{algorithmic}[1]
-        \State $k_\mac \leftarrow G(m)$
-        \State $r \leftarrow H(m)$
+        \State $k_\mac \leftarrow H(m)$
+        \State $r \leftarrow G(m)$
         \State $c \leftarrow \encrypt(\pk, m; r)$
         \State $t \leftarrow \sign(k_\mac, c)$
         \State \Return $(c, t)$
@@ -119,127 +126,126 @@ In this section we describe two ``encrypt-then-MAC'' transformations and discuss
       \end{algorithmic}
     \end{algorithm}
   \end{minipage}
-  \caption{Derandomized encrypt-then-MAC}\label{fig:derand-etm}
+  \caption{
+    de-randomized ``encrypt-then-MAC'' transformation
+  }\label{fig:derand-etm}
 \end{figure}
+
+\emph{Intuition} the design goal of this transformation is to achieve plaintext awareness (PA). According to \cite{bellare1998relations}, PA implies resistance to adaptive chosen ciphertext attacks. For an adversary to produce a valid authenticated ciphertext $(c, t)$, it must be able to produce a valid tag $t$ for the unauthenticated ciphertext $c$ under the correct MAC key $k_\mac = H(\decrypt(\sk, c))$, which means that the adversary either knows $k_\mac$ or performs a forgery against the MAC. Since $k_\mac \leftarrow H(m)$ is derived from the plaintext $m$, under the random oracle model, I argue that knowing $k_\mac$ implies knowing $m$. In other words, if the adversary cannot perform forgery against the MAC nor break the one-way security of the encryption routine, then it cannot produce valid ciphertext for which it does not not the plaintext, thus rendering the advantage of a decryption oracle (or any ciphertext-processing oracles, such PCO or CVO) negligible.
+
+Let $A$ be an one-way adversary against the transformed scheme with access to a decryption oracle. I want to show that under the random oracle model, \textbf{we can construct a second adversary $B$ that uses the public key $\pk$ and the tapes of the hash oracles $\oracle{G}, \oracle{H}$ to simulate a decryption oracle for $A$} such that $A$ can only distinguish the true decryption oracle from the simulated decryption oracle with negligible advantage. Note that in \cite{hofheinz2017modular}, the first transformation asks for OW-PCVA security, but since the true PCO and CVO are both implemented using the decryption routine, it is easy to build simulated PCO and CVO using the simulated decryption oracle.
+
+Unfortunately, constructing a simulated decryption oracle is annoyingly elusive. Here are the things I have tried so far.
+
+\subsection{Identify plaintext using the coin and the key}
+With derandomized encrypt-then-MAC, if an authenticated  ciphertext $(c, t)$ is honestly generated, then there should be a pair of matching hash queries $(\tilde{m}, \tilde{r}) \in \oracle{G}$ and $(\tilde{m}, \tilde{k}) \in \oracle{H}$ such that $\encrypt(\pk, \tilde{m}; r) = c$ and $\verify(\tilde{k}, c, t) = 1$. See the algorithm below:
 
 \begin{figure}[H]
     \center
-
     \begin{algorithm}[H]
-        \caption{Sequence of games}\label{alg:sequence-of-games}
-
-        \begin{algorithmic}
-            \State $(\pk, sk) \leftsample \keygen(1^\lambda)$
-            \State $m^\ast \leftsample \mathcal{M}_\pke$
-            \State $k^\ast_\mac \leftarrow H(m^\ast)$
-                \Comment{Game 0-2}
-            \State $k^\ast_\mac \leftsample \mathcal{K}_\mac$
-                \Comment{Game 3}
-            \State $c^\ast \leftsample \encrypt(\pk, m)$
-            \State $t^\ast \leftarrow \sign(k^\ast_\mac, c^\ast)$
-            \State $
-                \hat{m} \leftarrow 
-                \mathcal{A}^{
-                    \pco, \cvo, \mathcal{O}^H
-                }(1^\lambda, \pk, (c^\ast, t^\ast))
-            $
-                \Comment{Game 0}
-            \State $
-                \hat{m} \leftarrow 
-                \mathcal{A}^{
-                    \pco_1, \cvo, \mathcal{O}^H
-                }(1^\lambda, \pk, (c^\ast, t^\ast))
-            $
-                \Comment{Game 1}
-            \State $
-                \hat{m} \leftarrow 
-                \mathcal{A}^{
-                    \pco_1, \cvo_1, \mathcal{O}^H
-                }(1^\lambda, \pk, (c^\ast, t^\ast))
-            $
-                \Comment{Game 2-3}
-            \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
+        \caption{$\oracle{\decrypt}_\monospace{sim}(c, t)$ attempt 1}
+        \begin{algorithmic}[1]
+            \If{
+                $\exists (\tilde{m}, \tilde{r}) \in \oracle{G}
+                    , (\tilde{m}, \tilde{k}) \in \oracle{H} :
+                    \encrypt(\pk, \tilde{m}; \tilde{r}) = c
+                    \land \verify(\tilde{k}, c, t) = 1
+                $
+            }
+                \State \Return $\tilde{m}$
+            \EndIf
+            \State \Return $\bot$
         \end{algorithmic}
     \end{algorithm}
-
-    \caption{Sequence of games 0-3}\label{fig:sequence-of-games}
+    \caption{Simulate decryption oracle using coin and MAC key}
+    \label{fig:sim-decrypt-}
 \end{figure}
+
+This simulated decryption oracle can be efficiently distinguished from the true decryption oracle if the ciphertext can be predictably perturbed while still decrpyting to the same plaintext. This ciphertext perturbation is possible in most LWE schemes: one can add a small amount of noise to the unauthenticated ciphertext, and the resulting ``new ciphertext'' will still decrypt to the same plaintext. To distinguish simulation from true decryption oracle:
+
+\begin{enumerate}
+    \item Generate an honest plaintext-ciphertext pair $(m, (c, t))$. In this process, store the coin $r \leftarrow G(m)$ and MAC key $k_\mac \leftarrow H(m)$
+    \item Perturb the unauthenticated ciphertext. Denote the result by $c^\prime$.
+    \item Compute $t^\prime = \sign(k_\mac, c^\prime)$
+    \item Submit $(c^\prime, t^\prime)$ as a decryption query. The true decryption oracle will return $m$ (which is correct), but the simulation will reject this ciphertext (which is too strict).
+\end{enumerate}
+
+A similar attempt to simulate decryption oracle can be made on the (possibly randomized) ``encrypt-then-MAC'' scheme, as well. We need to replace the hash oracle $\oracle{G}$ with a ``randomness oracle'' $\mathcal{O}^\mathcal{R}$: when adversary $A$ wants to sample $r \leftsample \mathcal{R}$, $A$ needs to query this randomness oracle, which will return a random value at this query, and store the query output on a tape:
 
 \begin{figure}[H]
-    \center
-
-    \begin{minipage}{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\pco(m, (c, t))$}\label{alg:pco-etm}
-            \begin{algorithmic}[1]
-                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
-                \State $\hat{k}_\mac \leftarrow H(\hat{m})$
-                \If{$\sign(\hat{k}_\mac, c) \neq t$}
-                    \State \Return 0
-                \EndIf
-                \State \Return $\llbrack \hat{m} = m \rrbrack$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\pco_1(m, (c, t))$}\label{alg:pco1-etm}
-            
-            \begin{algorithmic}[1]
-                \If{
-                    $\exists (\tilde{m}, \tilde{k}) \in \mathcal{O}^H :
-                        \tilde{m} = m \land \sign(\tilde{k}, c) = t
-                    $
-                }
-                    \State \Return $1$
-                \EndIf
-                \State \Return $0$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-
-    \caption{True $\pco$ and simulated $\pco$}\label{fig:pco-and-pco1}
+    \begin{algorithm}[H]
+        \caption{$\mathcal{O}^\decrypt_\monospace{sim}(c, t)$ attempt 1.1}
+        \begin{algorithmic}[1]
+            \If{
+                $\exists \tilde{r} \in \mathcal{O}^\mathcal{R}
+                    , (\tilde{m}, \tilde{k}) \in \oracle{H} :
+                    \encrypt(\pk, \tilde{m}; \tilde{r}) = c
+                    \land \verify(\tilde{k}, c, t) = 1$
+            }
+                \State \Return $\tilde{m}$
+            \EndIf
+            \State \Return $\bot$ 
+        \end{algorithmic}
+    \end{algorithm}
+    \caption{Simulate decryption oracle in randomized $\etm$}
 \end{figure}
+
+\subsection{Identify plaintext using only the key}
+My second attempt at recovering the plaintext from the hash oracles uses only the MAC key:
 
 \begin{figure}[H]
-    \center
-
-    \begin{minipage}{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\cvo(c, t)$}\label{alg:cvo-etm}
-            \begin{algorithmic}[1]
-                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
-                \State $\hat{k}_\mac \leftarrow H(\hat{m})$
-                \If{$\sign(\hat{k}_\mac, c) \neq t$}
-                    \State \Return 0
-                \EndIf
-                \State \Return 1
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\cvo_1(c, t)$}\label{alg:cvo1-etm}
-            
-            \begin{algorithmic}[1]
-                \If{
-                    $\exists (\tilde{m}, \tilde{k}) \in \mathcal{O}^H :
-                        \sign(\tilde{k}, c) = t
-                    $
-                }
-                    \State \Return $1$
-                \EndIf
-                \State \Return $0$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-
-    \caption{True $\cvo$ and simulated $\cvo_1$}\label{fig:cvo-and-cvo1}
+    \begin{algorithm}[H]
+        \caption{$\mathcal{O}^\decrypt_\monospace{sim}(c, t)$ attempt 2}
+        \begin{algorithmic}[1]
+            \If{$\exists (\tilde{m}, \tilde{k}) \in \oracle{H} : 
+                \verify(\tilde{k}, c, t) = 1
+            $}
+                \State \Return $\tilde{m}$
+            \EndIf
+            \State \Return $\bot$
+        \end{algorithmic}
+    \end{algorithm}
 \end{figure}
 
-% \bibliographystyle{plain}
-% \bibliography{./references.bib}
+This allows the adversary to sign unauthenticated ciphertext produced from perturbing honestly generated unauthenticated ciphertext, but then creates the problem that the adversary can now sign unauthenticated ciphertext with MAC keys derived from arbitrary plaintext:
+
+\begin{enumerate}
+    \item Sample a random plaintext and run the encryption routine. This creates an honest plaintext-ciphertext pair $(m, (c, t))$
+    \item Sample a second, uncorrelated plaintext $m^\prime$ and derive the corresponding MAC key $k_\mac^\prime = H(m^\prime)$
+    \item Sign $c$ with $k^\prime_\mac$: $t^\prime \leftarrow \sign(k^\prime_\mac, c)$
+    \item Submit $(c, t^\prime)$ for a decryption query. The true decryption oracle will reject this query, but the simulation will return $m^\prime$, which is just wrong.
+\end{enumerate}
+
+\subsection{Identify matching plaintext-ciphertext using only the public key}
+Let $\monospace{match}(\pk, m, c)$ be an efficient algorithm that takes the public key $\pk$ and a plaintext-ciphertext pair $(m, c)$ as input. $\monospace{match}$ returns 1 if $m$ is the decryption of $c$ under the keypair $(\pk, \sk)$ and 0 otherwise.
+
+If such an algorithm exists, then it is easy to implement the simulated decryption oracle.
+
+\begin{figure}[H]
+    \begin{algorithm}[H]
+        \caption{$\mathcal{O}^\decrypt_\monospace{sim}(c, t)$ if \monospace{match} exists}
+        \begin{algorithmic}[1]
+            \If{
+                $\exists (\tilde{m}, \tilde{k}) \in \oracle{H} 
+                : \monospace{match}(\tilde{m}, c) = 1
+                \land \verify(\tilde{k}, c, t)
+                $
+            }
+                \State \Return $\tilde{m}$
+            \EndIf
+            \State \Return $\bot$
+        \end{algorithmic}
+    \end{algorithm}
+\end{figure}
+
+On the other hand, if such an algorithm exists, then the encryption scheme is necessarily not semantically secure. Since Kyber begins with a semantically secure encryption scheme before transforming into a key encapsulation mechanism, such an algorithm must not exist, which means that we need to build the capabilities of ``identifying matching plaintext-ciphertext pair'' into the $\etm$ transformation(s).
+
+\subsection{Questioning the premise}
+It is of course possible the reason why I cannot come up with a security reduction is that $\etm$ transformation is insecure, but so far I also could not come up with any meaningful attack that breaks the one-way security of the transformed schemes.
+
+Note that the two distinguishing algorithms in the previous sections only reveal flaws in the simulated decryption oracle. They do not lead to meaningful weakness (or meaningful advantages) of the $\etm$ transformation under chosen ciphertext attacks
+
+\bibliographystyle{alpha}
+\bibliography{./references.bib}
 
 \end{document}
