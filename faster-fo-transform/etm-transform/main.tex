@@ -245,6 +245,20 @@ It is of course possible the reason why I cannot come up with a security reducti
 
 Note that the two distinguishing algorithms in the previous sections only reveal flaws in the simulated decryption oracle. They do not lead to meaningful weakness (or meaningful advantages) of the $\etm$ transformation under chosen ciphertext attacks
 
+\section{Plaintext Awareness: a new approach}
+A new approach I can think of is as follows:
+
+\begin{enumerate}
+    \item prove that $\etm$ transformed schemes are plaintext aware
+    \item prove that if a scheme is plaintext aware, then it is OW-CCA2
+\end{enumerate}
+
+Both steps are non-trivial, though the second step can be heavily borrowed from \cite{bellare1998relations}.
+
+\subsection{$\etm$ is plaintext aware}
+
+\subsection{Plaintext-awareness implies OW-CCA2}
+
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
 
