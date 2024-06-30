@@ -165,6 +165,30 @@ The ``encrypt-then-MAC'' transformation $\pke_\etm(\keygen, \encrypt_\etm, \decr
   }\label{fig:derand-etm}
 \end{figure}
 
+\begin{theorem}\label{thm:etm-is-ow-cca}
+    If the $\mac$ is one-time unforgeable and $\pke$ is \monospace{OW-CPA} secure, then $\etm$ and $\etm^\notrand$ are both \monospace{OW-CCA} secure
+\end{theorem}
+
+We will prove theorem \ref{thm:etm-is-ow-cca} in two steps. First we show that $\etm$ and $\etm^\notrand$ are both plaintext-aware in section \ref{sec:etm-is-pa}, then we show that plaintext awareness and \monospace{OW-CPA} security imply \monospace{OW-CCA} security in section \ref{sec:pa-and-owcpa-imply-owcca}.
+
+The KEM transformations from \cite{hofheinz2017modular} require the input $\pke$ to be OW-PCVA secure, although OW-PCVA security is implied by OW-CCA security
+
+\begin{theorem}\label{thm:ow-cca-implies-ow-pcva}
+    For every \monospace{OW-PCVA} adversary $\mathcal{A}_\monospace{PCVA}$ against some $\pke$, there exists an \monospace{OW-CCA} adversary $\mathcal{A}_\monospace{CCA}$ with identical advantage:
+
+    \begin{equation*}
+        \epsilon_\monospace{OW-PCVA} = \epsilon_\monospace{OW-CCA}
+    \end{equation*}
+\end{theorem}
+
+\begin{proof}
+    The \monospace{OW-CCA} adversary can perfectly simulate both the PCO and the CVO by replacing ``running decryption routine'' with ``querying the decryption oracle''. When the \monospace{OW-PCVA} adversary halts, the \monospace{OW-CCA} adversary passes \monospace{OW-PCVA} adversary's output as its own. Thus, \monospace{OW-CCA} adversary wins if and only if \monospace{OW-PCVA} adversary wins.
+\end{proof}
+
+\subsection{$\etm$ is plaintext aware}\label{sec:etm-is-pa}
+
+\subsection{Plaintext awareness and OW-CPA imply OW-CCA}\label{sec:pa-and-owcpa-imply-owcca}
+
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
 
