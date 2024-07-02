@@ -39,6 +39,7 @@
 \newlength{\wdth}
 \newcommand{\strike}[1]{\settowidth{\wdth}{#1}\rlap{\rule[.5ex]{\wdth}{.4pt}}#1}
 \newcommand{\notrand}{{\strike{\$}}}
+\newcommand{\negl}[1]{\operatorname{negl}\left(#1\right)}
 \newcommand{\rand}{\$}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
@@ -186,6 +187,23 @@ The KEM transformations from \cite{hofheinz2017modular} require the input $\pke$
 \end{proof}
 
 \subsection{$\etm$ is plaintext aware}\label{sec:etm-is-pa}
+I want to prove that $\etm$ is plaintext aware by showing that if $\etm$ is not plaintext aware, then the underlying $\mac$ is broken. For clearer notations we denote unauthenticated ciphertexts by $\sigma \in \mathcal{C}_\pke$ and authenticated ciphertexts by $c = (\sigma, t)$.
+
+If there exists a PA adversary $B$ with output $(\mathcal{L}^{G, H, \mathcal{R}}, C, c=(\sigma, t)) \leftarrow B(\cdot)$ such that for all knowledge extractor $K$
+
+\begin{equation*}
+    P \left\lbrack
+    K(\mathcal{L}^{G, H, \mathcal{R}}, C, c=(\sigma, t)) \neq \decrypt_\etm(\sk, c)
+    \right\rbrack > \negl{\lambda}
+\end{equation*}
+
+If $B$ produces a valid ciphertext $c = (\sigma, t)$, then $t$ must be a valid tag of $\sigma$ under $k_\mac = H(m)$ where $m = \decrypt(\sk, \sigma)$.
+
+\begin{enumerate}
+    \item How can I express that ``If $B$ knows $m$, then some knowledge extractor can recover $m$''?
+    \item If $B$ does not know $m$, then $k_\mac$ is unknown and uniformly random. How can I construct a forgery adversary using $B$?
+    \item How do I account for the scenario in which $c$ is invalid?
+\end{enumerate}
 
 \subsection{Plaintext awareness and OW-CPA imply OW-CCA}\label{sec:pa-and-owcpa-imply-owcca}
 In this section we show that if a $\pke$ is both plaintext aware and \monospace{OW-CPA} secure, then it is \monospace{OW-CCA} secure.
