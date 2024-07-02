@@ -188,6 +188,45 @@ The KEM transformations from \cite{hofheinz2017modular} require the input $\pke$
 \subsection{$\etm$ is plaintext aware}\label{sec:etm-is-pa}
 
 \subsection{Plaintext awareness and OW-CPA imply OW-CCA}\label{sec:pa-and-owcpa-imply-owcca}
+In this section we show that if a $\pke$ is both plaintext aware and \monospace{OW-CPA} secure, then it is \monospace{OW-CCA} secure.
+
+\begin{theorem}\label{thm:pa-implies-cca}
+    For every \monospace{OW-CCA} adversary $\mathcal{A}_\monospace{OW-CCA}$ with advantage $\epsilon_\monospace{OW-CCA}$, there exists an $\epsilon_K$ knowledge extractor $K$ and an \monospace{OW-CPA} adversary with advantage $\epsilon_\monospace{OW-CPA}$ such that
+
+    \begin{equation*}
+        \epsilon_\monospace{OW-CCA} \leq \epsilon_\monospace{OW-CPA} + q_D \cdot \epsilon_K
+    \end{equation*}
+\end{theorem}
+
+\begin{proof}
+    We will prove theorem \ref{thm:pa-implies-cca} by constructing an \monospace{OW-CPA} adversary $\mathcal{A}_\monospace{OW-CPA}$ that runs the \monospace{OW-CCA} adversary $\mathcal{A}_\monospace{OW-CCA}$ as a sub-routine. $\mathcal{A}_\monospace{OW-CPA}$ will answer $\mathcal{A}_\monospace{OW-CCA}$'s decryption query using the knowledge extractor.
+
+    After receiving the security parameter $1^\lambda$ and public key $\pk$, $\mathcal{A}_\monospace{OW-CPA}$ initializes the hash tape $\mathcal{L}^H = \{\}$ to be an empty list, the runs $\mathcal{A}_\monospace{OW-CCA}$ until the sub-routine is waiting for the challenge ciphertext. During this phase:
+
+    \begin{enumerate}
+        \item When $\mathcal{A}_\monospace{OW-CCA}$ makes a hash query $h$, $\mathcal{A}_\monospace{OW-CPA}$ queries $\mathcal{O}^H$ to obtain the hash value $H(h)$, appends $(h, H(h))$ to $\mathcal{L}^H$, then answers with $H(h)$
+        \item When $\mathcal{A}_\monospace{OW-CCA}$ makes a decryption query $c$, $\mathcal{A}_\monospace{OW-CPA}$ runs the knowledge extractor $m \leftarrow K(\mathcal{L}^H, C = \{\}, c)$, then answers with $m$
+    \end{enumerate}
+
+    After receiving $c^\ast$, $\mathcal{A}_\monospace{OW-CPA}$ passes $c^\ast$ to $\mathcal{A}_\monospace{OW-CCA}$, then continues simulating the \monospace{OW-CCA} game for the sub-routine.
+
+    \begin{enumerate}
+        \item Hash queries are answered in the same way as in the first phase
+        \item When $\mathcal{A}_\monospace{OW-CCA}$ makes a decryption query $c$: \begin{itemize}
+            \item If $c = c^\ast$, answer with $\bot$
+            \item If $c \neq c^\ast$, run the knowledge extractor $m \leftarrow K(\mathcal{L}^H, C = \{c^\ast\}, c)$, then answer with $m$
+        \end{itemize}
+    \end{enumerate}
+
+    We borrow the argument from \cite{bellare1998relations} to analyze how well $\mathcal{A}_\monospace{OW-CPA}$ simulates the decryption oracle. Let $q_D$ be the total number of decryption queries made throughout both phases and let $q_1$ denote the number of decryption queries made in phase 1. We can thus label the decryption queries by $(c_1, c_2, \ldots, c_{q_1}, c_{q_1 + 1}, \ldots, c_{q_D})$. Each decryption query corresponds to a plaintext awareness adversary $B_i$ playing an instance of the plaintext awareness game using $\mathcal{A}_\monospace{OW-CCA}$ as a sub-routine. Each $B_i$ answers hash queries from $\mathcal{A}_\monospace{OW-CCA}$ in the same way as described above. For $j < i$, $B_i$ answers the decryption query $c_j$ using what $K$ returns on $B_j$'s output. When $\mathcal{A}_\monospace{OW-CCA}$ makes the i-th decryption query $c_i$, $B_i$ outputs $c_i$ and halts. For $1 \leq j \leq q_1$, there is no ciphertext obtained without running the encryption routine, so $K$ is run with $C = \{\}$. For $q_1 < j \leq q_D$, $\mathcal{A}_\monospace{OW-CCA}$ has access to $c^\ast$, which is obtained without running the encryption routine, so $K$ is run with $C = \{c^\ast\}$.
+
+    The simulated \monospace{OW-CCA} game deviates from the true \monospace{OW-CCA} game if and only if the knowledge extractor returns an incorrect decryption at one or more decryption queries. Since the probability of any one of decryption query being incorrect is bounded by $\epsilon_K$, the probability that at least one decryption query being incorrect is bounded by $q_D \cdot \epsilon_K$:
+
+    \begin{equation*}
+        \epsilon_\monospace{OW-CCA} - \epsilon_\monospace{OW-CPA}
+        \leq q_D \cdot \epsilon_K
+    \end{equation*}
+\end{proof}
 
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
