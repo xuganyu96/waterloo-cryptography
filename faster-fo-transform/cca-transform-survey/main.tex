@@ -1,0 +1,127 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Custom commands
+\usepackage{mystyle}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{
+    A survey of generic IND-CCA2 transformations
+}
+\author{
+    Ganyu Xu
+}
+% Leave the date field empty to display the date of compilation
+% \date{}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{Preliminaries}
+\subsection{Public-key encryption schemes}
+A public key encryption scheme $\pke = (\keygen, \encrypt, \decrypt)$ is a collection of three routines. $\keygen(1^\lambda)$ takes the security parameteras input and returns a keypair $(\pk, \sk)$. $\encrypt(\pk, m)$ takes some public key and some plaintext message $m \in \mathcal{M}_\pke$ and output a ciphertext $c \in \mathcal{C}_\pke$. Where the encryption routine is probabilistic, we model the randomness using a coin $r \in \mathcal{R}$ such that $E(\pk, m; r)$ is deterministic with an explicit $r$. Finally, $\decrypt(\sk, c)$ uses the secret key to decrypt the ciphertext.
+
+\subsubsection{Correctness}
+Conventionally we require a $\pke$ to be perfectly correct. This means that for all possible key pairs $(\pk, \sk)$ and plaintexts $m$, the decryption routine always correctly inverts the encryption routine: $\decrypt(\sk, \encrypt(\pk, m)) = m$.
+
+Where perfect correctness is not achieved, such as with most lattice-based encryption schemes, we need to account for the possiblity that decryption can fail. If under some keypair $(\pk, \sk)$, a plaintext-ciphertext pair $(m, c)$ is such that $c \leftsample \encrypt(\pk, m)$ is obtained from encrypting $m$ (probabilistically) but $m \neq \decrypt(\sk, c)$, we call it a decryption failure. For probabilistic encryption routines where the coin is uniformly sampled from the coin space, we can quantify the probability that $m$ triggers a decryption failure. From here, we can take the distribution of all keypairs and quantify the ``correctness'' of a (possibly imperfectly correct) encryption scheme. The following definition of $\delta$-correctness is directly taken from \cite{bos2018crystals}.
+
+\begin{definition}[$\delta$-correctness]\label{def:delta-correctness}
+    A probabilistic public-key encryption scheme $\pke = (\keygen, \encrypt, \decrypt)$ is $\delta$-correct if the expected maximal probability of decryption failure taken across the distribution of keypairs is at most $\delta$:
+
+    \begin{equation*}
+        E\left\lbrack\max_{m \in \mathcal{M}} P\left\lbrack
+            \decrypt(\sk, \encrypt(\pk, m))
+        \right\rbrack
+        \right\rbrack \leq \delta
+    \end{equation*}
+
+    where the expectation is taken over the distribution of keypairs and the probability is taken over the distribution of coins.
+\end{definition}
+
+\cite{hofheinz2017modular} also defined an adversarial game in which the adversary's goal is to find some plaintext message to trigger a decryption failure. This adversarial game meaningfully models the real-world scenario in which decryption failure can reveal information about the secret key. Notice that when evaluating the win condition, the coin is uniformly random instead of being chosen by the adversary.
+
+\begin{figure}[H]
+    \center
+
+    \begin{minipage}{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption{\monospace{CORS}}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $m \leftsample A_\monospace{CORS}(1^\lambda, \pk, \sk)$
+                \State \Return $\llbrack \decrypt(\sk, \encrypt(\pk, m)) \neq m \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    
+    \caption{The correctness game \monospace{CORS}}\label{fig:cors-game}
+\end{figure}
+
+The definition of $\delta$-correctness sets an explicit upper bound on the probability that any plaintext triggers decryption failure. This means that even if the \monospace{CORS} adversary actually finds the message $m$ that is the most likely to trigger decryption failure, the probability of winning the \monospace{CORS} game is still upper-bounded by $\delta$.
+
+\begin{lemma}
+    If $\pke$ is $\delta$-correct, then for all \monospace{CORS} adversaries $A$, even computationally unbounded ones, the probability of winning the \monospace{CORS} game is at most $\delta$
+\end{lemma}
+
+The values of $\delta$ for Kyber are taken directly from \cite{avanzi2019crystals}
+
+\begin{table}[H]
+    \center
+    \begin{tabular}{c|c}
+        security level & $\delta$ \\
+        \hline
+        Kyber512 & $2^{-139}$ \\
+        \hline
+        Kyber768 & $2^{-164}$ \\
+        \hline
+        Kyber1024 & $2^{-174}$ \\
+    \end{tabular}
+    \caption{Concrete $\delta$ for Kyber}\label{tbl:kyber-delta-vals}
+\end{table}
+
+\subsubsection{Security}
+An one-way adversary $A = (A_1, A_2)$ consists of two sub-routines $A_1$ and $A_2$. $s \leftsample A_1^{\mathcal{O}}(1^\lambda, \pk)$ takes the security parameter, some public-key, access to some oracle(s) $\mathcal{O}$, and outputs some intermediate state $s$. $\hat{m} \leftarrow A_2^\mathcal{O}(1^\lambda, \pk, c^\ast)$ resumes from the output of $A_1$ and takes some challenge ciphertext, then tries to guess the correspodning decryption.
+
+\begin{figure}[H]
+    \begin{algorithm}[H]
+        \caption{\monospace{OW-ATK} game}\label{alg:ow-atk-game}
+        \begin{algorithmic}[1]
+            \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+            \State $s \leftsample A_1^\mathcal{O}(1^\lambda, \pk)$
+            \State $m^\ast \leftsample \mathcal{M}$
+            \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
+            \State $\hat{m} \leftarrow A_2^\mathcal{O}(1^\lambda, \pk, s, c^\ast)$
+            \State \Return $\llbrack \hat{m} = m^\ast\rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+    \caption{The one-way security game}\label{fig:ow-atk-game}
+\end{figure}
+
+\section{Modular Fujisaki-Okamoto transformation}
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular}.
+
+\bibliographystyle{alpha}
+\bibliography{./references.bib}
+
+\end{document}
