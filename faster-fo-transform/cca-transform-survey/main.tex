@@ -101,22 +101,113 @@ The values of $\delta$ for Kyber are taken directly from \cite{avanzi2019crystal
 \end{table}
 
 \subsubsection{Security}
-An one-way adversary $A = (A_1, A_2)$ consists of two sub-routines $A_1$ and $A_2$. $s \leftsample A_1^{\mathcal{O}}(1^\lambda, \pk)$ takes the security parameter, some public-key, access to some oracle(s) $\mathcal{O}$, and outputs some intermediate state $s$. $\hat{m} \leftarrow A_2^\mathcal{O}(1^\lambda, \pk, c^\ast)$ resumes from the output of $A_1$ and takes some challenge ciphertext, then tries to guess the correspodning decryption.
+An one-way adversary $A = (A_1, A_2)$ consists of two sub-routines $A_1$ and $A_2$. $s \leftsample A_1^{\mathcal{O}_1}(1^\lambda, \pk)$ takes the security parameter, some public-key, access to some oracle(s) $\mathcal{O}_1$, and outputs some intermediate state $s$. $\hat{m} \leftarrow A_2^{\mathcal{O}_2}(1^\lambda, \pk, c^\ast)$ resumes from the output of $A_1$ and takes some challenge ciphertext, then tries to guess the corresponding decryption.
+
+The advantage $\monospace{Adv}_\monospace{OW-ATK}(A)$ of an \monospace{OW-ATK} adversary is the probability that its guess is correct.
+
+\begin{definition}
+    A $\pke$ is \monospace{OW-ATK} secure if for all efficient adversaries $A$, the advantage in the \monospace{OW-ATK} game is neligigble with respect to the security parameter:
+
+    \begin{equation*}
+        \monospace{Adv}_\monospace{OW-ATK}(A) \leq \operatorname{negl}(\lambda)
+    \end{equation*}
+\end{definition}
+
+An \textbf{indistinguishability} adversary $A = (A_1, A_2)$ similarly consists of two sub-routines. The first sub-routine adversarially chooses two distinct plaintext messages, and the second sub-routine tries to distinguish which of the two plaintext messages is the decryptino of the challenge encryption. The advantage of an indistinguishability adversary is defined by $\monospace{Adv}_\monospace{IND-ATK}(A) = P[\hat{b} = b] - \frac{1}{2}$
+
+\begin{definition}
+    A $\pke$ is \monospace{IND-ATK} secure if for all efficient adversaries $A$, the advantage in the indistinguishability game is negligible with respect to the security parameter
+
+    \begin{equation*}
+        \monospace{Adv}_\monospace{IND-ATK}(A) \leq \operatorname{negl}(\lambda)
+    \end{equation*}
+\end{definition}
+
+The security games are described in details in figure \ref{fig:sec-games}
 
 \begin{figure}[H]
-    \begin{algorithm}[H]
-        \caption{\monospace{OW-ATK} game}\label{alg:ow-atk-game}
-        \begin{algorithmic}[1]
-            \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-            \State $s \leftsample A_1^\mathcal{O}(1^\lambda, \pk)$
-            \State $m^\ast \leftsample \mathcal{M}$
-            \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
-            \State $\hat{m} \leftarrow A_2^\mathcal{O}(1^\lambda, \pk, s, c^\ast)$
-            \State \Return $\llbrack \hat{m} = m^\ast\rrbrack$
-        \end{algorithmic}
-    \end{algorithm}
-    \caption{The one-way security game}\label{fig:ow-atk-game}
+    \center
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{\monospace{OW-ATK} game}\label{alg:ow-atk-game}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $s \leftsample A_1^{\mathcal{O}_1}(1^\lambda, \pk)$
+                \State $m^\ast \leftsample \mathcal{M}$
+                \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
+                \State $\hat{m} \leftarrow A_2^{\mathcal{O}_2}(1^\lambda, \pk, s, c^\ast)$
+                \State \Return $\llbrack \hat{m} = m^\ast\rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption{\monospace{IND-ATK} game}\label{alg:ind-atk-game}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $(m_0, m_1) \leftsample A_1^{\mathcal{O}_1}(1^\lambda, \pk)$
+                \State $b \leftsample \{0,1\}$
+                \State $c^\ast \leftsample \encrypt(\pk, m_b)$
+                \State $\hat{b} \leftarrow A_2^{\mathcal{O}_2}(1^\lambda, \pk, s, c^\ast)$
+                \State \Return $\llbrack \hat{b} = b \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{The indistinguishability security game}\label{fig:sec-games}
 \end{figure}
+
+The capabilities of the adveraries are modeled using different collections of oracles. In standard security requirements, adversaries with access to no additional oracles can only mount chosen plaintex attacks (CPA), adversaries with access to decryption oracle $\mathcal{O}^\decrypt$ only before the receiving challenge ciphertext can mount non-adaptive chosen ciphertext attacks (CCA1), adversaries with access to decryption oracle both before and after receiving the challenge ciphertext can mount adaptive chosen ciphertext attacks (CCA2).
+
+\cite{hofheinz2017modular} also defined two non-standard oracles and the corresponding attacks. The plaintext checking oracle $\pco(m, c)$ returns $1$ if $m$ is a decryption of $c$ and $0$ otherwise. The ciphertext validation oracle $\cvo(c)$ returns $1$ if $c$ is a valid ciphertext and $0$ otherwise.
+
+\begin{figure}[H]
+    \center
+
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\pco(m, c)$}\label{alg:pco}
+            \begin{algorithmic}
+                \State \Return $\llbrack \decrypt(\sk, c) = m \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\cvo(c)$}\label{alg:cvo}
+            \begin{algorithmic}[1]
+                \State \Return $\llbrack \decrypt(\sk, c) \in \mathcal{M} \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{$\pco$ and $\cvo$}\label{fig:pco-and-cvo}
+\end{figure}
+
+Here is an overview of the various kinds of attacks and their associated oracles
+
+\begin{table}[H]
+    \center
+    \begin{tabular}{c|c|c}
+        \monospace{ATK} & $\mathcal{O}_1$ & $\mathcal{O}_2$ \\
+        \hline
+        \monospace{CPA} & \multicolumn{2}{|c|}{$-$} \\
+        \hline
+        \monospace{CCA1} & $\mathcal{O}^\decrypt$ & - \\
+        \hline
+        \monospace{CCA2} & \multicolumn{2}{|c|}{$\mathcal{O}^\decrypt$} \\
+        \hline
+        \monospace{PCVA} & \multicolumn{2}{|c|}{$\pco, \cvo$} \\
+        \hline
+        \monospace{PCA} & \multicolumn{2}{|c|}{$\pco$} \\
+        \hline
+        \monospace{VA} & \multicolumn{2}{|c|}{$\cvo$} \\
+    \end{tabular}
+    \caption{Attacks and associated oracle access}
+\end{table}
+
+
 
 \section{Modular Fujisaki-Okamoto transformation}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular}.
