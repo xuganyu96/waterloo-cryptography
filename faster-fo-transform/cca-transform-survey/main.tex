@@ -207,7 +207,36 @@ Here is an overview of the various kinds of attacks and their associated oracles
     \caption{Attacks and associated oracle access}
 \end{table}
 
+\subsubsection{Spread and rigidity}
+The spread of a public key encryption scheme measures the diffusion the encryption routine's output. The higher the spread, the lower the probability of obtaining any specific ciphertext.
 
+\begin{definition}[$\gamma$-spread]\label{def:gamma-spread}
+    For a given keypair $(\pk, \sk)$ and plaintext message $m \in \mathcal{M}$, the \emph{min-entropy} of the encryption routine is:
+    
+    $$\operatorname{min-entropy}(\pk, m) := -\log_2\left( 
+        \max_{c \in \mathcal{C}} P\left\lbrack
+            c = \encrypt(\pk, m)
+        \right\rbrack
+    \right) $$
+
+    A $\pke$ has $\gamma$-spread if for all keypairs $(\pk, \sk)$ and plaintext $m \in \mathcal{M}$:
+
+    $$
+        \operatorname{min-entropy}(\pk, m) \leq \gamma
+    $$
+\end{definition}
+
+Having $\gamma$ sperad means that for any keypair $(\pk, \sk)$, plaintext $m$, and ciphertext $c$:
+
+$$
+P\left\lbrack c = \encrypt(\pk, m) \right\rbrack \leq 2^{-\lambda}
+$$
+
+Finally, \emph{rigidity} conveys the idea that a ciphertext cannot be perturbed without becoming either invalid or decrypting to another plaintext
+
+\begin{definition}[rigidity]\label{def:rigidity}
+    $\pke(\keygen, \encrypt, \decrypt)$ is \emph{rigid} if for all keypairs $(\pk, \sk)$ and ciphertext $c$, either $\decrypt(\sk, c) = \bot$ or $\encrypt\left(\pk, \decrypt(\sk, c)\right) = c$
+\end{definition}
 
 \section{Modular Fujisaki-Okamoto transformation}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular}.
