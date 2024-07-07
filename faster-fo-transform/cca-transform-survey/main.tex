@@ -46,7 +46,7 @@ Conventionally we require a $\pke$ to be perfectly correct. This means that for 
 
 Where perfect correctness is not achieved, such as with most lattice-based encryption schemes, we need to account for the possiblity that decryption can fail. If under some keypair $(\pk, \sk)$, a plaintext-ciphertext pair $(m, c)$ is such that $c \leftsample \encrypt(\pk, m)$ is obtained from encrypting $m$ (probabilistically) but $m \neq \decrypt(\sk, c)$, we call it a decryption failure. For probabilistic encryption routines where the coin is uniformly sampled from the coin space, we can quantify the probability that $m$ triggers a decryption failure. From here, we can take the distribution of all keypairs and quantify the ``correctness'' of a (possibly imperfectly correct) encryption scheme. The following definition of $\delta$-correctness is directly taken from \cite{bos2018crystals}.
 
-\begin{definition}[$\delta$-correctness]\label{def:delta-correctness}
+\begin{definition}[$\delta$-correctness]\label{def:delta-correctness-pke}
     A probabilistic public-key encryption scheme $\pke = (\keygen, \encrypt, \decrypt)$ is $\delta$-correct if the expected maximal probability of decryption failure taken across the distribution of keypairs is at most $\delta$:
 
     \begin{equation*}
@@ -189,7 +189,8 @@ Here is an overview of the various kinds of attacks and their associated oracles
 
 \begin{table}[H]
     \center
-    \begin{tabular}{c|c|c}
+    \begin{tabular}{|c|c|c|}
+        \hline
         \monospace{ATK} & $\mathcal{O}_1$ & $\mathcal{O}_2$ \\
         \hline
         \monospace{CPA} & \multicolumn{2}{|c|}{$-$} \\
@@ -203,6 +204,7 @@ Here is an overview of the various kinds of attacks and their associated oracles
         \monospace{PCA} & \multicolumn{2}{|c|}{$\pco$} \\
         \hline
         \monospace{VA} & \multicolumn{2}{|c|}{$\cvo$} \\
+        \hline
     \end{tabular}
     \caption{Attacks and associated oracle access}
 \end{table}
@@ -248,8 +250,131 @@ Finally, \emph{rigidity} conveys the idea that a ciphertext cannot be perturbed 
     $\pke(\keygen, \encrypt, \decrypt)$ is \emph{rigid} if for all keypairs $(\pk, \sk)$ and ciphertext $c$, either $\decrypt(\sk, c) = \bot$ or $\encrypt\left(\pk, \decrypt(\sk, c)\right) = c$
 \end{definition}
 
+\subsection{Key encapsulation mechanism}
+A key encapsulation mechanism $\kem = (\keygen, \encap, \decap)$ is a collection of three routines. The key generation routine $(\pk, \sk) \leftsample \keygen(1^\lambda)$ takes the security parameter $1^\lambda$ and returns a keypair. The encapsulation routine $(c, K) \leftsample \encap(\pk)$ takes the public key and outputs some ciphertext $c \in \mathcal{C}_\kem$ and some shared secret $K \in \mathcal{K}_\kem$. Finally, the decapsulation routine $K \leftarrow \decap(\sk, c)$ takes the secret key and a ciphertext and outputs the correponding shared secret.
+
+\emph{Correctness}: similar to a $\pke$, key encapsulation mechanisms are usually required to be perfectly correct, meaning that for all keypairs $(\pk, \sk)$, decapsulation always outputs the same shared secret as the encapsulation
+
+\begin{equation*}
+    \Prob{(c, K_1) \leftsample \encap(\pk); K_2 \leftarrow \decap(\sk, c); K_1 = K_2} = 1
+\end{equation*}
+
+However, where decapsulation failure has a non-zero probability, we need to upperbound this quantity.
+
+\begin{definition}[$\delta$-correctness]\label{def:delta-correctness-kem}
+    A $\kem = (\keygen, \encap, \decap)$ is $\delta$-correct if the probability of decapsulation failure taken across the keypair distribution is at most $\delta$:
+
+    \begin{equation*}
+        P\lrbrack{
+            \decap(\sk, c) \neq K 
+            \mid (\pk, \sk) \leftsample \keygen()
+                ; (c, K) \leftsample \encap(\pk)
+        } \leq \delta
+    \end{equation*}
+\end{definition}
+
+\emph{Security}: the security of a $\kem$ is defined in an adversarial game in which the adversary's goal is to distinguish between shared secret derived from encapsulation and uniformly random samples. An adversary $A = (A_1, A_2)$ contains two sub-routines with access to some oracle $\mathcal{O}$ depending on game.
+
+\begin{figure}[H]
+    \center
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{\monospace{IND-CCA2} game}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $s \leftsample A_1^{\mathcal{O}^\decap}(1^\lambda, \pk)$
+                \State $(c^\ast, K_0) \leftsample \encap(\pk)$
+                \State $K_1 \leftsample \mathcal{K}_\kem$
+                \State $b \leftsample \{0, 1\}$
+                \State $\hat{b} \leftsample A_2^{\mathcal{O}^\decap}(1^\lambda, \pk, s, c^\ast, K_b)$
+                \State \Return $\llbrack \hat{b} = b \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decap$ oracle $\mathcal{O}^\decap(c \neq c^\ast)$}
+            \begin{algorithmic}[1]
+                \State \Return $\decap(\sk, c)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{The \monospace{IND-CCA2} game for $\kem$}\label{fig:kem-ind-cca2-game}
+\end{figure}
+
+\begin{definition}[\monospace{IND-CCA2 security}]\label{def:kem-ind-cca2-security}
+    A $\kem = (\keygen, \encap, \decap)$ is \monospace{IND-CCA2} secure if no efficient adversary has non-negligible advantage in the \monospace{IND-CCA2} game.
+\end{definition}
+
 \section{Modular Fujisaki-Okamoto transformation}
-The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular} achieve security against adaptive chosen-ciphertext attacks through \emph{de-randomization} and \emph{re-encryption}. In particular, the modular FO transformation contains two steps. First, the 
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular} achieve security against adaptive chosen-ciphertext attacks through \emph{de-randomization} and \emph{re-encryption}. In particular, the modular FO transformation contains two steps. The first step (denoted the $T$ transformation) takes a $\pke = (\keygen, \encrypt, \decrypt)$ and outputs a $\pke_1 = (\keygen, \encrypt_1, \decrypt_1)$. The key generation remains unchanged, but the encryption routine is \emph{de-randomized} by deriving the coin from the plaintext using a hash function $G: \mathcal{M}_\pke \rightarrow \mathcal{R}_\pke$, and the decryption routine uses \emph{re-encryption} to reject invalid ciphertexts.
+
+\begin{figure}[H]
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\encrypt_1(\pk, m)$}\label{alg:encrypt-1}
+            \begin{algorithmic}[1]
+                \State $r \leftarrow G(m)$
+                \State $c \leftarrow \encrypt(\pk, m; r)$
+                \State \Return $c$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decrypt_1(\sk, c)$}\label{alg:decrypt-1}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow D(\sk, c)$
+                \If{
+                    $\hat{m} \in \mathcal{M}_\pke 
+                    \;\land\; \encrypt(\pk, \hat{m}; G(\hat{m})) = c$
+                }
+                    \State \Return $\hat{m}$
+                \EndIf
+                \State \Return $\bot$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{T transformation}\label{fig:t-transformation}
+\end{figure}
+
+\cite{hofheinz2017modular} states the security property of $\pke_1$ as follows:
+
+\begin{theorem}\label{thm:owcpa-implies-owpcva}
+    If $\pke$ is $\delta$-correct and has $\gamma$ spread, then for every \monospace{OW-PCVA} adversary $B$ against $\pke_1$ who makes $q_G$ hash queries, $q_V$ ciphertext validation queries, and $q_P$ plaintext checking queries, there exists an \monospace{OW-CPA} adversary $A$ such that:
+
+    \begin{equation*}
+        \monospace{Adv}(B) \leq q_V \cdot 2^{-\gamma}
+            + (q_G + q_P) \cdot \delta
+            + (1 + q_G + q_P) \cdot \monospace{Adv}(A)
+    \end{equation*}
+\end{theorem}
+
+In other words, if $\pke$ is \monospace{OW-CPA} secure, then $\pke_1$ is \monospace{OW-PCVA} secure, though the security is non-tight. On the other hand, if $\pke$ is \monospace{IND-CPA} secure, the \monospace{OW-PCVA} security is tight:
+
+\begin{theorem}\label{thm:indcpa-implies-owpcva}
+    for every \monospace{OW-PCVA} adversary $B$ against $\pke_1$ who makes $q_G$ hash queries, $q_V$ ciphertext validation queries, and $q_P$ plaintext checking queries, there exists an \monospace{IND-CPA} adversary $A$ such that:
+
+    \begin{equation*}
+        \monospace{Adv}(B) \leq q_V \cdot 2^{-\gamma}
+            + (q_G + q_P) \cdot \delta
+            + \frac{2 \cdot q_G + 1}{\norm{\mathcal{M}_\pke}}
+            + 3 \cdot \monospace{Adv}(A)
+    \end{equation*}
+\end{theorem}
+
+\begin{proof}
+    We will provide a sketch of proof for theorem \ref{thm:owcpa-implies-owpcva} and \ref{thm:indcpa-implies-owpcva}. The main idea is to construct an \monospace{OW-CPA}/\monospace{IND-CPA} adversary $A$ who can simulate the \monospace{OW-PCVA} game and use the \monospace{OW-PCVA} adversary $B$ as a sub-routine. However, there are three main difficulties with constructing a ``convincing'' simulation:
+
+    \begin{enumerate}
+        \item $A$ has no access to $\pco$
+        \item $A$ has no access to $\cvo$
+        \item The challenge ciphertext $A$ receives is obtained using a truly random coin, but the challenge ciphertext $B$ expects is obtained using a pseudorandom coin $r \leftarrow G(m)$
+    \end{enumerate}
+\end{proof}
 
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
