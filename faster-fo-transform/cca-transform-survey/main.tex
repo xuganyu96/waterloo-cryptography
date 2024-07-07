@@ -207,6 +207,16 @@ Here is an overview of the various kinds of attacks and their associated oracles
     \caption{Attacks and associated oracle access}
 \end{table}
 
+\cite{hofheinz2017modular} stated a ``well-known'' result that the \monospace{IND-CPA} security of a scheme with a large message space implies \monospace{OW-CPA} security:
+
+\begin{theorem}\label{thm:ind-cpa-implies-ow-cpa}
+    For every \monospace{IND-CPA} adversary $B$ against some $\pke$, there exists an \monospace{OW-CPA} adversary $A$ against the same $\pke$ such that:
+
+    \begin{equation*}
+        \monospace{Adv}_\monospace{OW-CPA}(A) = \frac{1}{\norm{\mathcal{M}}} + \monospace{Adv}_\monospace{IND-CPA}(B)
+    \end{equation*}
+\end{theorem}
+
 \subsubsection{Spread and rigidity}
 The spread of a public key encryption scheme measures the diffusion the encryption routine's output. The higher the spread, the lower the probability of obtaining any specific ciphertext.
 
@@ -239,7 +249,7 @@ Finally, \emph{rigidity} conveys the idea that a ciphertext cannot be perturbed 
 \end{definition}
 
 \section{Modular Fujisaki-Okamoto transformation}
-The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular}.
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} and its KEM variations \cite{hofheinz2017modular} achieve security against adaptive chosen-ciphertext attacks through \emph{de-randomization} and \emph{re-encryption}. In particular, the modular FO transformation contains two steps. First, the 
 
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
