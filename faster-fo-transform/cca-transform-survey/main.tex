@@ -374,7 +374,154 @@ In other words, if $\pke$ is \monospace{OW-CPA} secure, then $\pke_1$ is \monosp
         \item $A$ has no access to $\cvo$
         \item The challenge ciphertext $A$ receives is obtained using a truly random coin, but the challenge ciphertext $B$ expects is obtained using a pseudorandom coin $r \leftarrow G(m)$
     \end{enumerate}
+
+    % TODO: finish writing this section
 \end{proof}
+
+\subsection{From PKE to KEM}
+The second part of the modular FO transform (denoted the $U$ transform) takes a $\pke$ and outputs a $\kem$. Depending on whether the input $\pke$ is rigid and whether the output $\kem$ rejects invalid ciphertext implicitly or explicitly, the security requirements for the input $\pke$ and the construction of the $\kem$ will vary. \cite{hofheinz2017modular} presents four variations of the $U$ transform, which are listed in table \ref{tbl:u-transform-summary}
+
+\begin{table}[H]
+    \center
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        Name & $\pke$ requirements & rejection & shared secret\\
+        \hline
+        $U^\bot$ & \monospace{OW-PCVA} & $\bot$ & $H(m, c)$ \\
+        \hline
+        $U^{\not\bot}$ & \monospace{OW-PCA} & $H(s, c)$ & $H(m, c)$ \\
+        \hline
+        $U^\bot_m$ & rigidity + \monospace{OW-VA} & $\bot$ & $H(m)$ \\
+        \hline
+        $U^{\not\bot}_m$ & rigidity + \monospace{OW-CPA} & $H(s, c)$ & $H(m)$ \\
+        \hline
+    \end{tabular}
+    \caption{A summary of variants of $U$ transformations}\label{tbl:u-transform-summary}
+\end{table}
+
+For the remaining of this section we will present the four transformations and sketch proofs of their securities.
+
+\subsubsection{KEM with explicit rejection from randomized PKE}
+Let $\pke = (\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme, and $H: \mathcal{M}_\pke \times \mathcal{C}_\pke \rightarrow \mathcal{K}_\kem$ be a hash function. The $U^\bot$ transformation outputs a $\kem^\bot = (\keygen^\bot, \encap^\bot, \decap^\bot)$, where the key generation routine remains unchanged: $\keygen^\bot = \keygen$. The encapsulation and decapsulation routines are described in figure \ref{fig:u-bot-routines}
+
+\begin{figure}[H]
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\encap^\bot(\pk)$}\label{alg:u-bot-encap}
+            \begin{algorithmic}[1]
+                \State $m \leftsample \mathcal{M}_\pke$
+                \State $c \leftsample \encrypt(\pk, m)$
+                \State $K \leftarrow H(m, c)$
+                \State \Return $(c, K)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decap^\bot(\sk, c)$}\label{alg:u-bot-decap}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow \decrypt(\sk, c)$
+                \If{$\hat{m} \in \mathcal{M}_\pke$}
+                    \State $K \leftarrow H(\hat{m}, c)$
+                    \State \Return $K$
+                \EndIf
+                \State \Return $\bot$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{$U^\bot$ routines}\label{fig:u-bot-routines}
+\end{figure}
+
+Under the random oracle model, the security of $\kem^\bot$ depends on the security of the input $\pke$.
+
+\begin{theorem}\label{thm:owpcva-implies-indcca2}
+    For every \monospace{IND-CCA2} adversary $B$ against $\kem^\bot$, there exists an \monospace{OW-PCVA} adversary $A$ against the underlying $\pke$ such that
+
+    \begin{equation*}
+        \monospace{Adv}(B) \leq \monospace{Adv}(A)
+    \end{equation*}
+\end{theorem}
+
+\begin{proof}
+    For a sketch of proof, we argue that under the random oracle model, $H(m, c)$ is indistinguishable from a uniformly random sample from $\mathcal{K}_\kem$ from the adversary $B$'s perspective unless $B$ somehow queries $H$ on $(m, c)$. This means that an \monospace{OW-PCVA} adversary can perfectly simulate the decapsulation oracle using uniformly random samples, as long as the outputs from the simulated decapsulation oracle are consistent with the outputs from the hash functions.
+
+    The only flaw in the simulated decapsulated oracle lies in the case when $B$ queries $H(m^\ast, c^\ast)$, but because $A$ has access to $\pco$, $A$ can detect that $B$ has successfully recovered $m^\ast$ and uses the recovered $m^\ast$ to win the \monospace{OW-PCVA} game. In other words, $A$ keeps running $B$ in a simulation until $B$ makes the special hash query, at which time $A$ simply terminates $B$ and outputs the answer.
+
+    To make the simulated decapsulation oracle and the hash oracle consistent, $A$ maintains two tapes $\mathcal{L}^\decap$ and $\mathcal{L}^H$ that record the queries made to the decapsulation oracle and the hash oracles respectively: 
+    
+    $$
+    \begin{aligned}
+        (c, K) \in \mathcal{L}^\decap &\Leftrightarrow K = \mathcal{O}^\decap(c) \\
+        (m, c, K) \in \mathcal{L}^H &\Leftrightarrow K = H(m, c)
+    \end{aligned}
+    $$
+
+    If $\mathcal{O}^\decap$ has been queried with some valid ciphertext $c$, then when $H$ is queried with a corresponding input $(m, c)$ where $m$ is the decryption of $c$, $H$ needs to output the same value as $\mathcal{O}^\decap$. Similarly, if $H$ has been queried with some valid plaintext-ciphertext pair $(m, c)$, then when $\mathcal{O}^\decap$ is queried with $c$, the two oracles need to output the same value. The details of the simulation are described in figure \ref{fig:u-bot-patched-oracles}
+
+    \begin{figure}[H]
+        \begin{minipage}{0.49\textwidth}
+            \begin{algorithm}[H]
+                \caption{$\mathcal{O}^\decap_1(c)$}\label{alg:u-bot-patched-decap}
+                \begin{algorithmic}[1]
+                    \If{$\exists (\tilde{c}, \tilde{K}) \in \mathcal{L}^\decap : \tilde{c} = c$}
+                        \State \Return $\tilde{K}$
+                    \EndIf
+                    \If{$\cvo(c) = 1$}
+                        \State $K \leftsample \mathcal{K}_\kem$
+                        \State Append $(c, K)$ to $\mathcal{L}^\decap$
+                        \State \Return $K$
+                    \EndIf
+                    \State \Return $\bot$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \hfill
+        \begin{minipage}{0.49\textwidth}
+            \begin{algorithm}[H]
+                \caption{$H_1(m, c)$}\label{alg:u-bot-patched-hash}
+                \begin{algorithmic}[1]
+                    \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H:(\tilde{m}, \tilde{c}) = (m, c)$}
+                        \State \Return $\tilde{K}$
+                    \EndIf
+                    \State $K \leftsample \mathcal{K}_\kem$
+                    \If{$\pco(m, c) = 1$}
+                        \If{$\exists (\tilde{c}, \tilde{K}) \in \mathcal{L}^\decap : \tilde(c) = c$}
+                            \State \Return $\tilde{K}$
+                        \Else
+                            \State Append $(c, K)$ to $\mathcal{L}^\decap$
+                        \EndIf
+                    \EndIf
+                    \State Append $(m, c, K)$ to $\mathcal{L}^H$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \caption{Patched oracles in $U^\bot$}\label{fig:u-bot-patched-oracles}
+    \end{figure}
+\end{proof}
+
+\subsubsection{KEM with implicit rejection from randomized PKE}
+Given $\pke = (\keygen, \encrypt, \decrypt)$, the $U^{\not\bot}$ transformation outputs $\kem = (\keygen^{\not\bot}, \encap^{\not\bot}, \decap^{\not\bot})$. With implicit rejection, decapsulation routine returns some output from $H$ even when the input ciphertext $c$ is malformed. Specifically, the implicit rejection value depends on the ciphertext and some secret value $s$ that is a part of the secret key.
+
+\begin{figure}[H]
+    \center
+    \begin{minipage}{0.3\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\keygen^{\not\bot}$}
+            
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.29\textwidth}
+        
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.3\textwidth}
+        
+    \end{minipage}
+    \caption{$U^{\not\bot}$ routines}
+\end{figure}
 
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
