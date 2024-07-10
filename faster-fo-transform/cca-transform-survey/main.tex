@@ -601,6 +601,74 @@ Under the random oracle model, no adversary $B$ can distinguish between the pseu
 \subsubsection{KEM with implicit rejection from rigid PKE}
 % TODO: write out this section
 
+\subsection{Applications}
+Kyber's round 3 submission \cite{avanzi2019crystals} and ML-KEM \cite{key2023mechanism} uses \emph{de-randomization}, \emph{re-encryption}, and some variation of the $U$ transformation to convert the \monospace{IND-CPA} $\pke$ into an \monospace{IND-CCA2} $\kem$. Here we recall the \monospace{IND-CPA} $\pke$ first, then describe and discuss their respective KEM construction.
+
+In the $\pke$, $R_q = \mathbb{Z}_q[x]/\langle x^n + 1 \rangle$ denotes the quotient ring, $\mathcal{X}_\eta$ denotes the centered binomial distribution that spans $\{-\eta, \eta+1, \ldots, \eta-1, \eta\}$. The plaintext space is the set of all polynomials in $R_q$ with coefficients $0, 1$. $k$ denotes the dimensions of the secret. The full set of parameters is listed in table \ref{tbl:kyber-params}
+
+\begin{table}[H]
+    \center
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        Security level & n & q & k & $\eta_1$ & $\eta_2$ \\
+        \hline
+        Kyber512 & 256 & 3329 & 2 & 3 & 2 \\
+        \hline
+        Kyber768 & 256 & 3329 & 3 & 2 & 2 \\
+        \hline
+        Kyber1024 & 256 & 3329 & 4 & 3 & 2 \\
+        \hline
+    \end{tabular}
+    \caption{Kyber/ML-KEM parameter set}\label{tbl:kyber-params}
+\end{table}
+
+The \monospace{IND-CPA} $\pke(\keygen, \encrypt, \decrypt)$ is identical between round 3 Kyber and ML-KEM. The details of the $\pke$ routines are described in figure \ref{fig:kyber-pke-routines}
+
+\begin{figure}[H]
+    \begin{minipage}{0.3\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\keygen_\pke$}\label{alg:kyber-pke-keygen}
+            \begin{algorithmic}[1]
+                \State $A \leftsample R_q^{k \times k}
+                    , \mathbf{s} \leftsample \mathcal{X}_{\eta_1}^k$
+                \State $\mathbf{t} \leftarrow A \cdot \mathbf{s}$
+                \State $\pk \leftarrow (A, \mathbf{t}), \sk \leftarrow \mathbf{s}$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.3\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\encrypt_\pke(\pk, m)$}\label{alg:kyber-pke-encrypt}
+            \begin{algorithmic}[1]
+                \State $(A, \mathbf{t}) \leftarrow \pk$
+                \State $\mathbf{r}_1 \leftsample \mathcal{X}_{\eta_1}^k$
+                \State $\mathbf{e}_1 \leftsample \mathcal{X}_{\eta_2}^k,
+                    e_2 \leftsample \mathcal{X}_{\eta_2}$
+                \State $\mathbf{c}_1 \leftarrow A^\intercal \cdot \mathbf{r}_1 + \mathbf{e}_1$
+                \State $c_2 \leftarrow \mathbf{t}^\intercal \cdot \mathbf{r}_1 + e_2 + m \cdot \round{\frac{q}{2}}$
+                \State \Return $(\mathbf{c}_1, c_2)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hfill
+    \begin{minipage}{0.3\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decrypt_\pke(\sk, c)$}\label{alg:kyber-pke-decrypt}
+            \begin{algorithmic}[1]
+                \State $(\mathbf{c}_1, c_2) \leftarrow c$
+                \State $\mathbf{s} \leftarrow \sk$
+                \State $\hat{m} = c_2 - \mathbf{s}^\intercal \cdot \mathbf{c}_1$
+                \State $\hat{m} \leftarrow \operatorname{Round}(\hat{m})$
+                \State \Return $\hat{m}$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{$\pke$ routines}\label{fig:kyber-pke-routines}
+\end{figure}
+
+
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
 
