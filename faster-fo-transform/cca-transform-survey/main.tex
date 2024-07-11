@@ -800,6 +800,50 @@ The details of Kyber and ML-KEM's KEM construction are described in figures \ref
     \caption{ML-KEM's KEM routines}\label{fig:mlkem-kem-routines}
 \end{figure}
 
+\section{Plaintext awareness and OAEP}
+Another successful strategy for constructing \monospace{IND-CCA2} secure encryption scheme is \emph{Optimal Asymmetric Encryption Padding}\cite{bellare1995optimal}. OAEP achieves security against chosen ciphertext attacks by achieving a special property called \emph{Plaintext Awareness}. We will introduce plaintext awareness in \ref{sec:plaintext-awareness} and discuss its relationship with \monospace{IND-CCA} security, then describe OAEP and show that it is plaintext aware under the ROM.
+
+\subsection{Plaintext awareness}\label{sec:plaintext-awareness}
+From a high level, plaintext awareness describes a public-key encryption scheme in which an adversary cannnot produce valid ciphertexts without ``knowing'' the corresponding plaintexts. The ``knowledge of plaitnext'' is modeled by a universal knowledge extractor $K$, which uses the public key $\pk$ and the random oracle tape $\mathcal{L}$ to recover the decryptin of some ciphertext $c$ without using the secret key. Bellare noted in \cite{bellare1998relations} that such a knowledge extractor can only exist within the ROM, or the one-way security of the encryption scheme is trivially broken.
+
+Plaintext awareness also models the adversary's ability to eavesdrop using an ``encryption oracle $\mathcal{O}^\mathcal{E}$'', from which the adversary can query valid ciphertexts without leaving the corresponding hash queries in the random oracle. We rule out trivials wins in which an adversary samples a random ciphertexts to which nobody knows the answer by requiring the adversary's output to not be in the encryption oracle's tape.
+
+We can now formally define the \monospace{PA} game. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public key encryption scheme. Let $H$ be a hash function. Let $\mathcal{O}^\mathcal{E}$ be the an encryption oracle. Let $\mathcal{L}^H$ and $\mathcal{L}^\mathcal{E}$ respectively denote the tape of the random oracle and the tape of the encryption oracle.
+
+\begin{figure}[H]
+    \center
+    \begin{minipage}{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption{The \monospace{PA} game}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen()$
+                \State $c \leftsample A^{\mathcal{O}^H, \mathcal{O}^\mathcal{E}}(\pk)$
+                \State $\hat{m} \leftarrow K(\pk, c, \mathcal{L}^H, \mathcal{L}^\mathcal{E})$
+                \State \Return $\llbrack c \not\in \mathcal{L}^\mathcal{E} \land \hat{m} \neq D(\sk, c)\rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{The \monospace{PA} game}\label{fig:pa-game}
+\end{figure}
+
+\monospace{PA} adversary wins the game if $c$ is not in $\mathcal{L}^\mathcal{E}$ and the knowledge extractor fails to recover the correct decryption.
+
+\begin{definition}[$\epsilon$-Plaintext Awareness]\label{def:pa}
+    A $\pke$ is $\epsilon$-Plaintext Aware if there exists a knowledge extractor $K$ such that for all efficient $\monospace{PA}$ adversary $A$, the probability of winning the game is at most $\epsilon$.
+\end{definition}
+
+If a $\pke$ is $\epsilon$-plaintext aware with a negligible $\epsilon$, then a decryption oracle can be simulated using the universal knowledge extractor with negligible difference in behaviors.
+
+\begin{theorem}[\cite{bellare1998relations} theorem 4.2]\label{thm:pa-implies-cca}
+    If $\pke$ is $\epsilon$-plaintext aware, then for every \monospace{IND-CCA2} adversary $B$ against $\pke$ making at most $q_D$ decryption queries, there exists an \monospace{IND-CPA} adversary $A$ such that
+
+    \begin{equation*}
+        \monospace{Adv}(B) \leq \monospace{Adv}(A) + q_D \cdot \epsilon
+    \end{equation*}
+\end{theorem}
+
+\subsection{Optimal Asymmetric Encryption Padding}\label{sec:oaep}
+
 \bibliographystyle{alpha}
 \bibliography{./references.bib}
 
