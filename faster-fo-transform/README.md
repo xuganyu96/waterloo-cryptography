@@ -1,6 +1,6 @@
-# Faster Fujisaki-Okamoto transformation
-The manuscript can be found on [Overleaf](https://www.overleaf.com/read/qgqctkbwyskm#ef31da).
+**Unfortunately encrypt-then-MAC is not one-way secure with either PCO or CVO. See [this writeup](./etm-kyber-is-insecure/main.pdf) for why**.
 
+# Faster Fujisaki-Okamoto transformation
 ## Introduction
 The 1999 Fujisaki-Okamoto transformation (FO transform for short) and the 2017 modular transformation (modular FO transform for short) take a public-key encryption scheme that is OW-CPA (or IND-CPA) secure and uses **de-randomization** and **re-encryption** to add ciphertext integrity. However, public-key encryption is usually a computationally expensive routine, so running the encryption routine as a sub-routine of the decryption routine leaves much computational efficiency to be desired. As the authors of the modular FO transform stated in their paper:
 
