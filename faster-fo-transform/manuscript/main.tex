@@ -340,7 +340,9 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
     \caption{$\kem_\etm$ routines}\label{fig:etm-routines} 
 \end{figure}
 
-If the input $\pke$ is \monospace{OW-PCA} secure, then $\kem_\etm$ is \monospace{IND-CCA2} secure.
+The security of $\kem_\etm$ depends on the one-way security of the input $\pke$ and the unforgeability of the input $\mac$. Specifically, we require the input $\pke$ to be \monospace{OW-PCA} secure. If the input $\pke$ is \monospace{OW-PCA} and the input $\mac$ is existentially one-time unforgeable, then $\kem_\etm$ is \monospace{IND-CCA2} secure. On the other hand, if there exists an efficient \monospace{OW-PCA} adversary against the input $\pke$, then there exists an efficient \monospace{IND-CCA2} adversary against $\kem_\etm$.
+
+\subsection{If PKE is OW-PCA secure, then EtM is IND-CCA2 secure}
 
 \begin{theorem}\label{thm:ow-pca-implies-kem-ind-cca2}
     For every \monospace{IND-CCA2} adversary $A$ against $\kem_\etm$ that makes at most $q_D$ decapsulation queries, there exists an \monospace{OW-PCA} adversary $B$ against the underlying $\pke$ such that
@@ -415,16 +417,102 @@ If the input $\pke$ is \monospace{OW-PCA} secure, then $\kem_\etm$ is \monospace
     % TODO: finish the proof
 \end{proof}
 
-\section{Applications to Kyber}
+\subsection{If PKE is not OW-PCA, then EtM is not IND-CCA2 secure}\label{sec:not-owpca-implies-not-indcca2}
+More specifically, if there exists an efficient \monospace{OW-PCA} adversary $B$ against the underlying $\pke$, then we can build an efficient \monospace{IND-CCA2} adversary $A$ who uses $B$ as a sub-routine and wins the \monospace{IND-CCA2} game.
 
-\subsection{Kyber using \fotplus}
-\subsection{Performance comparisons}\label{sec:exp-results}
-% TODO: Count how many Keccak permutations
-% TODO: Count how many NTT operations
-% 
-Comparisons will do for Kyber and Kyber$^+$, define it. 
+To run $B$ as a sub-routine, $A$ needs to be able to simulate a plaintext-checking oracle, which can be done using the decapsulation oracle. When presented with a plaintext-chekcing query $(\tilde{m}, \tilde{c})$, $A$ derives the corresponding $\mac$ key $\tilde{k} \leftarrow G(\tilde{m})$ and signs the ciphertext $\tilde{t} \leftarrow \mac(\tilde{k}, \tilde{c})$. $A$ then queries the decapsulation oracle on the ciphertext-tag pair $\tilde{K} \leftarrow \mathcal{O}^\decap(\tilde{c}, \tilde{t})$.
 
-\subsection{Experimental results}
+Because the correct session key is deterministically derived from the public key, the plaintext, the ciphertext, and some other values derived from these three values, for each set of $(\tilde{m}, \tilde{c}, \tilde{t}, \tilde{K})$, $A$ can correctly derive the session key if $\tilde{m}$ is indeed the decryption of $\tilde{c}$. On the other hand, if $\tilde{m} \neq \decrypt_\pke(\sk_\pke, \tilde{c})$, then the decapsulation oracle will return the implicit rejection value, which will not match the expected session key value.
+
+By comparing the decapsulation orcale's output and the expected session key, $A$ can correctly distinguish whether $\tilde{m}$ is the decryption of $\tilde{c}$ or not. Thus $A$ can correctly simulate the plaintext-checking oracle for $B$.
+
+When $A$ receives the challenge ciphertext $(c^\ast, t^\ast)$ and unknown session key $K_b \leftsample \{K_0, K_1\}$, $A$ passes $c^\ast$ as the challenge ciphertext to $B$ as $B$'s challenge ciphertext. After $B$ returns the guess $\hat{m}$, $A$ computes the expected session key using $\hat{m}$ and $c^\ast$. If $\hat{m}$ is the correct decryption of $c^\ast$, then the expected session key should match the correct session key, in which case $A$ will correctly distinguish the true session key from the random session key. If $\hat{m}$ is not the correct decryption of $c^\ast$, then the expected session key will probably not match anything, so $A$ will always claim $K_b$ to be a random key. In other words, \emph{if $B$ wins the \monospace{OW-PCA} game, then $A$ wins the \monospace{IND-CCA2} game; if $B$ does not win, then $A$'s chance of winning is exactly $\frac{1}{2}$}. Therefore, the advantage of $A$ is at least that of $B$.
+
+\section{Application to Kyber}
+\subsection{``encrypt-then-MAC'' is not secure with Kyber}
+From section \ref{sec:not-owpca-implies-not-indcca2} we know that if there exists an efficient \monospace{OW-PCA} adversary $B$ against the underlying $\pke$, then there exists an efficient \monospace{IND-CCA2} adversary $A$ against the transformed $\kem$. In this section we'll review Kyber's construction and discuss how to construct efficient plaintext checking attack, which demonstrates that $\etm$ cannot be securely combined with Kyber.
+
+Kyber's construction as shown in \cite{avanzi2019crystals} contains two components: an \monospace{IND-CPA} secure $\pke$ (denoted by \monospace{CPAPKE}), and an \monospace{IND-CCA2} secure $\kem$ (denoted by \monospace{CCAKEM}). \monospace{CPAPKE} contains three routines: key generation, encryption, and decryption. Their details are described in figure \ref{fig:kyber-cpapke-routines}.
+
+\begin{figure}[H]
+    \begin{algorithm}[H]
+        \caption{\monospace{CPAPKE.Gen}}\label{alg:kyber-cpapke-keygen}
+        \begin{algorithmic}[1]
+            \State $d \leftsample \mathcal{B}^{32}$
+            \State $(\rho, \sigma) \leftarrow \monospace{SHA3-512}(d)$
+            \State $N = 0$
+            \For{$i \in \{0, 1, \ldots, k-1\}$}
+                \Comment{Generate public matrix $A$}
+                \For{$j \in \{0, 1, \ldots, k-1\}$}
+                    \State $\hat{A}\monospace{[i][j]} = \monospace{Parse}(
+                        \monospace{Shake128}(\rho, j, i)
+                    )$
+                        \Comment{$\hat{A}$ is in NTT-domain}
+                \EndFor
+            \EndFor
+            \For{$i \in \{0, 1, \ldots, k-1\}$}
+                \Comment{Sample secret $\mathbf{s}$}
+                \State $\mathbf{s}\monospace{[i]} = \monospace{CBD}_{\eta_1}(
+                    \monospace{Shake256}((\rho, N))
+                )$
+                \State $N \leftarrow N + 1$
+            \EndFor
+            \For{$i \in \{0, 1, \ldots, k-1\}$}
+                \Comment{Sample secret $\mathbf{e}$}
+                \State $\mathbf{e}\monospace{[i]} = \monospace{CBD}_{\eta_1}(
+                    \monospace{Shake256}((\rho, N))
+                )$
+                \State $N \leftarrow N + 1$
+            \EndFor
+            \State $\mathbf{\hat{s}} \leftarrow \monospace{NTT}(\mathbf{s})$
+            \State $\mathbf{\hat{e}} \leftarrow \monospace{NTT}(\mathbf{e})$
+            \State $\mathbf{\hat{t}} \leftarrow \hat{A} \cdot \mathbf{\hat{s}} + \mathbf{\hat{e}}$
+            \State $\pk = (\mathbf{\hat{t}} \Vert \rho)$
+            \State $\sk = \mathbf{\hat{s}}$
+            \State \Return $(\pk, \sk)$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\monospace{CPAPKE.Enc}(\pk, m, r)$}\label{alg:kyber-cpapke-encrypt}
+        \begin{algorithmic}[1]
+            \State $N \leftarrow 0$
+            \State $(\rho, \mathbf{\hat{t}}) \leftarrow \pk$
+                \Comment{Unpack and decode the public key}
+            \For{}
+                \For{}
+                \EndFor{}
+            \EndFor{}
+        \end{algorithmic}
+    \end{algorithm}
+    \caption{Kyber's \monospace{CPAPKE} routines}\label{fig:kyber-cpapke-routines}
+\end{figure}
+
+\subsection{Experimental results}\label{sec:exp-results}
+We claim that the input $\mac$ only needs to be one-time existentially unforgeable. This is because besides the challenge ciphertext $(c^\ast, t^\ast)$, the adversary has no external resources from which it can obtain authenticated ciphertexts for which it does not know the decryption. Here we compare the performance of a variety of $\mac$ instantiations. Some of them are many-time secure while others are one-time secure. The standalone performance results are listed in table \ref{tbl:standalone-mac-perf}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        Name & Security & 768 bytes & 1088 bytes & 1568 bytes \\
+        \hline
+        CMAC & many-time & 5022 & 5442 & 6090 \\
+        & & 5131 & 5578 & 6154 \\
+        \hline
+        GMAC & one-time & 2778 & 2756 & 2762 \\
+        & & 2843 & 2780 & 2919 \\
+        \hline
+        KMAC-256 & many-time & 7934 & 9862 & 11742 \\
+        & & 8594 & 10693 & 12319 \\
+        \hline
+        Poly1305 & one-time & 7934 & 9862 & 11742 \\
+        & & 8594 & 10693 & 12319 \\
+        \hline
+    \end{tabular}
+    \caption{Standalone $\mac$ performances\\
+    Top number is median CPU cycle, bottom number is mean CPU cycle
+    }\label{tbl:standalone-mac-perf}
+\end{table}
 
 
 \section{Conclusions and future works}\label{sec:future-works}
