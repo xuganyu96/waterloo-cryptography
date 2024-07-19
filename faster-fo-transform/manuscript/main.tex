@@ -318,48 +318,40 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
 
 \begin{figure}[H]
     \center
-    \begin{minipage}{0.29\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\keygen_\etm$}\label{alg:etm-keygen}
-            \begin{algorithmic}[1]
-                \State $(\pk, \sk_\pke) \leftsample \keygen(1^\lambda)$
-                \State $z \leftsample \mathcal{M}_\pke$
-                \State $\sk \leftarrow (\sk_\pke, z)$
-                \State \Return $(\pk, \sk)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.32\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\encap_\etm(\pk)$}\label{alg:etm-encap}
-            \begin{algorithmic}[1]
-                \State $m \leftsample \mathcal{M}_\pke$
-                \State $k_\mac \leftarrow G(\pk, m)$
-                \State $c_\pke \leftsample \encrypt(\pk, m)$
-                \State $t \leftarrow \mac(k, c_\pke)$
-                \State $K \leftarrow H(\pk, m, c_\pke)$
-                \State $c \leftarrow (c_\pke, K)$
-                \State \Return $(c, K)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \hfill
-    \begin{minipage}{0.37\textwidth}
-        \begin{algorithm}[H]
-            \caption{$\decap_\etm(\sk, c)$}\label{alg:etm-decap}
-            \begin{algorithmic}[1]
-                \State $(c_\pke, t) \leftarrow c$
-                \State $(\sk_\pke, z) \leftarrow \sk$
-                \State $\hat{m} \leftarrow \decrypt(\sk_\pke, c_\pke)$
-                \State $\hat{k}_\pk \leftarrow G(\pk, \hat{m})$
-                \If{$\mac(\hat{k}, c_\pke) \neq t$}
-                    \State \Return $H(\pk, z, c_\pke)$
-                \EndIf
-                \State \Return $H(\pk, \hat{m}, c_\pke)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
+    \begin{algorithm}[H]
+        \caption{$\keygen_\etm$}\label{alg:etm-keygen}
+        \begin{algorithmic}[1]
+            \State $(\pk, \sk_\pke) \leftsample \keygen(1^\lambda)$
+            \State $z \leftsample \mathcal{M}_\pke$
+            \State $\sk \leftarrow (\sk_\pke, z)$
+            \State \Return $(\pk, \sk)$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\encap_\etm(\pk)$}\label{alg:etm-encap}
+        \begin{algorithmic}[1]
+            \State $m \leftsample \mathcal{M}_\pke$
+            \State $k_\mac \leftarrow G(\pk, m)$
+            \State $c_\pke \leftsample \encrypt(\pk, m)$
+            \State $t \leftarrow \mac(k, c_\pke)$
+            \State $K \leftarrow H(\pk, m, c_\pke)$
+            \State $c \leftarrow (c_\pke, K)$
+            \State \Return $(c, K)$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\decap_\etm(\sk, c)$}\label{alg:etm-decap}
+        \begin{algorithmic}[1]
+            \State $(c_\pke, t) \leftarrow c$
+            \State $(\sk_\pke, z) \leftarrow \sk$
+            \State $\hat{m} \leftarrow \decrypt(\sk_\pke, c_\pke)$
+            \State $\hat{k}_\pk \leftarrow G(\pk, \hat{m})$
+            \If{$\mac(\hat{k}, c_\pke) \neq t$}
+                \State \Return $H(\pk, z, c_\pke)$
+            \EndIf
+            \State \Return $H(\pk, \hat{m}, c_\pke)$
+        \end{algorithmic}
+    \end{algorithm}
     \caption{$\kem_\etm$ routines}\label{fig:etm-routines} 
 \end{figure}
 
@@ -458,10 +450,62 @@ By comparing the decapsulation orcale's output and the expected session key, $A$
 When $A$ receives the challenge ciphertext $(c^\ast, t^\ast)$ and unknown session key $K_b \leftsample \{K_0, K_1\}$, $A$ passes $c^\ast$ as the challenge ciphertext to $B$ as $B$'s challenge ciphertext. After $B$ returns the guess $\hat{m}$, $A$ computes the expected session key using $\hat{m}$ and $c^\ast$. If $\hat{m}$ is the correct decryption of $c^\ast$, then the expected session key should match the correct session key, in which case $A$ will correctly distinguish the true session key from the random session key. If $\hat{m}$ is not the correct decryption of $c^\ast$, then the expected session key will probably not match anything, so $A$ will always claim $K_b$ to be a random key. In other words, \emph{if $B$ wins the \monospace{OW-PCA} game, then $A$ wins the \monospace{IND-CCA2} game; if $B$ does not win, then $A$'s chance of winning is exactly $\frac{1}{2}$}. Therefore, the advantage of $A$ is at least that of $B$.
 
 \section{Application to Kyber}
-\subsection{``encrypt-then-MAC'' is not secure with Kyber}
+
 CRYSTALS-Kyber \cite{bos2018crystals}\cite{avanzi2019crystals} and ML-KEM \cite{key2023mechanism} are \monospace{IND-CCA2} secure key encapsulation mechanisms whose security depends on the hardness of the Module Learning with Error (MLWE) problem. For the construction of the \monospace{IND-CCA2} secure KEM, Kyber first constructs an \monospace{IND-CPA} public-key encryption scheme (which we will call \monospace{CPAPKE}), then applies the modular Fujisaki-Okamoto transformation \cite{hofheinz2017modular} to construct the key encapsulation mechanism (which we will call \monospace{CCAKEM}). Specifically, Kyber's round-3 submission uses the $U^{\not\bot}$ transformation, while ML-KEM uses the $U^{\not\bot}_m$ transformation. The routines of \monospace{CPAPKE} can be found in Algorithm 4, 5, 6 in \cite{avanzi2019crystals} and are largely identical between Kyber and ML-KEM. 
 
-\emph{\monospace{CPAPKE} is not \monospace{OW-PCA} secure}: What's important to know about \monospace{CPAPKE} is that it is not secure against plaintext-checking attack.
+The routines of \monospace{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanzi2019crystals}. We recap them here:
+
+\begin{algorithm}[H]
+    \caption{\monospace{Kyber.CCAKEM.KeyGen()}}
+    \begin{algorithmic}[1]
+        \State $z \leftsample \mathcal{B}^{32}$
+            \Comment{Randomly sample 32 bytes (256 bits)}
+        \State $(\pk, \sk^\prime) \leftsample \monospace{Kyber.CPAPKE.KeyGen()}$
+        \State $\sk = (\sk^\prime, \pk, H(\pk), z)$
+            \Comment{H is instantiated with SHA3-256}
+        \State \Return $(\pk, \sk)$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+    \caption{\monospace{Kyber.CCAKEM.Encap(\pk)}}
+    \begin{algorithmic}[1]
+        \State $m \leftsample \mathcal{B}^{32}$
+        \State $m \leftarrow H(m)$
+            \Comment{Do not output system RNG directly}
+        \State $(\bar{K}, r) \leftarrow G(m \Vert H(\pk))$
+            \Comment{G is instantiated with SHA3-512}
+        \State $c \leftarrow \monospace{Kyber.CPAPKE.Enc(\pk, m, r)}$
+            \Comment{Because $r$ is set, \monospace{CPAPKE} is deterministic}
+        \State $K \leftarrow \monospace{KDF}(\bar{K} \Vert H(c))$
+            \Comment{\monospace{KDF} is instantiated with Shake256}
+        \State \Return $(c, K)$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+    \caption{\monospace{Kyber.CCAKEM.Decap(\sk, c)}}
+    \begin{algorithmic}[1]
+        \Require Secret key $\sk = (\sk^\prime, \pk, H(\pk), z)$
+        \Require \monospace{Kyber.CPAPKE} Ciphertext $c$
+        \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
+            \Comment{Unpack the secret key; $h$ is the hash of $\pk$}
+        \State $m^\prime \leftarrow \monospace{Kyber.CPAPKE.Dec}(\sk^\prime, c)$
+        \State $(\overline{K}^\prime, r^\prime) \leftarrow G(m^\prime \Vert h)$
+        \State $c^\prime = \monospace{Kyber.CPAPKE.Enc}(\pk, m^\prime, r^\prime)$
+        \If{$c = c^\prime$}
+            \State $K \leftarrow \monospace{KDF}(\bar{K}^\prime \Vert H(c))$
+        \Else
+            \State $K \leftarrow \monospace{KDF}(z \Vert H(c))$
+        \EndIf
+        \State \Return $K$
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{``encrypt-then-MAC'' is not secure with Kyber}
+\begin{lemma}
+    There exists efficient \monospace{OW-PCA} adversary against \monospace{CPAPKE}
+\end{lemma}
 
 The main reason why a plaintext-checking attack works against \monospace{CPAPKE} is that for each known honest plaintext-ciphertext pair $(m, c)$, one can perturb the ciphertext and obtain a new ciphertext $c^\prime \leftarrow \monospace{addNoise}(c)$. Where the perturbation is small, the perturbed ciphertext can still correctly decrypt to the original plaintext $\decrypt_\monospace{CPAPKE}(\sk, c^\prime) = \decrypt_\monospace{CPAPKE}(\sk, c) = m$. Where the perturbation is large, the perturbed ciphertext will not decrypt to the original plaintext. The boundary between "small perturbation" and "large perturbation" depends on the values of the secret $\mathbf{s}$, so an adversary can probe the boundary in each of the $k \times n$ dimensions and learn the value of $\mathbf{s}$ coefficient-by-coefficient.
 
