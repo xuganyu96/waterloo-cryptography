@@ -9,9 +9,11 @@
 % \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
 \usepackage{algorithm}
 \usepackage{algpseudocode}
+\usepackage{hyperref}
 
 % Custom commands
-\usepackage{mystyle}
+\usepackage{crypto-primitives}
+\usepackage{kyber-algos}
 
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
@@ -37,41 +39,21 @@
 %%%% TITLE %%%%%
 \maketitle
 
-\section{First section}
-\begin{definition}[Lattice]\label{lattice-def}
-A lattice is a discrete subgroup of $\mathbb{R}^n$
-\end{definition}
+\section{Kyber and ML-KEM }
+CRYSTALS-Kyber \cite{bos2018crystals} is an \texttt{IND-CCA} secure key encapsulation mechanism whose security is based on the hardness of the Module Learning with Error (MLWE) problem. It is submitted to NIST's ``Pots-Quantum Cryptography'' contest, where it advanced to the third round \cite{avanzi2019crystals}.
 
-\begin{theorem}[Minkowski's bound]
-    let $\mathcal{L}(B)$ be a full-rank lattice with basis $B \in \mathbb{R}^{n \times n}$, and $B^\ast = [\mathbf{b}_1^\ast, \mathbf{b}_2^\ast, \ldots, \mathbf{b}_n^\ast]$ be the Gram-Schmidt orthogonalization of $B$, then
-    \begin{equation}
-        \lambda_1(\mathcal{L}(B)) \geq \min_{1 \leq i \leq n}\norm{\mathbf{b}_i^\ast}
-    \end{equation}
-\end{theorem}
+A modified version was standardized by NIST \cite{key2023mechanism} and renamed to ``ML-KEM''.
 
-\begin{algorithm}
-    \caption{An algorithm with caption}\label{alg:cap}
-    \begin{algorithmic}
-        \Require $n \geq 0$
-        \Ensure $y = x^n$
-        \State $y \gets 1$
-        \State $X \gets x$
-        \State $N \gets n$
-        \While{$N \neq 0$}
-            \If{$N$ is even}
-                \State $X \gets X \times X$
-                \State $N \gets \frac{N}{2}$  \Comment{This is a comment}
-            \ElsIf{$N$ is odd}
-                \State $y \gets y \times X$
-                \State $N \gets N - 1$
-            \EndIf
-        \EndWhile
-    \end{algorithmic}
-\end{algorithm}
+\kybercpapkekeygen
+\kybercpapkeenc
+\kybercpapkedec
+\kyberccakemkeygen
+\kyberccakemencap
+\kyberccakemdecap
 
-Here is some citation\cite{fujisaki1999secure}
+
 
 \bibliographystyle{alpha}
-\bibliography{./references.bib}
+\bibliography{references}
 
 \end{document}
