@@ -355,7 +355,7 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
 \end{figure}
 
 \begin{theorem}\label{thm:ow-pca-implies-kem-ind-cca2}
-    For every \texttt{IND-CCA2} adversary $A$ against $\kem_\etm$ that makes at most $q_D$ decapsulation queries, there exists an \texttt{OW-PCA} adversary $B$ who makes $q_P$ plaintext-checking queries against the underlying $\pke$ such that
+    For every \texttt{IND-CCA2} adversary $A$ against $\kem_\etm$ that makes $q_D$ decapsulation queries, there exists an \texttt{OW-PCA} adversary $B$ who makes at least $q_D$ plaintext-checking queries against the underlying $\pke$ such that
 
     \begin{equation*}
         \texttt{Adv}_\texttt{IND-CCA2}(A) \leq q_D \cdot \epsilon_\mac + 2 \cdot \texttt{Adv}_\texttt{OW-PCA}(B)
@@ -431,19 +431,48 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
         \texttt{Adv}_0(A) - \texttt{Adv}_1(A) \leq q_D \cdot \epsilon_\mac
     \end{equation*}
 
+    \emph{Game 2} is identical to \emph{Game 1}, except for that when the challenger generates the challenge ciphertext $c^\ast = (c^\ast_\pke, t^\ast)$, the tag $t^\ast$ is computed using a uniformly random key $k^\ast \leftarrow \mathcal{K}_\mac$ instead of a pseudorandom key derived from hashing the challenge plaintext.
 
+    Under the random oracle model, game 2 and game 1 are statistically identical to the adversary $A$, unless $A$ queries $G$ with $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}^\ast]$, then:
+
+    \begin{equation*}
+        \texttt{Adv}_1(A) - \texttt{Adv}_2(A) \leq P[\texttt{QUERY G}^\ast]
+    \end{equation*}
+
+    \emph{Game 3} is identical to \emph{Game 2}, except for that $K_0$ is a uniformly random session key instead of a pseudorandom session key derived from the challenge plaintext-ciphertext pair. Under the random oracle model, game 3 and game 2 are statistically identical unless the adversary $A$ queries $H$ with $(m^\ast, \cdot)$. Denote the probability that $A$ makes such $H$ query by $P[\texttt{QUERY H}^\ast]$, then:
+
+    \begin{equation*}
+        \texttt{Adv}_2(A) - \texttt{Adv}_3(A) \leq P[\texttt{QUERY H}^\ast]
+    \end{equation*}
+
+    In game 3, both $K_0$ and $K_1$ are uniformly random. There is no statistical difference between the two session keys, so no adversary can have any advantage: $\texttt{Adv}_3(A) = 0$.
+
+    Now consider an \texttt{OW-PCA} adversary $B$ simulating game 3 for $A$: \begin{enumerate}
+        \item When $B$ receives its public key $\pk$, $B$ passes $\pk$ to $A$
+        \item $B$ can sample the implicit rejection $z$ by itself
+        \item $B$ can simulate both hash oracles $G$ and $H$ for $A$
+        \item $B$ can simulate $\mathcal{O}^\decap_1$ for $A$. Instead of checking if $\decrypt(\sk_\pke, c) = \tilde{m}$, $B$ can use its access to the plaintext-checking oracle and check if $\pco(\tilde{m}, c) = 1$. This means that for every decapsulation query $B$ services, $B$ needs to make at least one plaintext-checking query. Therefore, $B$ needs to make at least $q_D$ plaintext-checking query.
+        \item When $B$ receives its challenge ciphertext $c_\pke^\ast$, it can sample a uniformly random key $k^\ast \leftsample \mathcal{K}_\mac$, produce the corresponding tag $t^\ast \leftarrow \mac(k^\ast, c^\ast_\pke)$, and sample a uniformly random session keys $K_0, K_1 \leftsample \mathcal{K}_\kem$. $B$ then passes $c^\ast = (c^\ast_\pke, t^\ast)$ as the challenge ciphertext and a coin-flip $K_b$ as the challenge session key.
+    \end{enumerate}
+
+    If $A$ ever queries $G$ or $H$ with the decryption of $c^\ast_\pke$, $B$ will be able to detect it using the plaintext-checking oracle. From where $B$ is guaranteed to win the \texttt{OW-PCA} game. Therefore:
+
+    \begin{equation*}
+        \begin{aligned}
+            P[\texttt{QUERY G}^\ast] &\leq \texttt{Adv}_\texttt{OW-PCA}(B) \\
+            P[\texttt{QUERY H}^\ast] &\leq \texttt{Adv}_\texttt{OW-PCA}(B)
+        \end{aligned}
+    \end{equation*}
+
+    Combining all inequalities above, we have:
+
+    \begin{equation*}
+        \texttt{Adv}_0(A) \leq q_D \cdot \epsilon_\mac + 2 \texttt{Adv}_\texttt{OW-PCA}(B)
+    \end{equation*}
 \end{proof}
 
-\subsection{If PKE is not OW-PCA, then EtM is not IND-CCA2 secure}\label{sec:not-owpca-implies-not-indcca2}
-More specifically, if there exists an efficient \texttt{OW-PCA} adversary $B$ against the underlying $\pke$, then we can build an efficient \texttt{IND-CCA2} adversary $A$ who uses $B$ as a sub-routine and wins the \texttt{IND-CCA2} game.
-
-To run $B$ as a sub-routine, $A$ needs to be able to simulate a plaintext-checking oracle, which can be done using the decapsulation oracle. When presented with a plaintext-checking query $(\tilde{m}, \tilde{c})$, $A$ derives the corresponding $\mac$ key $\tilde{k} \leftarrow G(\tilde{m})$ and signs the ciphertext $\tilde{t} \leftarrow \mac(\tilde{k}, \tilde{c})$. $A$ then queries the decapsulation oracle on the ciphertext-tag pair $\tilde{K} \leftarrow \mathcal{O}^\decap(\tilde{c}, \tilde{t})$.
-
-Because the correct session key is deterministically derived from the public key, the plaintext, the ciphertext, and some other values derived from these three values, for each set of $(\tilde{m}, \tilde{c}, \tilde{t}, \tilde{K})$, $A$ can correctly derive the session key if $\tilde{m}$ is indeed the decryption of $\tilde{c}$. On the other hand, if $\tilde{m} \neq \decrypt_\pke(\sk_\pke, \tilde{c})$, then the decapsulation oracle will return the implicit rejection value, which will not match the expected session key value.
-
-By comparing the decapsulation orcale's output and the expected session key, $A$ can correctly distinguish whether $\tilde{m}$ is the decryption of $\tilde{c}$ or not. Thus $A$ can correctly simulate the plaintext-checking oracle for $B$.
-
-When $A$ receives the challenge ciphertext $(c^\ast, t^\ast)$ and unknown session key $K_b \leftsample \{K_0, K_1\}$, $A$ passes $c^\ast$ as the challenge ciphertext to $B$ as $B$'s challenge ciphertext. After $B$ returns the guess $\hat{m}$, $A$ computes the expected session key using $\hat{m}$ and $c^\ast$. If $\hat{m}$ is the correct decryption of $c^\ast$, then the expected session key should match the correct session key, in which case $A$ will correctly distinguish the true session key from the random session key. If $\hat{m}$ is not the correct decryption of $c^\ast$, then the expected session key will probably not match anything, so $A$ will always claim $K_b$ to be a random key. In other words, \emph{if $B$ wins the \texttt{OW-PCA} game, then $A$ wins the \texttt{IND-CCA2} game; if $B$ does not win, then $A$'s chance of winning is exactly $\frac{1}{2}$}. Therefore, the advantage of $A$ is at least that of $B$.
+%%%%%%%%%%%%%%%% uncomment to see %%%%%%%%%%%%%%%%%%%%
+% \include{not-pca-means-not-indcca}
 
 \section{Application to Kyber}
 
@@ -513,38 +542,9 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
 {\color{blue} Note for authenticated encryption, tags $t_i$'s are necessary for the inputs. 
 
 In fact, this is authenticated encryption instead of EtM. So we should change that, called authenticated encryption. 
-Please do not change my notation. They have their meanings in AE mode. }
+Please do not change my notation. They have their meanings in AE mode.}
 
-\subsection{``encrypt-then-MAC'' is not secure with Kyber}
-\begin{lemma}
-    There exists efficient \texttt{OW-PCA} adversary against \texttt{CPAPKE}
-\end{lemma}
-
-The main reason why a plaintext-checking attack works against \texttt{CPAPKE} is that for each known honest plaintext-ciphertext pair $(m, c)$, one can perturb the ciphertext and obtain a new ciphertext $c^\prime \leftarrow \texttt{addNoise}(c)$. Where the perturbation is small, the perturbed ciphertext can still correctly decrypt to the original plaintext $\decrypt_\texttt{CPAPKE}(\sk, c^\prime) = \decrypt_\texttt{CPAPKE}(\sk, c) = m$. Where the perturbation is large, the perturbed ciphertext will not decrypt to the original plaintext. The boundary between "small perturbation" and "large perturbation" depends on the values of the secret $\mathbf{s}$, so an adversary can probe the boundary in each of the $k \times n$ dimensions and learn the value of $\mathbf{s}$ coefficient-by-coefficient.
-
-As described in section \ref{sec:not-owpca-implies-not-indcca2}, when the integrity of the unauthenticated ciphertext is protected under a MAC key derived from the corresponding plaintext, \textbf{the MAC will not prevent an adversary from perturbing an honest ciphertext} since the adversary can use the same MAC key to compute tag $t^\prime$ on the perturbed unauthenticated ciphertext $c^\prime$.
-
-On the other hand, \cite{hofheinz2017modular} prevents tempering by the combination of \emph{de-randomization} and \emph{re-encryption}. Even if $c^\prime \leftarrow \texttt{addNoise}(c)$ still decrypts back to the same plaintext, \emph{de-randomization} and \emph{re-encryption} will reveal that $c^\prime$ has been tempered with because $c^\prime \neq \encrypt(\pk, m; r\leftarrow G(m))$. Unlike $\kem_\etm$ where an adversary can temper with the unauthenticated ciphertext and still produce some valid authenticated ciphertexts, with \emph{re-encryption} \emph{there is no ``other valid ciphertext'' that correspond to the same plaintext}, thus preventing all tempering.
-
-\subsection{Is ``encrypt-then-MAC'' useful?}
-From \cite{hofheinz2017modular} we know that if a $\pke$ is rigid and \texttt{OW-CPA} secure, then the $U^{\not\bot}_m$ transformation is sufficient for constructing an \texttt{IND-CCA2} secure $\kem$ with tight security reduction. Furtherfore, the performance overhead of $U^{\not\bot}_m$ over the rigid $\pke$ is minimal. Note that rigidity and \texttt{OW-CPA} automatically implies \texttt{OW-PCA} security, so $\kem_\etm$ will also construct an \texttt{IND-CCA2} secure $\kem$, but with extra runtime and communication overhead, so there is practical point of using $\etm$ over the $U^{\not\bot}_m$ transformation. On the other hand, if the $\pke$ is not \texttt{OW-PCA}, then $\kem_\etm$ is not \texttt{IND-CCA2} secure.
-
-If the $\pke$ is not rigid but still \texttt{OW-PCA} secure, \emph{de-randomization + re-encryption} is still an option, so we need to consider the performance trade-offs. \emph{de-randomization + re-encryption} adds one addition hash (for deriving coin) into the encryption routine and add one hash call and one call to the input encryption routine in the decryption routine. \emph{``encrypt-then-MAC''} introduces one hash call and one MAC call to the encryption routine, adds a tag to the ciphertext size, and adds one hash call and one MAC call to the decryption routine. Using a one-time MAC like GMAC or Poly1305, the computational cost of producing a tag and the communication cost of the tag should be minimal (1000-2000 CPU cycles + 128 bits of tag). Where appropriate, replacing \emph{re-encryption} in the decryption routine with a MAC computation can lead to substantial saving in computational cost. This is especially true in protocols where the client (often constrained environments) is responsible for running decryption routine, such as hybrid key exchanges used in CECPQ2.
-
-\begin{table}[H]
-    \begin{tabular}{|c|c|}
-        \hline
-        Input $\pke$ & what should I use to build $\kem$ \\
-        \hline
-        rigid & $U^{\not\bot}_m$ \\
-        \hline
-        \texttt{OW-PCA} but not rigid & $\etm$ \\
-        \hline
-        \texttt{OW-CPA} but not \texttt{OW-PCA} & \emph{de-randomization + re-encryption} \\
-        \hline
-    \end{tabular}
-    \caption{Use cases}
-\end{table}
+% \include{when-is-etm-useful}
 
 \subsection{MAC Performance}\label{sec:mac-performance}
 We claim that the input $\mac$ only needs to be one-time existentially unforgeable. This is because besides the challenge ciphertext $(c^\ast, t^\ast)$, the adversary has no external resources from which it can obtain authenticated ciphertexts for which it does not know the decryption. Here we compare the performance of a variety of $\mac$ instantiations. Some of them are many-time secure while others are one-time secure. The standalone performance results are listed in table \ref{tbl:standalone-mac-perf}. For each choice of MAC, we checked the median (top) and average (bottom) CPU cycles (run on a 2019 MacBook Pro 16-inch) needed to sign 768, 1088, and 1568 bytes of data (respectively the ciphertext size for Kyber512, Kyber768, and Kyber1024).
