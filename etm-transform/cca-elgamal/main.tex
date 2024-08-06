@@ -1,0 +1,152 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+
+% Custom commands
+\usepackage{crypto-primitives}
+\usepackage{kyber-algos}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{
+    ElGamal cryptosystem
+}
+\author{
+    Ganyu (Bruce) Xu
+}
+% Leave the date field empty to display the date of compilation
+% \date{}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{The ElGamal cryptosystem}
+The ElGamal cryptosystem is a public key encryption scheme that mainly operates on the discrete log problem. Each instance of the encryption scheme is parameterized by a cyclic group $G$ with prime order $q$, a generator $g$ of this cyclic group. The routines of the encryption scheme is shown in figure \ref{fig:cpa-elgamal-routines}
+
+\begin{figure}[H]
+    \begin{algorithm}[H]
+        \caption{$\keygen$}
+        \begin{algorithmic}[1]
+            \State $x \leftsample \mathbb{Z}_q$
+            \State $u \leftarrow g^x$
+            \State $\pk \leftarrow u, \sk \leftarrow x$
+            \State \Return $(\pk, \sk)$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\encrypt(\pk = u, m \in G)$}
+        \begin{algorithmic}[1]
+            \State $y \leftsample \mathbb{Z}_q$
+            \State $v \leftarrow g^y$
+            \State $w \leftarrow u^y$
+                \Comment{$w = g^{xy}$}
+            \State $c \leftarrow (v, m \cdot w)$
+            \State \Return $c$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\decrypt(\sk = x, c)$}
+        \begin{algorithmic}[1]
+            \State $(c_1, c_2) \leftarrow c$
+            \State $\hat{w} \leftarrow c_1^x$
+            \State $\hat{m} \leftarrow c_2 \cdot \hat{w}^{-1}$
+            \State \Return $\hat{m}$
+        \end{algorithmic}
+    \end{algorithm}
+    \caption{ElGamal encryption scheme is IND-CPA secure if DDH holds}\label{fig:cpa-elgamal-routines}
+\end{figure}
+
+The IND-CPA security of the ElGamal cryptosystem depends on the hardness of the following two problems:
+
+\begin{definition}[Computational Diffie-Hellman Problem]
+    Let $G$ be a cyclic group with prime order $q$ and generator $g$. Let $x, y \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $g, g^x,g^y$, compute $g^{xy}$
+\end{definition}
+
+\begin{definition}[Decisional Diffie-Hellman Problem]
+    Let $G$ be a cyclic group with prime order $q$ and generator $g$. Let $x, y, z \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $g, g^x, g^y$, distinguish $g^{xy}$ from $g^z$
+\end{definition}
+
+\begin{theorem}
+    For every IND-CPA adversary $A$ against the ElGamal cryptosystem, there exists an adversary $B$ against the DDH game such that
+
+    \begin{equation*}
+        \texttt{Adv}(A) = 2 \cdot \texttt{Adv}(B)
+    \end{equation*}
+\end{theorem}
+
+Because ElGamal ciphertexts are malleable, this encryption scheme is not secure against chosen-ciphertext attacks. However, a hybrid encryption scheme can be used to achieve chosen-ciphertext attack security \cite{boneh2020graduate}. Denote this construction by ``ElGamal HPKE''. 
+
+To construct the HPKE, we need the cyclic group $G$ of prime order $q$ and generator $g$. We also need a symmetric cipher $(\encrypt_S, \decrypt_S)$ defined over $(\mathcal{K}, \mathcal{M}, \mathcal{C})$, and a hash function $H: G \rightarrow \mathcal{K}$. The routines are listed in figure \ref{fig:cca-elgamal-routines}.
+
+\begin{figure}[H]
+    \begin{algorithm}[H]
+        \caption{$\keygen$}
+        \begin{algorithmic}[1]
+            \State $x \leftarrow \mathbb{Z}_q$
+            \State $u \leftarrow g^x$
+            \State $\pk \leftarrow u$
+            \State $\sk \leftarrow x$
+            \State \Return $(\pk, \sk)$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\encrypt(\pk = u, m \in \mathcal{M})$}
+        \begin{algorithmic}[1]
+            \State $y \leftsample \mathbb{Z}_q$
+            \State $v \leftarrow g^y$
+            \State $w \leftarrow u^y$
+                \Comment{$w = g^{xy}$}
+            \State $k \leftarrow H(w)$
+            \State $c^\prime \leftarrow \encrypt_S(k, m)$
+            \State $c \leftarrow (v, c^\prime)$
+            \State \Return $c$
+        \end{algorithmic}
+    \end{algorithm}
+    \begin{algorithm}[H]
+        \caption{$\decrypt(\sk = x, c)$}
+        \begin{algorithmic}[1]
+            \State $(v, c^\prime) \leftarrow c$
+            \State $\hat{w} \leftarrow v^x$
+            \State $\hat{k} \leftarrow H(\hat{w})$
+            \State $\hat{m} \leftarrow \decrypt_S(\hat{k}, c^\prime)$
+            \State \Return $\hat{m}$
+        \end{algorithmic}
+    \end{algorithm}
+    \caption{ElGamal HPKE}\label{fig:cca-elgamal-routines}
+\end{figure}
+
+\begin{theorem}
+    For every IND-CCA adversary $A$ against the HPKE, there exists an \emph{interactive computational Diffie-Hellman problem} adversary $B$ and an IND-CPA adversary $C$ against the symmetric encryption scheme such that
+
+    \begin{equation*}
+        \texttt{Adv}(A) \leq \text{NEED TO WRITE THIS PART}
+    \end{equation*}
+\end{theorem}
+
+While having a decryption oracle breaks the decisional Diffie-Hellman assumption, we still feel confident that the computational Diffie-Hellman remains hard, which is how we can reason about the security of the HPKE under chosen-ciphertext attacks.
+
+Unfortunately, \emph{this is not the case in Kyber}. Having a decapsulation oracle that can take arbitrary number of decapsulation queries will allows an adversary to complete recover the secret key, unlike ElGamal HPKE where having a decryption oracle does not give away the secret key. \emph{There is no immediate parallel loosening of security assumption we can make in Kyber}
+
+\bibliographystyle{alpha}
+\bibliography{references}
+
+\end{document}
