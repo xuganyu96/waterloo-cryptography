@@ -431,6 +431,8 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
         \texttt{Adv}_0(A) - \texttt{Adv}_1(A) \leq q_D \cdot \epsilon_\mac
     \end{equation*}
 
+    Note that $\epsilon_\mac$ quantifies the probability that an adversary can produce forgery for a unknown key without access to a signing oracles. While this is not a standard security definition for MAC, this probability is straightforward to estimate for some classes of MACs. As will be discussed in section \ref{sec:mac-performance}, with a Carter-Wegman-like one-time MAC instantiated with message length $L$ and a finite field with $F$ elements, such probability is at most $\epsilon_\mac \leq \frac{L+1}{F}$
+
     \emph{Game 2} is identical to \emph{Game 1}, except for that when the challenger generates the challenge ciphertext $c^\ast = (c^\ast_\pke, t^\ast)$, the tag $t^\ast$ is computed using a uniformly random key $k^\ast \leftarrow \mathcal{K}_\mac$ instead of a pseudorandom key derived from hashing the challenge plaintext.
 
     Under the random oracle model, game 2 and game 1 are statistically identical to the adversary $A$, unless $A$ queries $G$ with $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}^\ast]$, then:
