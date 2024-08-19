@@ -487,7 +487,6 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
     \caption{\texttt{Kyber.CCAKEM.KeyGen()}}\label{alg:kyber-ae-keygen}
     \begin{algorithmic}[1]
         \State $z \leftsample \mathcal{B}^{32}$
-            \Comment{Randomly sample 32 bytes (256 bits)}
         \State $(\pk, \sk^\prime) \leftsample \texttt{Kyber.CPAPKE.KeyGen()}$
         \State $\sk = (\sk^\prime, \pk, H(\pk), z)$
             \Comment{H is instantiated with SHA3-256}
@@ -499,41 +498,36 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
     \caption{\texttt{Kyber.CCAKEM.Encap$^+$(\pk)}}\label{alg:kyber-ae-encap}
     \begin{algorithmic}[1]
         \State $m \leftsample \mathcal{B}^{32}$
-       % \State $m'= H(m)$
+        \State $m'= H(m)$
             \Comment{Do not output system RNG directly}
-        \State $(\bar{K}, r, K_{mac}) = G(m' \Vert H(\pk))$
+        \State $(\bar{K}, K_\mac) = G(m' \Vert H(\pk))$
             \Comment{G is instantiated with SHA3-512}
-        \State $c  \leftarrow \texttt{Kyber.CPAPKE.Enc(\pk, m', r)}$
-            \Comment{Because $r$ is set, \texttt{CPAPKE} is deterministic}
-            \State $t_1=MAC(K_{mac}, c)$
-        \State $K = \texttt{KDF}(\bar{K} \Vert t_1)$
-       % \State $t_2=MAC(K, t_1)$
+        \State $r \leftsample \mathcal{R}$
+        \State $c^\prime  \leftarrow \texttt{Kyber.CPAPKE.Enc}(\pk, m', r)$
+            \State $t=\mac(K_\mac, c^\prime)$
+        \State $K = \texttt{KDF}(\bar{K} \Vert t)$
             \Comment{\texttt{KDF} is instantiated with Shake256}
-        %\State $(c, t_1, t_2)$
-        \State $c \leftarrow (c, t_1)$
+        \State $c \leftarrow (c^\prime, t)$
         \State \Return $(c, K)$
     \end{algorithmic}
 \end{algorithm}
 
 \begin{algorithm}[H]
-    \caption{$\texttt{Kyber.CCAKEM.Decap}^+ (\sk, c, t_1, t_2)$}\label{alg:kyber-ae-decap}
+    \caption{$\texttt{Kyber.CCAKEM.Decap}^+ (\sk, c)$}\label{alg:kyber-ae-decap}
     \begin{algorithmic}[1]
         \Require Secret key $\sk = (\sk^\prime, \pk, H(\pk), z)$
-        \Require \texttt{Kyber.CPAPKE} Ciphertext $c$ and Tags $t_1, t_2$
+        \Require Ciphertext $c = (c^\prime, t)$
         \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
-            \Comment{Unpack the secret key; $h$ is the hash of $\pk$}
-        \State $(c, t_1) \leftarrow c$
-        \State $ m = \texttt{Kyber.CPAPKE.Dec}(\sk^\prime, c)$ 
-       % \State $m'=H(m) $ 
-        \State $(\overline{K},   r, K_{mac}) =   G(m^\prime \Vert h)$
-        \State $t_1'=\mac(K_\mac, c)$
-        \If{$t_1' = t_1$}
-            \State $K  = \texttt{KDF}(\bar{K} \Vert t_1)$ 
-            %\State $t_2'= \mac(K, t_1)$
-            \State \Return $K$
+        \State $(c^\prime, t_1) \leftarrow c$
+        \State $\hat{m} = \texttt{Kyber.CPAPKE.Dec}(\sk^\prime, c^\prime)$ 
+        \State $(\overline{K}, K_\mac) =   G(m^\prime \Vert h)$
+        \State $\hat{t}=\mac(K_\mac, c)$
+        \If{$\hat{t} = t$}
+            \State $K  = \texttt{KDF}(\bar{K} \Vert t)$ 
          \Else 
-            \State Abort
+            \State $K  = \texttt{KDF}(z \Vert t)$ 
         \EndIf
+            \State \Return $K$
     \end{algorithmic}
 \end{algorithm}
 
