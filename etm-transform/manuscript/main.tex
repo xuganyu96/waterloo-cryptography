@@ -482,7 +482,7 @@ The \texttt{IND-CPA} PKE of Kyber (algorithms 4, 5, 6 in \cite{avanzi2019crystal
 The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanzi2019crystals}. We modify Algorithms 8 and 9 using authenticated encryption (AE)  mode as follows where Algorithm 7 is unchanged.
 
 \begin{algorithm}[H]
-    \caption{\texttt{Kyber.CCAKEM.KeyGen()}}
+    \caption{\texttt{Kyber.CCAKEM.KeyGen()}}\label{alg:kyber-ae-keygen}
     \begin{algorithmic}[1]
         \State $z \leftsample \mathcal{B}^{32}$
             \Comment{Randomly sample 32 bytes (256 bits)}
@@ -494,7 +494,7 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
 \end{algorithm}
 
 \begin{algorithm}[H]
-    \caption{\texttt{Kyber.CCAKEM.Encap$^+$(\pk)}}
+    \caption{\texttt{Kyber.CCAKEM.Encap$^+$(\pk)}}\label{alg:kyber-ae-encap}
     \begin{algorithmic}[1]
         \State $m \leftsample \mathcal{B}^{32}$
        % \State $m'= H(m)$
@@ -514,7 +514,7 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
 \end{algorithm}
 
 \begin{algorithm}[H]
-    \caption{$\texttt{Kyber.CCAKEM.Decap}^+ (\sk, c, t_1, t_2)$}
+    \caption{$\texttt{Kyber.CCAKEM.Decap}^+ (\sk, c, t_1, t_2)$}\label{alg:kyber-ae-decap}
     \begin{algorithmic}[1]
         \Require Secret key $\sk = (\sk^\prime, \pk, H(\pk), z)$
         \Require \texttt{Kyber.CPAPKE} Ciphertext $c$ and Tags $t_1, t_2$
@@ -546,31 +546,69 @@ Please do not change my notation. They have their meanings in AE mode.}
 
 % \include{when-is-etm-useful}
 
-\subsection{Choosing message authentication code}\label{sec:mac-performance}
-Given that each keypair is only used once, an adversary can only obtain one authenticated ciphertext, which means that the corresponding MAC key is also only used once per key exchange. This allows us to use MAC constructions that are only one-time secure for substantial computation efficiency gains. We compared the median and mean number of CPU cycles (Intel i7-9750H) used to sign Kyber's IND-CPA ciphertexts. The results are listed in \ref{tbl:standalone-mac-perf}.
+\subsection{MAC performance}\label{sec:mac-performance}
+When instantiating an instance $\kem(\keygen, \encap, \decap)$, there are a variety of possible MAC's to choose from. For each of the security level and choice of MAC, we measured the number of CPU cycles needed to produce a digest of the unauthenticated ciphertext. The median (top) and mean (bottom) measurements are reported in table \ref{tbl:standalone-mac-perf}.
 
 \begin{table}[H]
     \centering
-    \begin{tabular}{|c|c|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|c|}
         \hline
-        Name & Security & 768 bytes & 1088 bytes & 1568 bytes \\
+        Name & Security & measurement & 768 bytes & 1088 bytes & 1568 bytes \\
         \hline
-        CMAC & many-time & 5022 & 5442 & 6090 \\
-        & & 5131 & 5578 & 6154 \\
+        CMAC & many-time & median & 5022 & 5442 & 6090 \\
+        & & mean & 5131 & 5578 & 6154 \\
         \hline
-        GMAC & one-time & 2778 & 2756 & 2762 \\
-        & & 2843 & 2780 & 2919 \\
+        KMAC-256 & many-time & median & 7934 & 9862 & 11742 \\
+        & & mean & 8594 & 10693 & 12319 \\
         \hline
-        KMAC-256 & many-time & 7934 & 9862 & 11742 \\
-        & & 8594 & 10693 & 12319 \\
+        GMAC & one-time & median & 2778 & 2756 & 2762 \\
+        & & mean & 2843 & 2780 & 2919 \\
         \hline
-        Poly1305 & one-time & 1128 & 1218 & 1338 \\
-        & & 1435 & 1504 & 1625 \\
+        Poly1305 & one-time & median & 1128 & 1218 & 1338 \\
+        & & mean & 1435 & 1504 & 1625 \\
         \hline
     \end{tabular}
     \caption{Standalone $\mac$ performances}\label{tbl:standalone-mac-perf}
 \end{table}
 
+Based on the security reduction in section \ref{sec:main-results} we chose standalone GMAC and Poly1305 for their substantial performance advantage over other constructions such as CBC-MAC and KMAC. We then modified the reference implementation (TODO: citation needed https://github.com/pq-crystals/kyber) according to algorithms \ref{alg:kyber-ae-keygen}, \ref{alg:kyber-ae-encap}, and \ref{alg:kyber-ae-decap}. We measured the median and mean CPU cycles needed to run each of the routines. The measurements are listed in table \ref{tbl:kyber-ae-perf}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|c|}
+        \hline
+        Name & Security level & measurement & $\keygen$ & $\encap$ & $\decap$ \\
+        \hline
+        Kyber512 & 128 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        Kyber768 & 192 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        Kyber1024 & 256 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        KyberAE512 w/ GMAC& 128 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        KyberAE768 w/ GMAC& 192 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        KyberAE1024 w/ GMAC& 256 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        KyberAE512 w/ Poly1305& 128 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        KyberAE768 w/ Poly1305& 192 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+        KyberAE1024 w/ Poly1305& 256 bits & median &  & &  \\
+        & & mean &  & &  \\
+        \hline
+    \end{tabular}
+    \caption{Kyber-AE performance measurements}\label{tbl:kyber-ae-perf}
+\end{table}
 
 \section{Conclusions and future works}\label{sec:future-works}
 
