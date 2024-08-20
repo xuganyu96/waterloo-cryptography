@@ -1,15 +1,3 @@
-% TODO: instead of signing the ciphertext, how about signing a hash of the ciphertext?
-% TODO: Kyber round 3's implementation already contains H(c), we can just use that for the MAC
-% TODO: need to look into using GCM as a more efficient MAC
-% TODO: what is the quantum security of the various hash functions and how do they impact the strength of the FO transform?
-% TODO: Need to read the rest of the U transformation since Kyber round 3 uses U^{\not\bot} but ML-KEM (FIPS 203) uses U^{\not\bot}_m, which removed the hash of the ciphertext
-
-%%%% IACR Transactions TEMPLATE %%%%
-% This file shows how to use the iacrtrans class to write a paper.
-% Written by Gaetan Leurent gaetan.leurent@inria.fr (2020)
-% Public Domain (CC0)
-
-
 %%%% 1. DOCUMENTCLASS %%%%
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
 \documentclass[floatrow,journal=tches,submission]{iacrtrans}
@@ -44,7 +32,7 @@
 
 % Custom commands
 \newcommand{\pke}{\texttt{PKE}}
-\newcommand{\keygen}{\texttt{Gen}}
+\newcommand{\keygen}{\texttt{KeyGen}}
 \newcommand{\encrypt}{\texttt{Enc}}
 \newcommand{\decrypt}{\texttt{Dec}}
 \newcommand{\kem}{\texttt{KEM}}
@@ -62,10 +50,11 @@
 \newcommand{\llbrack}{[\![}
 \newcommand{\rrbrack}{]\!]}
 \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
+\newcommand{\adv}{\texttt{Adv}}
 \newcommand{\fotplus}{\texttt{FOT+}}
 
 %%%% 4. TITLE %%%%
-\title{
+\title[IND-CCA2 secure KEM using encrypt-then-MAC]{
 Fast Fujisaki-Okamoto transformation  using encrypt-then-mac and applications to Kyber}
 %%%% NOTES:
 % - If the title is too long, or includes special macro, please
@@ -88,86 +77,48 @@ Fast Fujisaki-Okamoto transformation  using encrypt-then-mac and applications to
 
 %%%% 6. ABSTRACT %%%%
 \begin{abstract}
-  The modular Fujisaki-Okamoto (FO) transformation takes public-key encryption with weaker security and constructs a key encapsulation mechanism (KEM) with indistinguishability under adaptive chosen ciphertext attacks. While the modular FO transform enjoys tight security bound and quantum resistance, it also suffers from computational inefficiency due to using de-randomization and re-encryption for providing ciphertext integrity. In this work, we propose an alternative modular FO transformation that replaces re-encryption with a message authentication code (MAC) and prove the security bound of our construction. We then instantiate a concrete instance with ML-KEM and show that when re-encryption incurs significant computational cost, our construction provides substantial runtime speedup and reduced memory footprint.
+  The modular Fujisaki-Okamoto (FO) transformation takes public-key encryption with weaker security and constructs a key encapsulation mechanism (KEM) with indistinguishability under adaptive chosen ciphertext attacks. While the modular FO transform enjoys tight security bound and quantum resistance, it also suffers from computational inefficiency and vulnerabilities to side-channel attacks due to using de-randomization and re-encryption for providing ciphertext integrity. In this work, we propose an alternative KEM construction that achieves ciphertext integrity using a message authentication code (MAC) and instantiate a concrete instance using ML-KEM. Our experimental results showed that where the encryption routine incurs heavy computational cost, replacing re-encryption with MAC provides substantial performance improvements at comparable security level.
 \end{abstract}
 
 
 %%%% 7. PAPER CONTENT %%%%
 \section{Introduction}
-The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals} (standardized by NIST into ML-KEM \cite{key2023mechanism}).
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works \cite{hofheinz2017modular} extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals}, FrodoKEM \cite{bos2016frodo}, and SABER \cite{d2018saber}.
 
-The current state of the FO transformation enjoys tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many open questions. One such problem is the use of re-encryption for providing ciphertext integrity \cite{bernstein2018towards}, which requires the decryption/decapsulation to run the encryption routine as a subroutine. In many post-quantum schemes, such as Kyber, the encryption routine is substantially computationally more expensive than the decryption routine.
+The current state of the FO transformation enjoys tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many deficiencies to be improved on. One such shortcoming is the use of re-encryption for providing ciphertext integrity \cite{bernstein2018towards}, which requires the decapsulation routine to run the encryption routine as a subroutine. In many post-quantum schemes, such as Kyber, the encryption routine is substantially more expensive than the decryption routine, so running the encryption routine in the decapsulation routine inflates the computational cost of the decapsulator. In addition, running the encryption as a subroutine introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key \cite{ravi2019generic}\cite{ueno2022curse}.
 
-The problem of ciphertext integrity was solved in symmetric cryptography. Given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using ``encrypt-then-mac'' provides authenticated encryption \cite{bellare2000authenticated}. We took inspiration from this strategy and applied a similar technique to provide ciphertext integrity for a public-key encryption scheme, which then translates to an \texttt{IND-CCA} secure $\kem$. Using a message authentication code for ciphertext integrity replaces the re-encryption step in decryption with the computation of a tag, which should offer significant performance improvements while maintaining comparable level of security.
+The problem of ciphertext integrity was solved in symmetric cryptography: given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using ``encrypt-then-mac'' provides authenticated encryption \cite{bellare2000authenticated}. We took inspiration from this strategy and applied a similar technique to transform an IND-CPA secure public-key encryption scheme into an IND-CCA2 secure key encapsulation mechanism. Using a message authentication code for ciphertext integrity replaces the re-encryption step in decryption with the computation of an authenticator, which offers significant performance improvements while maintaining comparable level of security.
 
-The main challenge in applying ``encrypt-then-mac'' to public-key cryptography is the lack of a pre-shared $\mac$ key. We proposed to derive the shared $\mac$ key by hashing the plaintext message. We will prove in section \ref{sec:main-results} that, under the random oracle model, the $\mac$ key is securely hidden behind the hash function, and producing a valid pair of ciphertext and tag without full knowledge of the plaintext constitutes a forgery attack on the message authentication code. Thanks to the modular construction in \cite{hofheinz2017modular}, providing ciphertext integrity in the underlying encryption scheme gives us an \texttt{IND-CCA} secure $\kem$ for free.
+The main challenge in applying ``encrypt-then-mac'' to public-key cryptography is the lack of a pre-shared symmetric key. We proposed to derive the symmetric key by hashing the plaintext message. In section \ref{sec:main-results}, we prove that under the random oracle model, if the input public-key encryption scheme is one-way secure against plaintext-checking attack and the input message authentication code is one-time existentially unforgeable, then the transformed key encapsulation mechanism is IND-CCA2 secure.
 
-In section \ref{sec:mac-performance}, we instantiate concrete instances of our proposed transformation by modifying ML-KEM. We will demonstrate that, at the cost of small increase in encryption runtime and ciphertext size, our construction reduces both the runtime and memory footprint of the decryption routine. % TODO: need to write more?
+In section \ref{sec:experimental-results}, we instantiate concrete instances of our constructions by combining Kyber with GMAC and Poly1305. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal overhead in the encapsulation routine.
 
 \section{Preliminaries and previous results}
 
 \subsection{Public-key encryption scheme}
-We define a public key encryption scheme $\pke$ to be a collection of three routines $(\keygen, \encrypt, \decrypt)$ defined over a finite message space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Many encryption routines are probabilistic, and we define their source of randomness to come from some coin space $\mathcal{R}$.
+A public key encryption scheme $\pke$ is a collection of three routines $(\keygen, \encrypt, \decrypt)$ defined over some message space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Where the encryption routine is probabilistic, the source of randomness is denoted by the coin space $\mathcal{R}$.
 
 The encryption routine $\encrypt(\pk, m)$ takes a public key, a plaintext message, and outputs a ciphertext $c \in \mathcal{C}$. Where the encryption routine is probabilistic, specifying a pseudorandom seed $r \in \mathcal{R}$ will make the encryption routine behave deterministically. The decryption routine $\decrypt(\sk, c)$ takes a secret key, a ciphertext, and outputs the decryption $\hat{m}$ if the ciphertext is valid under the given secret key, or the rejection symbol $\bot$ if the ciphertext is invalid.
 
-\subsubsection{Correctness}
-It is common to require a $\pke$ to be perfectly correct, meaning that for all possible keypairs $(\pk, \sk)$ and plaintext messages $m \in \mathcal{M}$, $\decrypt(\sk, \encrypt(\pk, m)) = m$ at all times. However, some encryption schemes, including many popular lattice-based schemes, admit a non-zero probability of decryption failure: $\decrypt(\sk, \encrypt(\pk, m)) \neq m$. Furthermore, \cite{hofheinz2017modular} and \cite{avanzi2019crystals} explained how decryption failure played a role in an adversary's advantage. In this paper, we inherit the definition for correctness from \cite{hofheinz2017modular}:
+We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
 
-\begin{definition}[$\delta$-correctness]\label{def:delta-correctness}
-    A public key encryption scheme $\pke$ is $\delta$-correct if
-
-    \begin{equation*}
-        \mathbf{E}[
-            \max_{m \in \mathcal{M}} P[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)]
-        ] \leq \delta
-    \end{equation*}
-
-    Where the expectation is taken over the probability distribution of keypairs $(\pk, \sk) \leftsample \keygen()$
-\end{definition}
-
-\subsubsection{Security}
-We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ and the $\texttt{IND-CPA}$ game as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
-
-In the \texttt{OW-ATK} game, an adversary's goal is to recover the decryption of a randomly generated ciphertext.
-
-\begin{figure}
-    \centering
-
-    \begin{algorithm}[H]
-        \caption{
-            The $\texttt{OW-ATK}$ game
-        }\label{alg:pke-ow-atk-game}
-        \begin{algorithmic}[1]
-            \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-            \State $m^\ast \leftsample \mathcal{M}$
-            \State $c^\ast \leftsample \encrypt(\pk, m)^\ast$
-            \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
-            \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
-        \end{algorithmic}
-    \end{algorithm}
-    
-    \caption{The \texttt{OW-ATK} game}
-    \label{fig:pke-ow-atk-game}
-\end{figure}
-
-The adversary $\mathcal{A}$ with access to oracle(s) $\mathcal{O}_\texttt{ATK}$ wins the game if its guess $\hat{m}$ is equal to the challenge plaintext $m^\ast$. The \textit{advantage} $\epsilon_\texttt{OW-ATK}$ of an adversary in this game is the probability that it wins the game.
-
-The choice of oracle(s) $\mathcal{O}_\texttt{ATK}$ depends on the choice of $\texttt{ATK}$. Specifically:
-
-\begin{equation*}
-    \mathcal{O}_\texttt{ATK} = \begin{cases}
-        - & \texttt{ATK} = \texttt{CPA} \\
-        \texttt{PCO} & \texttt{ATK} = \texttt{PCA} \\
-        \texttt{CVO} & \texttt{ATK} = \texttt{VA} \\
-        \texttt{PCO, CVO} & \texttt{ATK} = \texttt{PCVA}
-    \end{cases}
-\end{equation*}
-
-Where the definitions of plaintext-checking oracle $\texttt{PCO}$ and the ciphertext-validation oracle $\texttt{CVO}$ are inherited from \cite{hofheinz2017modular}
-
-\begin{figure}
+\begin{figure}[H]
     \begin{floatrow}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{
+                    The $\texttt{OW-ATK}$ game
+                }\label{alg:pke-ow-atk-game}
+                \begin{algorithmic}[1]
+                    \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                    \State $m^\ast \leftsample \mathcal{M}$
+                    \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
+                    \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
+                    \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        }
+        {\caption{The \texttt{OW-ATK} game}}
         \ffigbox{
             \begin{algorithm}[H]
                 \caption{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}\label{alg:pco}
@@ -176,54 +127,28 @@ Where the definitions of plaintext-checking oracle $\texttt{PCO}$ and the cipher
                 \end{algorithmic}
             \end{algorithm}
         }
-        {\caption{The Plaintext-Checking Oracle $\pco$}}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\cvo(c \in \mathcal{C})$}\label{alg:cvo}
-                \begin{algorithmic}[1]
-                    \State \Return $\llbrack \decrypt(\sk, c) \in \mathcal{M} \rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        }
-        {\caption{the Ciphertext-Validation Oracle $\cvo$}}
+        {\caption{Plaintext-checking oracle}}
     \end{floatrow}
     \label{fig:pco-and-cvo}
 \end{figure}
 
-In the \texttt{IND-CPA} game (algorithm \ref{alg:ind-cpa-game}), an adversary's goal is to distinguish the encryption of one message from the encryption of another message. Given the public key, the adversary outputs two adversarially chosen messages and obtains the encryption of a random choice between these two messages. The adversary wins the \texttt{IND-CPA} game if it correctly identifies which message the encryption is obtained from.
+In the \texttt{OW-ATK} game (see figure \ref{alg:pke-ow-atk-game}), an adversary's goal is to recover the decryption of a randomly generated ciphertext. A challenger randomly samples a keypair and a challenge plaintext $m^\ast$, encrypts the challenge plaintext $c^\ast \leftsample \encrypt(\pk, m^\ast)$, then gives $\pk$ and $c^\ast$ to the adversary $A$. The adversary $A$, with access to some oracle $\mathcal{O}_\texttt{ATK}$, outputs a guess decryption $\hat{m}$. $A$ wins the game if its guess $\hat{m}$ is equal to the challenge plaintext $m^\ast$. The \textit{advantage} $\adv_\texttt{OW-ATK}$ of an adversary in this game is the probability that it wins the game:
 
-\begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{The $\texttt{IND-CPA}$ game}\label{alg:ind-cpa-game}
+\begin{equation*}
+    \adv_\texttt{OW-ATK}(A) = P\left[
+        A(\pk, c^\ast) = m^\ast \vert
+        (\pk, \sk) \leftsample \keygen() ;
+        m^\ast \leftsample \mathcal{M};
+        c^\ast \leftsample \encrypt(\pk, m^\ast)
+    \right]
+\end{equation*}
 
-                \begin{algorithmic}[1]
-                    \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-                    \State $(m_0, m_1) \leftsample \mathcal{A}(a^\lambda, \pk)$
-                    \State $b \leftsample \{0, 1\}$
-                    \State $c^\ast \leftsample \encrypt(\pk, m_b)$
-                    \State $\hat{b} \leftsample \mathcal{A}(1^\lambda, \pk, c^\ast)$
-                \State \Return $\llbrack b = \hat{b} \rrbrack$
-            \end{algorithmic}
-        \end{algorithm}
-        }{\caption{The \texttt{IND-CPA} game}}
-    \end{floatrow}
-\end{figure}
+The capabilities of the oracle $\mathcal{O}_\texttt{ATK}$ depends on the choice of security goal $\texttt{ATK}$. Particularly relevant to our result is security against plaintext-checking attack (PCA), for which the adversary has access to a plaintext-checking oracle (PCO) (see figure \ref{alg:pco}). A PCO takes as input a plaintext-ciphertext pair $(m, c)$ and returns \texttt{True} if $m$ is the decryption of $c$ or \texttt{False} otherwise.
 
+\subsection{Key encapsulation mechanism (KEM)}
+A key encapsulation mechanism is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a ``fake'' session key that depends on the ciphertext and some other secret values.
 
-The \textit{advantage} $\epsilon_\texttt{IND-CPA}$ of an \texttt{IND-CPA} adversary $A$ is defined by 
-
-$$
-    \texttt{Adv}_\texttt{IND-CPA}(A) = \norm{
-        P[\hat{b} = b] - \frac{1}{2}
-    }
-$$
-
-\subsection{Key encapsulation mechanism}
-A key encapsulation mechanism $\kem$ is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the encapsulation (or ciphertext) of the shared secret $k \in \mathcal{K}$. $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $k$ if the ciphertext is valid, or the rejection symbol $\bot$ if the ciphertext is invalid.
-
-The IND-CCA security of a $\kem$ is defined by an adversarial game in which an adversary's goal is to distinguish pseudorandom shared secret (generated by running the $\encap$ routine) and a truly random value.
+The IND-CCA security of a KEM is defined by an adversarial game in which an adversary's goal is to distinguish pseudorandom shared secret (generated by running the $\encap$ routine) and a truly random value.
 
 \begin{figure}[H]
     \begin{floatrow}
@@ -235,16 +160,26 @@ The IND-CCA security of a $\kem$ is defined by an adversarial game in which an a
                 
                 \begin{algorithmic}[1]
                     \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-                    \State $(c^\ast, k_0) \leftsample \encap(\pk)$
-                    \State $k_1 \leftsample \mathcal{K}$
+                    \State $(c^\ast, K_0) \leftsample \encap(\pk)$
+                    \State $K_1 \leftsample \mathcal{K}$
                     \State $b \leftsample \{0, 1\}$
-                    \State $\hat{b} \leftsample \mathcal{A}_\texttt{IND-CCA}^{\mathcal{O}_\decap}(
-                        1^\lambda, \pk, c^\ast, k_b
+                    \State $\hat{b} \leftsample A^{\mathcal{O}_\decap}(
+                        1^\lambda, \pk, c^\ast, K_b
                     )$
                     \State \Return $\llbrack \hat{b} = b \rrbrack$
                 \end{algorithmic}
             \end{algorithm}
         }{\caption{The \texttt{KEM-IND-CCA2} game}}
+        \ffigbox{
+            \begin{algorithm}[H]
+            \caption{
+                $\mathcal{O}_\decap(c)$
+            }
+            \begin{algorithmic}[1]
+                \State \Return $\decap(\sk, c)$
+            \end{algorithmic}
+            \end{algorithm}
+        }{\caption{Decapsulation oracle}}
     \end{floatrow}
 \end{figure}
 
@@ -252,13 +187,13 @@ The IND-CCA security of a $\kem$ is defined by an adversarial game in which an a
 The decapsulation oracle $\mathcal{O}^\decap$ takes a ciphertext $c$ and returns the output of the $\decap$ routine using the secret key. The advantage $\epsilon_\texttt{IND-CCA}$ of an IND-CCA adversary $\mathcal{A}_\texttt{IND-CCA}$ is defined by
 
 \begin{equation*}
-    \epsilon_\texttt{IND-CCA} = \norm{
-        P[\hat{b} = b] - \frac{1}{2}
+    \adv_\texttt{IND-CCA}(A) = \norm{
+        P[A^{\mathcal{O}_\decap}(a^\lambda, \pk, c^\ast, K_b) = b] - \frac{1}{2}
     }
 \end{equation*}
 
-\subsection{Message authentication code}
-A message authentication code $\mac$ is a collection of routines $(\sign, \verify)$ defined over some key space $\mathcal{K}$, some message space $\mathcal{M}$, and some tag space $\mathcal{T}$. The signing routine $\sign(k, m)$ takes the secret key $k \in \mathcal{K}$ and some message, and outputs a tag $t$. The verification routine $\verify(k, m, t)$ takes the triplet of secret key, message, and tag, and outputs $\texttt{1}$ if the message-tag pair is valid under the secret key, or $\texttt{0}$ otherwise.
+\subsection{Message authentication code (MAC)}
+A message authentication code $\mac$ is a collection of routines $(\sign, \verify)$ defined over some key space $\mathcal{K}$, some message space $\mathcal{M}$, and some tag space $\mathcal{T}$. The signing routine $\sign(k, m)$ takes the secret key $k \in \mathcal{K}$ and some message, and outputs a tag $t$. The verification routine $\verify(k, m, t)$ takes the triplet of secret key, message, and tag, and outputs $\texttt{1}$ if the message-tag pair is valid under the secret key, or $\texttt{0}$ otherwise. Many MAC constructions are deterministic. For these constructions it is simpler to denote the signing routine by $t \leftarrow \mac(k, m)$ and perform verification using a simple comparison.
 
 The security of a MAC is defined in an adversarial game in which an adversary, with access to some signing oracle $\mathcal{O}_\sign(m)$, tries to forge a new valid message-tag pair that has never been queried before. The existential unforgeability under chosen message attack (EUF-CMA) game is shown below:
 
@@ -282,10 +217,20 @@ The security of a MAC is defined in an adversarial game in which an adversary, w
     \end{floatrow}
 \end{figure}
 
+The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
 
-The advantage $\epsilon_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
+We are also interested in one-time MAC, whose security goals are identical to normal MAC, except the signing oracle will only answer one signing query. In practice this means that the adversary only gets to see one message-tag pair, and the owner of the secret key only signs one message. One way to construct an unforgeable one-time MAC is to use a universal hash function (UHF), which computes the digest using finite field arithmetic. Each instance of the one-time MAC is parameterized by some maximal message length $L$ and the finite field $\mathbb{F}$ in which arithmetics are performed. The tag is computed by evaluating a polynomial whose coefficients are derived from the message:
 
-\subsection{Modular Fujisaki-Okamoto transformation}
+\begin{equation*}
+    \begin{aligned}
+    &H(k_1, (m_1, m_2, \ldots, m_l)) = k_1^{l+1} + k_1^{l}m_1 + k_1^{l-1}m_2 + \ldots + k_1m_l \\
+    &\mac((k_1, k_2), m) = H(k_1, m) + k_2
+    \end{aligned}
+\end{equation*}
+
+We claim without proof (though proof can be found in \cite{boneh2020graduate}) that the MAC construction above is one-time existentially unforgeable.
+
+\subsection{Related works}
 The Fujisaki-Okamoto transformation (FOT) \cite{fujisaki1999secure} is a generic transformation that takes a $\pke$ with weaker security (such as \texttt{OW-CPA} or \texttt{IND-CPA}) and outputs a $\pke$ with stronger security. A later variation \cite{hofheinz2017modular} improved the original construction in \cite{fujisaki1999secure} by accounting for decryption failures, tightening security bounds, and providing a modular construction that first transforms \texttt{OW-CPA}/\texttt{IND-CPA} $\pke$ into \texttt{OW-PCVA} $\pke$ by providing ciphertext integrity through re-encryption (the \texttt{T} transformation), then transforming the \texttt{OW-PCVA} $\pke$ into an \texttt{IND-CCA} $\kem$ (the \texttt{U} transformation).
 
 % TODO: Restating the algorithm seems redundant
@@ -476,7 +421,7 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
 %%%%%%%%%%%%%%%% uncomment to see %%%%%%%%%%%%%%%%%%%%
 % \include{not-pca-means-not-indcca}
 
-\section{Application to Kyber}
+\section{Application to Kyber}\label{sec:experimental-results}
 CRYSTALS-Kyber \cite{bos2018crystals}\cite{avanzi2019crystals} is an IND-CCA2 secure key encapsulation mechanism that first constructs an IND-CPA secure public key encryption scheme whose security is based on the Module Learning with Error Problem (MLWE), then applies a generic transformation using \emph{de-randomization} and \emph{re-encryption} \cite{hofheinz2017modular}. The use of \emph{re-encryption} for providing rigidity means that the decapsulation routine needs to run the encryption routine for verifying ciphertext integrity. Unfortunately for Kyber, the encryption routine consumes both more CPU cycles and carries a larger memory footprint. Therefore, applying an alternate transformation that replaces \emph{re-encryption} with a MAC verification will bring substantial performance enhancement. This is particularly applicable to communication protocols such as TLS 1.3, where clients, often constrained environments, need to run the decapsulation routine.
 
 The \texttt{IND-CPA} PKE of Kyber (algorithms 4, 5, 6 in \cite{avanzi2019crystals}) is not \texttt{OW-PCA} secure. A plaintext-checking attack \cite{ravi2019generic} can recover the secret key using a few maliciously constructed plaintext-checking queries for each coefficient of a Kyber secret key (there are 512, 768, and 1024 coefficients in the secret key depending on the desired security level). However, we propose mitigation for plaintext-checking attack at protocol level by requiring each keypair to be used for decryption only once. If a decryption fails, then the secret key should be discarded and the key exchange terminated, and a new keypair should be generated to restart the key exchange. In fact, such ephemeral key exchange is already required in TLS 1.3 for forward secrecy, so requiring the one-time use of keypair does not introduce additional operational cost for protocols such as TLS 1.3.
