@@ -192,7 +192,7 @@ The decapsulation oracle $\mathcal{O}^\decap$ takes a ciphertext $c$ and returns
     }
 \end{equation*}
 
-\subsection{Message authentication code (MAC)}
+\subsection{Message authentication code (MAC)}\label{sec:message-authentication-code}
 A message authentication code $\mac$ is a collection of routines $(\sign, \verify)$ defined over some key space $\mathcal{K}$, some message space $\mathcal{M}$, and some tag space $\mathcal{T}$. The signing routine $\sign(k, m)$ takes the secret key $k \in \mathcal{K}$ and some message, and outputs a tag $t$. The verification routine $\verify(k, m, t)$ takes the triplet of secret key, message, and tag, and outputs $\texttt{1}$ if the message-tag pair is valid under the secret key, or $\texttt{0}$ otherwise. Many MAC constructions are deterministic. For these constructions it is simpler to denote the signing routine by $t \leftarrow \mac(k, m)$ and perform verification using a simple comparison.
 
 The security of a MAC is defined in an adversarial game in which an adversary, with access to some signing oracle $\mathcal{O}_\sign(m)$, tries to forge a new valid message-tag pair that has never been queried before. The existential unforgeability under chosen message attack (EUF-CMA) game is shown below:
@@ -219,43 +219,115 @@ The security of a MAC is defined in an adversarial game in which an adversary, w
 
 The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
 
-We are also interested in one-time MAC, whose security goals are identical to normal MAC, except the signing oracle will only answer one signing query. In practice this means that the adversary only gets to see one message-tag pair, and the owner of the secret key only signs one message. One way to construct an unforgeable one-time MAC is to use a universal hash function (UHF), which computes the digest using finite field arithmetic. Each instance of the one-time MAC is parameterized by some maximal message length $L$ and the finite field $\mathbb{F}$ in which arithmetics are performed. The tag is computed by evaluating a polynomial whose coefficients are derived from the message:
+We are specifically interested in one-time MAC, whose security goal is identical to EUF-CMA described above, except for the constraint that each secret key can be used to sign exactly one distinct message. This translates to an attack model in which the signing oracle will only answer one signing query. Restricting to one-time usage allows for more efficient MAC constructions. One popular way to build one-time MAC is with universal hash functions (UHF), where each instance is parameterized by a finite field $\mathbb{F}$ and a maximal message length $L \geq 0$. The secret key is a pair of field elements $(k_1, k_2) \in \mathbb{F} \times \mathbb{F}$, and each message is a tuple of up to $L$ field elements $m = (m_1, m_2, \ldots, m_l) \in \mathbb{F}^{\leq L}$. To compute the tag:
 
 \begin{equation*}
-    \begin{aligned}
-    &H(k_1, (m_1, m_2, \ldots, m_l)) = k_1^{l+1} + k_1^{l}m_1 + k_1^{l-1}m_2 + \ldots + k_1m_l \\
-    &\mac((k_1, k_2), m) = H(k_1, m) + k_2
-    \end{aligned}
+    \mac((k_1, k_2), m) = H_\text{xpoly}(k_1, m) + k_2
 \end{equation*}
 
-We claim without proof (though proof can be found in \cite{boneh2020graduate}) that the MAC construction above is one-time existentially unforgeable.
+Where the $H_\text{xpoly}$ is a universal hash function:
+
+\begin{equation*}
+    H_\text{xpoly}(k_1, (m_1, m_2, \ldots, m_l)) = k_1^l \cdot m_1 + k_1^{l-1} \cdot m_2 + \ldots + k_1 \cdot m_l
+\end{equation*}
+
+\begin{lemma}
+    For all adversaries (including unbounded ones) against the MAC described above, the probability of winning the one-time EUF-CMA game is at most:
+
+    \begin{equation*}
+        \adv_\text{OT-EUF-CMA}(A) \leq \frac{L+1}{\norm{\mathbb{F}}}
+    \end{equation*}
+\end{lemma}
+\begin{proof}
+    See \cite{boneh2020graduate} lemma 7.11
+\end{proof}
 
 \subsection{Related works}
-The Fujisaki-Okamoto transformation (FOT) \cite{fujisaki1999secure} is a generic transformation that takes a $\pke$ with weaker security (such as \texttt{OW-CPA} or \texttt{IND-CPA}) and outputs a $\pke$ with stronger security. A later variation \cite{hofheinz2017modular} improved the original construction in \cite{fujisaki1999secure} by accounting for decryption failures, tightening security bounds, and providing a modular construction that first transforms \texttt{OW-CPA}/\texttt{IND-CPA} $\pke$ into \texttt{OW-PCVA} $\pke$ by providing ciphertext integrity through re-encryption (the \texttt{T} transformation), then transforming the \texttt{OW-PCVA} $\pke$ into an \texttt{IND-CCA} $\kem$ (the \texttt{U} transformation).
+The Fujisaki-Okamoto transformation \cite{fujisaki1999secure}\cite{hofheinz2017modular} is a family of generic transformations that takes as input a PKE with weaker security, such as OW-CPA, and outputs a PKE or KEM with IND-CCA2 security. The key ingredient in achieving ciphertext non-malleability is with \emph{de-randomization} and \emph{re-encryption}, which first transform a OW-CPA PKE into a \emph{rigid} PKE, then transform the rigid PKE into a KEM. More specifically: \begin{enumerate}
+    \item \emph{de-randomization} means that a randomized encryption routine $c \leftsample \encrypt(\pk, m)$ is made into a deterministic encryption routine by deriving randomization coin pseudorandomly: $c \leftarrow \encrypt(\pk, m, r = H(m))$ for some hash function $H$
+    \item \emph{re-encryption} means that the transformed decryption routine will run the transformed encryption routine to verify the integrity of the ciphertext. Because after \emph{de-randomization}, each plaintext strictly corresponds exacty one ciphertext, tempering with a ciphertext means that even if the ciphertext decrypts back to the same plaintext, the re-encryption will detect that the ciphertext has been tempered with.
+    \item \emph{rigidity} means that the decryption routine is a perfect inverse of the encryption routine: $c = \encrypt(\pk, m) \Leftrightarrow m = \decrypt(\sk, c)$. Converting a one-way secure rigid PKE (which is essentially a trapdoor function) into a IND-CCA2 KEM is well solved problem. We refer readers to \cite{boneh2020graduate} for details on such constructions.
+\end{enumerate}
 
-% TODO: Restating the algorithm seems redundant
+let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $G: \mathcal{M} \rightarrow \mathcal{R}$ hash plaintexts into coincs, and let $H: \{0,1\}^\ast \rightarrow \{0,1\}^\ast$ hash byte stream into session keys. Depending on whether the constructed KEM uses implicit or explicit rejection, and the security property of the $\pke$, \cite{hofheinz2017modular} described four variations. They are summarized in table \ref{tbl:fo-variations} and figure \ref{fig:fo-routines}.
 
-Particularly relevant to our results are two variations of the \texttt{U} transformation: $\texttt{U}^\bot$ (KEM with explicit rejection) and $\texttt{U}^{\not\bot}$ (KEM with implicit rejection). If $\pke$ is \texttt{OW-PCVA} secure, then $\texttt{U}^\bot$ transforms $\pke$ into an \texttt{IND-CCA} secure $\kem^\bot$:
+\begin{table}[H]
+    \centering
+    \begin{tabular}{|c|c|c|}
+        \hline
+        name & rejection & PKE security \\
+        \hline
+        $U^\bot$ & explicit & OW-PCVA \\
+        \hline
+        $U^{\not\bot}$ & implicit & OW-PCA \\
+        \hline
+        $U^\bot_m$ & explicit & OW-VA + rigid \\
+        \hline
+        $U^{\not\bot}_m$ & implicit & OW-CPA + rigid \\
+        \hline
+    \end{tabular}
+    \caption{Variants of modular FO transforms}\label{tbl:fo-variations}
+\end{table}
 
-\begin{theorem}\label{thm:u-bot}
-    For any \texttt{IND-CCA} adversary $\mathcal{A}_\kem$ against $\kem^\bot$ with advantage $\epsilon_\kem$ issuing at most $q_D$ decapsulation queries and at most $q_H$ hash queries, there exists an \texttt{OW-PCVA} adversary $\mathcal{A}_\pke$ against the underlying $\pke$ with advantage $\epsilon_\pke$ that makes at most $q_H$ queries to $\pco$ and $\cvo$ such that
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.40\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\keygen()$}\label{alg:fo-keygen}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk^\prime) \leftsample \keygen_\pke()$
+                \State $z \leftsample \mathcal{M}$
+                \State $\sk \leftarrow (\sk^\prime, z)$
+                    \Comment{$U^{\not\bot}, U^{\not\bot}_m$}
+                \State $\sk \leftarrow \sk^\prime$
+                    \Comment{$U^{\bot}, U^{\bot}_m$}
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \hspace{0.05\textwidth}
+    \begin{minipage}{0.45\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\encap(\pk)$}\label{alg:fo-encap}
+            \begin{algorithmic}[1]
+                \State $m \leftsample \mathcal{M}$
+                \State $r \leftarrow G(m)$
+                \State $c \leftarrow \encrypt(\pk, m, r)$
+                \State $K \leftarrow H(m, c)$
+                    \Comment{$U^\bot, U^{\not\bot}$}
+                \State $K \leftarrow H(m)$
+                    \Comment{$U_m^\bot, U_m^{\not\bot}$}
+                \State \Return $(c, K)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \vspace{0.5cm}
+    \begin{minipage}{\textwidth}
+        \begin{algorithm}[H]
+            \caption{$\decap(\sk=(\sk^\prime, z), c)$}\label{alg:fo-decap}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow \decrypt(\sk^\prime, c)$
+                \State $\hat{r} \leftarrow G(\hat{m})$
+                \State $\hat{c} \leftarrow \encrypt(\pk, \hat{m}, \hat{r})$
+                \If{$\hat{c} = c$}
+                    \State $K \leftarrow H(\hat{m})$
+                        \Comment{$U_m^\bot, U_m^{\not\bot}$}
+                    \State $K \leftarrow H(\hat{m}, c)$
+                        \Comment{$U^\bot, U^{\not\bot}$}
+                \Else
+                    \State $K \leftarrow H(z, c)$
+                        \Comment{$U^{\not\bot}, U^{\not\bot}_m$}
+                    \State $K \leftarrow \bot$
+                        \Comment{$U^{\bot}, U^{\bot}_m$}
+                \EndIf 
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{Summary of the modular Fujisaki-Okamoto transformation variations}\label{fig:fo-routines}
+\end{figure}
 
-    \begin{equation*}
-        \epsilon_\kem \leq \epsilon_\pke
-    \end{equation*}
-\end{theorem}
-
-Similarly, if $\pke$ is \texttt{OW-PCA} secure, then $\texttt{U}^{\not\bot}$ transforms $\pke$ into an \texttt{IND-CCA} secure $\kem^{\not\bot}$
-
-\begin{theorem}\label{thm:u-notbot}
-    For any \texttt{IND-CCA} adversary $\mathcal{A}_\kem$ against $\kem^{\not\bot}$ with advantage $\epsilon_\kem$ issuing at most $q_D$ decapsulation queries and at most $q_H$ hash queries, there exists an \texttt{OW-CPA} adversary $\mathcal{A}_\pke$ against the underlying $\pke$ with advantage $\epsilon_\pke$ issuing at most $q_H$ queries to $\pco$ such that:
-
-    \begin{equation*}
-        \epsilon_\kem \leq \frac{q_H}{\norm{\mathcal{M}_\pke}} + \epsilon_\pke
-    \end{equation*}
-\end{theorem}
-
-The modularity of the \texttt{T} and \texttt{U} transformation allows us to tweak only the \texttt{T} transformation (see section \ref{sec:main-results}), obtain \texttt{OW-PCVA} security, then automatically get \texttt{IND-CCA} security for free. This means that we can directly apply our contribution to existing KEM's already using this modular transformation, such as ML-KEM \cite{key2023mechanism}, and obtain performance improvements while maintaining comparable levels of security (see section \ref{sec:mac-performance}).
+The modular FO transformations enjoy tight security bounds and proven quantum resistance. Variations have been deployed to many post-quantum KEMs submitted to NIST's post-quantum cryptography competition. Kyber, one of the round 3 finalists, uses the $U^{\not\bot}$ transformation. When it was later standardized into FIPS-203, it changed to use the $U^{\not\bot}_m$ transformation for computational efficiencies.
 
 \section{The ``encrypt-then-MAC'' transformation}\label{sec:main-results}
 Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $\mac$ be a deterministic message authentication code. Let $G: \mathcal{M}_\pke \rightarrow \mathcal{K}_\mac$ and $H: \{0,1\}^\ast \rightarrow \mathcal{K}_\kem$ be hash functions, where $\mathcal{K}_\kem$ denote the set of all possible session keys. The $\etm$ transformation outputs a key encapsulation mechanism $\kem_\etm(\keygen_\etm, \encap_\etm, \decap_\etm)$. The three routines are described in figure \ref{fig:etm-routines}.
@@ -376,7 +448,7 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
         \texttt{Adv}_0(A) - \texttt{Adv}_1(A) \leq q_D \cdot \epsilon_\mac
     \end{equation*}
 
-    Note that $\epsilon_\mac$ quantifies the probability that an adversary can produce forgery for a unknown key without access to a signing oracles. While this is not a standard security definition for MAC, this probability is straightforward to estimate for some classes of MACs. As will be discussed in section \ref{sec:mac-performance}, with a Carter-Wegman-like one-time MAC instantiated with message length $L$ and a finite field with $F$ elements, such probability is at most $\epsilon_\mac \leq \frac{L+1}{F}$
+    Note that $\epsilon_\mac$ quantifies the probability that an adversary can produce forgery for a unknown key without access to a signing oracles. While this is not a standard security definition for MAC, this probability is straightforward to estimate for some classes of MACs. As described in section \ref{sec:message-authentication-code}, with a Carter-Wegman-like one-time MAC instantiated with message length $L$ and a finite field with $F$ elements, such probability is at most $\epsilon_\mac \leq \frac{L+1}{F}$
 
     \emph{Game 2} is identical to \emph{Game 1}, except for that when the challenger generates the challenge ciphertext $c^\ast = (c^\ast_\pke, t^\ast)$, the tag $t^\ast$ is computed using a uniformly random key $k^\ast \leftarrow \mathcal{K}_\mac$ instead of a pseudorandom key derived from hashing the challenge plaintext.
 
@@ -418,20 +490,15 @@ Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $
     \end{equation*}
 \end{proof}
 
-%%%%%%%%%%%%%%%% uncomment to see %%%%%%%%%%%%%%%%%%%%
-% \include{not-pca-means-not-indcca}
-
 \section{Application to Kyber}\label{sec:experimental-results}
-CRYSTALS-Kyber \cite{bos2018crystals}\cite{avanzi2019crystals} is an IND-CCA2 secure key encapsulation mechanism that first constructs an IND-CPA secure public key encryption scheme whose security is based on the Module Learning with Error Problem (MLWE), then applies a generic transformation using \emph{de-randomization} and \emph{re-encryption} \cite{hofheinz2017modular}. The use of \emph{re-encryption} for providing rigidity means that the decapsulation routine needs to run the encryption routine for verifying ciphertext integrity. Unfortunately for Kyber, the encryption routine consumes both more CPU cycles and carries a larger memory footprint. Therefore, applying an alternate transformation that replaces \emph{re-encryption} with a MAC verification will bring substantial performance enhancement. This is particularly applicable to communication protocols such as TLS 1.3, where clients, often constrained environments, need to run the decapsulation routine.
+CRYSTALS-Kyber \cite{bos2018crystals}\cite{avanzi2019crystals} is an IND-CCA2 secure key encapsulation mechanism whose security is based on the conjecture hardness of the decisional Module Learning with Error problem. To achieve the the IND-CCA2 security, Kyber first constructs an IND-CPA secure public key encryption scheme based on \cite{lpr2013ideal}, then apply a slightly modified variation of the Fujisaki-Okamoto transformation described in \cite{hofheinz2017modular}. The resulting decapsulation routine is especially inefficient because Kyber's IND-CPA encryption routine incurs significantly more computational cost than the decryption routine. This makes Kyber a prime target for demonstrating the performance improvements enjoyed by the ``encrypt-then-MAC'' KEM construction.
 
-The \texttt{IND-CPA} PKE of Kyber (algorithms 4, 5, 6 in \cite{avanzi2019crystals}) is not \texttt{OW-PCA} secure. A plaintext-checking attack \cite{ravi2019generic} can recover the secret key using a few maliciously constructed plaintext-checking queries for each coefficient of a Kyber secret key (there are 512, 768, and 1024 coefficients in the secret key depending on the desired security level). However, we propose mitigation for plaintext-checking attack at protocol level by requiring each keypair to be used for decryption only once. If a decryption fails, then the secret key should be discarded and the key exchange terminated, and a new keypair should be generated to restart the key exchange. In fact, such ephemeral key exchange is already required in TLS 1.3 for forward secrecy, so requiring the one-time use of keypair does not introduce additional operational cost for protocols such as TLS 1.3.
-
-The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanzi2019crystals}. We modify Algorithms 8 and 9 using authenticated encryption (AE)  mode as follows where Algorithm 7 is unchanged.
+We took the IND-CPA PKE routines (algorithms 4, 5, 6 in \cite{avanzi2019crystals}) and applied the ``encrypt-then-MAC'' transformation. The resulting KEM routines are described in algorithms \ref{alg:kyber-ae-keygen}, \ref{alg:kyber-ae-encap}, and \ref{alg:kyber-ae-decap}.
 
 \begin{algorithm}[H]
     \caption{\texttt{Kyber.CCAKEM.KeyGen()}}\label{alg:kyber-ae-keygen}
     \begin{algorithmic}[1]
-        \State $z \leftsample \mathcal{B}^{32}$
+        \State $z \leftsample \{0,1\}^{256}$
         \State $(\pk, \sk^\prime) \leftsample \texttt{Kyber.CPAPKE.KeyGen()}$
         \State $\sk = (\sk^\prime, \pk, H(\pk), z)$
             \Comment{H is instantiated with SHA3-256}
@@ -442,7 +509,7 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
 \begin{algorithm}[H]
     \caption{\texttt{Kyber.CCAKEM.Encap$^+$(\pk)}}\label{alg:kyber-ae-encap}
     \begin{algorithmic}[1]
-        \State $m \leftsample \mathcal{B}^{32}$
+        \State $m \leftsample \{0,1\}^{256}$
         \State $m'= H(m)$
             \Comment{Do not output system RNG directly}
         \State $(\bar{K}, K_\mac) = G(m' \Vert H(\pk))$
@@ -463,7 +530,7 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
         \Require Secret key $\sk = (\sk^\prime, \pk, H(\pk), z)$
         \Require Ciphertext $c = (c^\prime, t)$
         \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
-        \State $(c^\prime, t_1) \leftarrow c$
+        \State $(c^\prime, t) \leftarrow c$
         \State $\hat{m} = \texttt{Kyber.CPAPKE.Dec}(\sk^\prime, c^\prime)$ 
         \State $(\overline{K}, K_\mac) =   G(m^\prime \Vert h)$
         \State $\hat{t}=\mac(K_\mac, c)$
@@ -476,88 +543,103 @@ The routines of \texttt{CCAKEM} can be found in Algorithm 7, 8, 9 in \cite{avanz
     \end{algorithmic}
 \end{algorithm}
 
-\begin{remark} If $c$ is manipulated, then the verification of  $t_1$  will be failed.  In this case, there is no $K$ outputted from the decap$^+$.  So the attacks described in the following subsections won't work.  We also added the key confirmation, which is tag $t_2$. 
+\begin{remark}
+    We derive the MAC key from both the plaintext $m$ and the public key $\pk$ for the same reason \cite{avanzi2019crystals} derives the pseudorandom coin from both $m$ and $\pk$. One is to allow both parties to participate in the encryption process, the other is to prevent a quantum adversary from pre-computing a large table of MAC keys that can then be brute-forced.
+\end{remark}
+\begin{remark}
+    We chose to derive the shared secret $K$ from the ciphertext digest $t$ instead of the ciphertext itself, which saves a few Keccak permutations since $t$ is only 128 bits while the full ciphertext could span more than a thousand bytes. This should not impact the security of the scheme since finding collision for an unknown MAC key constitutes a forgery attack on the MAC.
+\end{remark}
+\begin{remark}
+    We constructed the ``encrypt-then-MAC'' transformation to use implicit rejection so that we can directly use existing implementation of Kyber with minimal modification. In principle, a construction with explicit rejection should also be equally secure and efficient.
+\end{remark}
+\begin{remark}
+    We chose to use MAC with 256-bit key size and 128-bit tag size. When modeling the security threats, we assumed that the adversary may have access to quantum computers, making it necessary to use the maximal key size of common MACs while maintaining the minimum 128-bit security. On the other hand, the tag size can be relative small because the decapsulator (aka the decapsulation oracle) is assumed to be a classical computer, so there is no quantum speedup on brute-forcing a valid tag.
 \end{remark}
 
-
-{\color{blue} Note for authenticated encryption, tags $t_i$'s are necessary for the inputs. 
-
-In fact, this is authenticated encryption instead of EtM. So we should change that, called authenticated encryption. 
-Please do not change my notation. They have their meanings in AE mode.}
-
-% \include{when-is-etm-useful}
-
-\subsection{MAC performance}\label{sec:mac-performance}
-When instantiating an instance $\kem(\keygen, \encap, \decap)$, there are a variety of possible MAC's to choose from. For each of the security level and choice of MAC, we measured the number of CPU cycles needed to produce a digest of the unauthenticated ciphertext. The median (top) and mean (bottom) measurements are reported in table \ref{tbl:standalone-mac-perf}.
+When instantiating an instance $\kem(\keygen, \encap, \decap)$, there are a variety of possible MAC's to choose from. For each of the security level and choice of MAC, we measured the number of CPU cycles needed to produce a digest of Kyber's ciphertext. The MAC implementations are taken from OpenSSL and run on an Intel MacBook Pro with i7-9700h (TODO: run it on a server). The median measurements are reported in table \ref{tbl:standalone-mac-perf}.
 
 \begin{table}[H]
     \centering
-    \begin{tabular}{|c|c|c|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        Name & Security & measurement & 768 bytes & 1088 bytes & 1568 bytes \\
+        Name & Security & 768 bytes & 1088 bytes & 1568 bytes \\
         \hline
-        CMAC & many-time & median & 5022 & 5442 & 6090 \\
-        & & mean & 5131 & 5578 & 6154 \\
+        CMAC & many-time & 5022 & 5442 & 6090 \\
         \hline
-        KMAC-256 & many-time & median & 7934 & 9862 & 11742 \\
-        & & mean & 8594 & 10693 & 12319 \\
+        KMAC-256 & many-time & 7934 & 9862 & 11742 \\
         \hline
-        GMAC & one-time & median & 2778 & 2756 & 2762 \\
-        & & mean & 2843 & 2780 & 2919 \\
+        GMAC & one-time & 2778 & 2756 & 2762 \\
         \hline
-        Poly1305 & one-time & median & 1128 & 1218 & 1338 \\
-        & & mean & 1435 & 1504 & 1625 \\
+        Poly1305 & one-time & 1128 & 1218 & 1338 \\
         \hline
     \end{tabular}
     \caption{Standalone $\mac$ performances}\label{tbl:standalone-mac-perf}
 \end{table}
 
-Based on the security reduction in section \ref{sec:main-results} we chose standalone GMAC and Poly1305 for their substantial performance advantage over other constructions such as CBC-MAC and KMAC. We then modified the reference implementation (TODO: citation needed https://github.com/pq-crystals/kyber) according to algorithms \ref{alg:kyber-ae-keygen}, \ref{alg:kyber-ae-encap}, and \ref{alg:kyber-ae-decap}. We measured the median and mean CPU cycles needed to run each of the routines. The measurements are listed in table \ref{tbl:kyber-ae-perf}
+Based on the security reduction in section \ref{sec:main-results} we chose standalone GMAC and Poly1305 for their substantial performance advantage over other constructions. We modified the reference implementation (https://github.com/pq-crystals/kyber) to implement the proposed construction, then measured the CPU cycles needed to run each of routines. The median CPU cycles are reported in table \ref{tbl:kyber-ae-perf}.
 
 \begin{table}[H]
     \centering
-    \begin{tabular}{|c|c|c|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        Name & Security level & measurement & $\keygen$ & $\encap$ & $\decap$ \\
+        Name & Security level & $\keygen$ & $\encap$ & $\decap$ \\
         \hline
-        Kyber512 & 128 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber512 & 128 bits &  & &  \\
         \hline
-        Kyber768 & 192 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber768 & 192 bits &  & &  \\
         \hline
-        Kyber1024 & 256 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber1024 & 256 bits &  & &  \\
         \hline
-        KyberAE512 w/ GMAC& 128 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber512 + GMAC& 128 bits &  & &  \\
         \hline
-        KyberAE768 w/ GMAC& 192 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber768 + GMAC& 192 bits &  & &  \\
         \hline
-        KyberAE1024 w/ GMAC& 256 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber1024 + GMAC& 256 bits &  & &  \\
         \hline
-        KyberAE512 w/ Poly1305& 128 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber512 + Poly1305& 128 bits &  & &  \\
         \hline
-        KyberAE768 w/ Poly1305& 192 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber768 + Poly1305& 192 bits &  & &  \\
         \hline
-        KyberAE1024 w/ Poly1305& 256 bits & median &  & &  \\
-        & & mean &  & &  \\
+        Kyber1024 + Poly1305& 256 bits &  & &  \\
         \hline
     \end{tabular}
-    \caption{Kyber-AE performance measurements}\label{tbl:kyber-ae-perf}
+    \caption{Performance measurements}\label{tbl:kyber-ae-perf}
 \end{table}
+
+Compared to Kyber using the FO transform, our proposed construction adds a small amount of runtime overhead (for computing a digest) in the encapsulation routine and a small increase in ciphertext size (for the 128-bit tag). In exchange, we see significant performance runtime savings in the decapsulation routines. This trade-off is especially meaningful in a key exchange protocol where one party has substantially more computationl resource than the other. For example, in many experimental implementation of TLS with post-quantum KEMs (such as \href{https://blog.cloudflare.com/the-tls-post-quantum-experiment/}{CECPQ2}), the client (might be IoT devices) runs $\keygen$ and $\decap$ while the server (usually data centers) runs $\encap$.
 
 \section{Conclusions and future works}\label{sec:future-works}
 
+\begin{figure}[H]
+    \begin{floatrow}
+        \ffigbox[300px]{
+            \begin{algorithm}[H]
+                \caption{$\pco(m, c)$}\label{alg:pco-using-decap-oracle}
+                \begin{algorithmic}[1]
+                    \State $k \leftarrow G(m)$
+                    \State $t \leftarrow \mac(k, c)$
+                    \State \Return $\llbrack \mathcal{O}^\decap((c, t)) = H(m, c)\rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        }{
+            \caption{Every decapsulation oracle can be converted into a plaintext-checking oracle}
+            \label{fig:pco-using-decap-oracle}
+        }
+    \end{floatrow}
+\end{figure}
+
+
+We applied the ``encrypt-then-MAC'' transformation to Kyber, which we speculated to be safe to use in ephemeral key exchange where each decapsulation key can only be used to decapsulate one ciphertext, and saw meaningful performance improvements over using the Fujisaki-Okamoto transformation. Unfortunately, the resulting KEM does not achieve the desired full IND-CCA2 security. This is because every chosen-ciphertext attack agaisnt the ```encrypt-then-MAC''' KEM can be converted into a plaintext-checking attack against the the underlying PKE (see algorithm \ref{alg:pco-using-decap-oracle}), and the IND-CPA subroutines of Kyber are known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. This observation, combined with theorem \ref{thm:ow-pca-implies-kem-ind-cca2}, results in the following security equivalence:
+
+\begin{lemma}
+    $\kem_\etm$ is IND-CCA2 secure if and only if the input $\pke$ is OW-PCA secure
+\end{lemma}
+
+However, if the input $\pke$ is OW-CPA secure and rigid (which implies OW-PCA security), then the $U^\bot_m, U^{\not\bot}_m$ transformations from \cite{hofheinz2017modular} can build an IND-CCA2 secure KEM with almost no overhead, as the encapsulation and decapsulation routine each only adds a hash of the plaintext on top of the input encryption and decryption routine. This leaves a gap between OW-PCA security and \emph{OW-CPA + rigidity} in which the ``encrypt-then-MAC'' transformation is a superior strategy for building KEM from a PKE. It remains an open problem to find a suitable PKE that is OW-PCA but not rigid.
+
 %%%% 8. BILBIOGRAPHY %%%%
-% TODO: figure out how to use bibliography
 \bibliographystyle{alpha}
 \bibliography{abbrev3,crypto,biblio}
-%%%% NOTES
 % - Download abbrev3.bib and crypto.bib from https://cryptobib.di.ens.fr/
 % - Use bilbio.bib for additional references not in the cryptobib database.
 %   If possible, take them from DBLP.
