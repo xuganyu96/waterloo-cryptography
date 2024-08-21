@@ -330,164 +330,305 @@ let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\
 The modular FO transformations enjoy tight security bounds and proven quantum resistance. Variations have been deployed to many post-quantum KEMs submitted to NIST's post-quantum cryptography competition. Kyber, one of the round 3 finalists, uses the $U^{\not\bot}$ transformation. When it was later standardized into FIPS-203, it changed to use the $U^{\not\bot}_m$ transformation for computational efficiencies.
 
 \section{The ``encrypt-then-MAC'' transformation}\label{sec:main-results}
-Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme. Let $\mac$ be a deterministic message authentication code. Let $G: \mathcal{M}_\pke \rightarrow \mathcal{K}_\mac$ and $H: \{0,1\}^\ast \rightarrow \mathcal{K}_\kem$ be hash functions, where $\mathcal{K}_\kem$ denote the set of all possible session keys. The $\etm$ transformation outputs a key encapsulation mechanism $\kem_\etm(\keygen_\etm, \encap_\etm, \decap_\etm)$. The three routines are described in figure \ref{fig:etm-routines}.
+Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $\mac: \mathcal{K}_\mac \times \mathcal{B}^\ast \rightarrow \mathcal{T}$ be a deterministic message authentication code that takes a key $k \in \mathcal{K}_\mac$, some message $m \in \mathcal{B}^\ast$, and outputs a digest $t \in \mathcal{T}$. Let $G: \mathcal{M} \rightarrow \mathcal{K}_\mac$ be a hash function that maps from $\pke$'s plaintext space to $\mac$'s key space. Let $H: \mathcal{B}^\ast \rightarrow \mathcal{K}_\kem$ be a hash function that maps bit strings into the set of possible shared secrets. The ``encrypt-then-MAC'' transformation $\etm[\pke, \mac, G, H]$ constructs a key encapsulation mechanism $\kem_\etm(\keygen_\kem, \encap, \decap)$, whose routines are described in figure \ref{fig:etm-routines}.
 
 \begin{figure}[H]
     \center
     \begin{algorithm}[H]
         \caption{$\keygen_\etm$}\label{alg:etm-keygen}
         \begin{algorithmic}[1]
-            \State $(\pk, \sk_\pke) \leftsample \keygen(1^\lambda)$
-            \State $z \leftsample \mathcal{M}_\pke$
-            \State $\sk \leftarrow (\sk_\pke, z)$
+            \State $(\pk, \sk^\prime) \leftsample \keygen(1^\lambda)$
+            \State $z \leftsample \mathcal{M}$
+            \State $\sk \leftarrow (\sk^\prime, z)$
             \State \Return $(\pk, \sk)$
         \end{algorithmic}
     \end{algorithm}
     \begin{algorithm}[H]
-        \caption{$\encap_\etm(\pk)$}\label{alg:etm-encap}
+        \caption{$\encap(\pk)$}\label{alg:etm-encap}
         \begin{algorithmic}[1]
-            \State $m \leftsample \mathcal{M}_\pke$
+            \State $m \leftsample \mathcal{M}$
             \State $k \leftarrow G(m)$
-            \State $c_\pke \leftsample \encrypt(\pk, m)$
-            \State $t \leftarrow \mac(k, c_\pke)$
-            \State $K \leftarrow H(m, c_\pke)$
-            \State $c \leftarrow (c_\pke, K)$
+            \State $c^\prime \leftsample \encrypt(\pk, m)$
+            \State $t \leftarrow \mac(k, c^\prime)$
+            \State $K \leftarrow H(m, c^\prime)$
+            \State $c \leftarrow (c^\prime, t)$
             \State \Return $(c, K)$
         \end{algorithmic}
     \end{algorithm}
     \begin{algorithm}[H]
-        \caption{$\decap_\etm(\sk, c)$}\label{alg:etm-decap}
+        \caption{$\decap(\sk, c)$}\label{alg:etm-decap}
         \begin{algorithmic}[1]
-            \State $(c_\pke, t) \leftarrow c$
-            \State $(\sk_\pke, z) \leftarrow \sk$
-            \State $\hat{m} \leftarrow \decrypt(\sk_\pke, c_\pke)$
+            \State $(c^\prime, t) \leftarrow c$
+            \State $(\sk^\prime, z) \leftarrow \sk$
+            \State $\hat{m} \leftarrow \decrypt(\sk^\prime, c^\prime)$
             \State $\hat{k} \leftarrow G(\hat{m})$
-            \If{$\mac(\hat{k}, c_\pke) \neq t$}
-                \State \Return $H(z, c_\pke)$
+            \If{$\mac(\hat{k}, c^\prime) \neq t$}
+                \State $K \leftarrow H(z, c^\prime)$
+            \Else
+                \State $K \leftarrow H(\hat{m}, c^\prime)$
             \EndIf
-            \State \Return $H(\hat{m}, c_\pke)$
+            \State \Return $K$
         \end{algorithmic}
     \end{algorithm}
     \caption{$\kem_\etm$ routines}\label{fig:etm-routines} 
 \end{figure}
 
+The key generation routine of $\kem_\etm$ is largely identical to that of the $\pke$, only a secret value $z$ is sampled as the implicit rejection symbol. In the encapsulation routine, a MAC key is derived from the randomly sampled plaintext $k \leftarrow G(m)$, then used to sign the unauthenticated ciphertext $c^\prime$. Because the encryption routine might be randomized, the session key is derived from both the message and the ciphertext. Finally, the unauthenticated ciphertext $c^\prime$ and the tag $t$ combine into the authenticated ciphertext $c$, which is transmitted to the peer. In the decapsulation routine, the decryption $\hat{m}$ of the unauthenticated ciphertext is used to re-derive the MAC key $\hat{k}$, which is then used to re-compute the tag $\hat{t}$. The ciphertext is considered valid if and only if the recomputed tag is identical to the input tag.
+
+For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without also knowing $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryptions that the adversary does not already know. 
+
+\begin{figure}[H]
+    \begin{floatrow}
+        \ffigbox[300px]{
+            \begin{algorithm}[H]
+                \caption{$\pco(m, c)$}\label{alg:pco-using-decap-oracle}
+                \begin{algorithmic}[1]
+                    \State $k \leftarrow G(m)$
+                    \State $t \leftarrow \mac(k, c)$
+                    \State \Return $\llbrack \mathcal{O}^\decap((c, t)) = H(m, c)\rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        }{
+            \caption{Every decapsulation oracle can be converted into a plaintext-checking oracle}
+            \label{fig:pco-using-decap-oracle}
+        }
+    \end{floatrow}
+\end{figure}
+
+However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle, so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
+
+On the other hand, if the underlying PKE is one-way secure against plaintext-checking attack that makes $q$ plaintext-checking queries, then ``encrypt-then-MAC'' KEM is semantically secure under chosen ciphertext attacks making the same number of decapsulation queries:
+
 \begin{theorem}\label{thm:ow-pca-implies-kem-ind-cca2}
-    For every \texttt{IND-CCA2} adversary $A$ against $\kem_\etm$ that makes $q_D$ decapsulation queries, there exists an \texttt{OW-PCA} adversary $B$ who makes at least $q_D$ plaintext-checking queries against the underlying $\pke$ such that
+    For every \texttt{IND-CCA2} adversary $A$ against $\kem_\etm$ that makes $q$ decapsulation queries, there exists an \texttt{OW-PCA} adversary $B$ who makes at least $q$ plaintext-checking queries against the underlying $\pke$, and an one-time existential forgery adversary $C$ against the underlying $\mac$ such that
 
     \begin{equation*}
-        \texttt{Adv}_\texttt{IND-CCA2}(A) \leq q_D \cdot \epsilon_\mac + 2 \cdot \texttt{Adv}_\texttt{OW-PCA}(B)
+        \texttt{Adv}_\texttt{IND-CCA2}(A) \leq q \cdot \adv_\texttt{OT-MAC}(C) + 2 \cdot \texttt{Adv}_\texttt{OW-PCA}(B)
     \end{equation*}
 \end{theorem}
 
+Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalence relationship between the security of the KEM and the security of the PKE:
+
+\begin{lemma}
+    $\kem_\etm$ is IND-CCA2 secure if and only if the input $\pke$ is OW-PCA secure
+\end{lemma}
+
+\subsection{Proof of theorem \ref{thm:ow-pca-implies-kem-ind-cca2}}
 \begin{proof}
-    We will prove using a sequence of games. The complete sequence of games is shown in figure \ref{fig:sequence-of-games}
+    We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of games.
 
     \begin{figure}[H]
-        \centering
-        \begin{algorithm}[H]
-            \caption{Sequence of games $G_0 - G_3$}\label{alg:sequence-of-games}
-            \begin{algorithmic}[1]
-                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-                \State $(m^\ast, z) \leftsample \mathcal{M}_\pke$
-                \State $k^\ast \leftarrow G(m^\ast)$
-                    \Comment{$G_0$-$G_1$}
-                \State $k^\ast \leftsample \mathcal{K}_\mac$
-                    \Comment{$G_2$-$G_3$}
-                \State $c^\ast_\pke \leftsample \encrypt(\pk, m^\ast)$
-                \State $t^\ast \leftarrow \mac(k^\ast, c^\ast_\pke)$
-                \State $c^\ast \leftarrow (c^\ast_\pke, t^\ast)$
-                \State $K_0 \leftarrow H(m^\ast, c^\ast_\pke)$
-                    \Comment{$G_0$-$G_2$}
-                \State $K_0 \leftsample \mathcal{K}_\kem$
-                    \Comment{$G_3$}
-                \State $K_1 \leftsample \mathcal{K}_\kem$
-                \State $b \leftsample \{0,1\}$
-                \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap}(
-                    1^\lambda, \pk, c^\ast, K_b)$
-                    \Comment{$G_0$}
-                \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap_1}(
-                    1^\lambda, \pk, c^\ast, K_b)$
-                    \Comment{$G_1$-$G_3$}
-                \State \Return $\llbrack \hat{b} = b \rrbrack$
-            \end{algorithmic}
-        \end{algorithm}
-        \begin{algorithm}[H]
-            \caption{$\mathcal{O}^\decap(c)$}\label{alg:etm-decap-oracle}
-            \begin{algorithmic}[1]
-                \State $(c_\pke, t) \leftarrow c$
-                \State $\hat{m} \leftarrow \decrypt(\sk_\pke, c_\pke)$
-                \State $\hat{k} \leftarrow G(\hat{m})$
-                \If{$\mac(\hat{k}, c_\pke) = t$}
-                    \State \Return $H(\hat{m}, c_\pke)$
-                \EndIf
-                \State \Return $H(z, c_\pke)$
-            \end{algorithmic}
-        \end{algorithm}
-        \begin{algorithm}[H]
-            \caption{$\mathcal{O}^\decap_1(c)$}\label{alg:etm-decap-oracle-1}
-            \begin{algorithmic}[1]
-                \State $(c_\pke, t) \leftarrow c$
-                \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G 
-                    : \decrypt(\sk_\pke, c_\pke) = \tilde{m} 
-                    \land \mac(\tilde{k}, c_\pke) = t$}
-                    \State \Return $H(\tilde{m}, c_\pke)$
-                \EndIf
-                \State \Return $H(z, c_\pke)$
-            \end{algorithmic}
-        \end{algorithm}
-        \caption{Sequence of games, true decap oracle $\mathcal{O}^\decap$ and simulated oracle $\mathcal{O}^\decap_1$}\label{fig:sequence-of-games}
+        \begin{floatrow}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{IND-CCA2 game for KEM}\label{alg:game-0}
+                    \begin{algorithmic}[1]
+                        \State $(\pk, \sk) \leftsample \keygen_\etm()$
+                        \State $m^\ast \leftsample \mathcal{M}$
+                        \State $c^\prime \leftsample \encrypt(\pk, m^\ast)$
+                        \State $k^\ast \leftarrow G(m^\ast)$
+                        \State $t \leftarrow \mac(k, c^\prime)$
+                        \State $c^\ast \leftarrow (c^\prime, t)$
+                        \State $K_0 \leftarrow H(m^\ast, c^\prime)$
+                        \State $K_1 \leftsample \mathcal{K}_\kem$
+                        \State $b \leftsample \{0,1\}$
+                        \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap}(\pk, c^\ast, K_b)$
+                        \State \Return $\llbrack \hat{b} = b \rrbrack$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^\decap(c)$}\label{alg:true-decap-oracle}
+                    \begin{algorithmic}[1]
+                        \State $(c^\prime, t) \leftarrow c$
+                        \State $\hat{m} = \decrypt(\sk^\prime, c^\prime)$
+                        \State $\hat{k} \leftarrow G(\hat{m})$
+                        \If{$\mac(\hat{k}, c^\prime) = t$}
+                            \State $K \leftarrow H(\hat{m}, c^\prime)$
+                        \Else 
+                            \State $K \leftarrow H(z, c^\prime)$
+                        \EndIf 
+                        \State \Return $K$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+        \end{floatrow}
+        \begin{floatrow}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^G(m)$}\label{alg:hash-oracle-g}
+                    \begin{algorithmic}[1]
+                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
+                            \State \Return $\tilde{k}$
+                        \EndIf
+                        \State $k \leftsample \mathcal{K}_\mac$
+                        \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
+                        \State \Return $k$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^H(m, c)$}\label{alg:hash-oracle-h}
+                    \begin{algorithmic}[1]
+                        \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H : \tilde{m} = m \land \tilde{c} = c$}
+                            \State \Return $\tilde{K}$
+                        \EndIf
+                        \State $K \leftsample \mathcal{K}_\kem$
+                        \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
+                        \State \Return $K$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+        \end{floatrow}
     \end{figure}
 
-    \emph{Game 0} is the standard \texttt{IND-CCA2} game for a key encapsulation mechanism.
+    \emph{Game 0} is the standard IND-CCA2 game for KEMs. The decapsulation oracle $\mathcal{O}^\decap$ executes the decapsulation routine using the challenge keypair and return the results faithfully. The queries made to the hash oracles $\mathcal{O}^G, \mathcal{O}^H$ are recorded to their respective tapes $\mathcal{L}^G, \mathcal{L}^H$.
 
-    \emph{Game 1} is identical to \emph{Game 0} except for that the decapsulation oracle $\mathcal{O}^\decap$ (algorithm \ref{alg:etm-decap-oracle}) is replaced with a simulated decapsulation oracle $\mathcal{O}^\decap_1$ (algorithm \ref{alg:etm-decap-oracle-1}). If $\mathcal{O}^\decap_1$ accepts the queried ciphertext $c = (c_\pke, t)$ and outputs the true session key $K \leftarrow H(\tilde{m}, c_\pke)$, then the queried ciphertext must be honestly generated, which means that $\mathcal{O}^\decap$ must also accept the queried ciphertext and output the true session key. If $\mathcal{O}^\decap$ rejects the queried ciphertext $c = (c_\pke, t)$ and outputs the implicit rejection $K \leftarrow H(z, c_\pke)$, then the tag $t$ is invalid under the MAC key $k \leftarrow G(\decrypt(\sk_\pke, c_\pke))$. Since for a given ciphertext $c_\pke$, the correct MAC key is fixed, there could not be a matching hash query $(m, k)$ such that $m$ is the correct decryption and $k$ can validate the incorrect tag. Therefore, $\mathcal{O}^\decap_1$ must also reject the queried ciphertext and output the implicit rejection.
+    \begin{figure}[H]
+        \begin{floatrow}
+            \ffigbox[270px]{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^\decap_1(c)$}\label{alg:sim-decap-oracle}
+                    \begin{algorithmic}[1]
+                        \State $(c^\prime, t) \leftarrow c$
+                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
+                            \tilde{m} = \decrypt(\sk^\prime, c^\prime)
+                            \land \mac(\tilde{k}, c^\prime) = t
+                        $}
+                            \State $K \leftarrow H(\tilde{m}, c^\prime)$
+                        \Else
+                            \State $K \leftarrow H(z, c^\prime)$
+                        \EndIf
+                        \State \Return $K$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{
+                \caption{Simulated decapsulation oracle}
+            }
+        \end{floatrow}
+    \end{figure}
 
-    This means that game 0 and game 1 differ when $\mathcal{O}^\decap$ accepts the queried ciphertext $c = (c_\pke, t)$ but $\mathcal{O}^\decap_1$ rejects it, which means that $t$ is a valid tag for $c_\pke$ under the correct MAC key $k \leftarrow G(\decrypt(\sk_\pke, c_\pke))$ but such key is never queried by the adversary. Under the random oracle model, from the adversary's perspective, such $k$ is an unknown and uniformly random key, so producing a valid tag under such key constitutes a forgery against the MAC. Denote the probability of forgery against unknown uniformly random MAC key by $\epsilon_\mac$, then the probability that the two decapsulation oracles disagree on one or more queries is at most $q_D \cdot \epsilon_\mac$. Finally, by the difference lemma,
+    \emph{Game 1} is identical to game 0 except that the true decapsulation oracle $\mathcal{O}^\decap$ is replaced with a simulated oracle $\mathcal{O}^\decap_1$. Instead of directly decrypting $c^\prime$ as in the decapsulation routine, the simulated oracle searches through the tape $\mathcal{L}^G$ to find a matching query $(\tilde{m}, \tilde{k})$ such that $\tilde{m}$ is the decryption of $c^\prime$. The simulated oracle then uses $\tilde{k}$ to validate the tag $t$ against $c^\prime$.
+
+    If the simulated oracle accepts the queried ciphertext as valid, then there is a matching query that also validates the tag, which means that the queried ciphertext is honestly generated. Therefore, the true oracle must also accept the queried ciphertext. On the other hand, if the true oracle rejects the queried ciphertext (and output the implicit rejection $H(z, c^\prime)$), then the tag is simply invalid under the MAC key $k = G(\decrypt(\sk^\prime, c^\prime))$. Therefore, there could not have been a matching query that also validates the tag, and the simulated oracle must also rejects the queried ciphertext.
+
+    This means that from the adversary $A$'s perspective, game 1 and game 0 differ only when the true oracle accepts while the simulated oracle rejects, which means that $t$ is a valid tag for $c^\prime$ under $k = G(\decrypt(\sk^\prime, c^\prime))$, but $k$ has never been queried. Under the random oracle model, such $k$ is a uniformly random sample of $\mathcal{K}_\mac$ that the adversary does not know, so for $A$ to produce a valid tag is to produce a forgery against the $\mac$ under an unknown and uniformly random key. Furthermore, the security game does not include a signing oracle, so this is a zero-time forgery. While zero-time forgery is not a standard security definition for a MAC, we can bound it by the advantage of a one-time forgery adversary $C$:
 
     \begin{equation*}
-        \texttt{Adv}_0(A) - \texttt{Adv}_1(A) \leq q_D \cdot \epsilon_\mac
+        P\left[\mathcal{O}^\decap(c) \neq \mathcal{O}^\decap_1(c)\right]
+        \leq \adv_\texttt{OT-MAC}(C)
     \end{equation*}
 
-    Note that $\epsilon_\mac$ quantifies the probability that an adversary can produce forgery for a unknown key without access to a signing oracles. While this is not a standard security definition for MAC, this probability is straightforward to estimate for some classes of MACs. As described in section \ref{sec:message-authentication-code}, with a Carter-Wegman-like one-time MAC instantiated with message length $L$ and a finite field with $F$ elements, such probability is at most $\epsilon_\mac \leq \frac{L+1}{F}$
-
-    \emph{Game 2} is identical to \emph{Game 1}, except for that when the challenger generates the challenge ciphertext $c^\ast = (c^\ast_\pke, t^\ast)$, the tag $t^\ast$ is computed using a uniformly random key $k^\ast \leftarrow \mathcal{K}_\mac$ instead of a pseudorandom key derived from hashing the challenge plaintext.
-
-    Under the random oracle model, game 2 and game 1 are statistically identical to the adversary $A$, unless $A$ queries $G$ with $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}^\ast]$, then:
+    Across all $q$ decapsulation queries, the probability that at least one query is a forgery is thus at most $q \cdot \adv_\texttt{OT-MAC}(C)$. By the difference lemma:
 
     \begin{equation*}
-        \texttt{Adv}_1(A) - \texttt{Adv}_2(A) \leq P[\texttt{QUERY G}^\ast]
+        \adv_{G_0}(A) - \adv_{G_1}(A) \leq q\cdot  \adv_\texttt{OT-MAC}(C)
     \end{equation*}
 
-    \emph{Game 3} is identical to \emph{Game 2}, except for that $K_0$ is a uniformly random session key instead of a pseudorandom session key derived from the challenge plaintext-ciphertext pair. Under the random oracle model, game 3 and game 2 are statistically identical unless the adversary $A$ queries $H$ with $(m^\ast, \cdot)$. Denote the probability that $A$ makes such $H$ query by $P[\texttt{QUERY H}^\ast]$, then:
+    \emph{Game 2} is identical to game 1, except that on line 4 of algorithm \ref{alg:game-0}, the challenger samples a uniformly random MAC key $k^\ast \leftsample \mathcal{K}_\mac$ instead of deriving it from $m$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $G$ with the value of $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}]$, then:
 
     \begin{equation*}
-        \texttt{Adv}_2(A) - \texttt{Adv}_3(A) \leq P[\texttt{QUERY H}^\ast]
+        \adv_{G_1}(A) - \adv_{G_2}(A) \leq P\left[\texttt{QUERY G}\right]
     \end{equation*}
 
-    In game 3, both $K_0$ and $K_1$ are uniformly random. There is no statistical difference between the two session keys, so no adversary can have any advantage: $\texttt{Adv}_3(A) = 0$.
+    \emph{Game 3} is identical to game 2, except that on line 7 of algorithm \ref{alg:game-0}, the challenger samples a uniformly random shared secret $K_0 \leftsample \mathcal{K}_\kem$ instead of deriving it from $m^\ast$ and $c^\prime$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $H$ with $(m^\ast, \cdot)$. Denote the probability that $A$ queries $H$ with $(m^\ast, \cdot)$ by $P[\texttt{QUERY H}]$, then:
 
-    Now consider an \texttt{OW-PCA} adversary $B$ simulating game 3 for $A$: \begin{enumerate}
-        \item When $B$ receives its public key $\pk$, $B$ passes $\pk$ to $A$
-        \item $B$ can sample the implicit rejection $z$ by itself
-        \item $B$ can simulate both hash oracles $G$ and $H$ for $A$
-        \item $B$ can simulate $\mathcal{O}^\decap_1$ for $A$. Instead of checking if $\decrypt(\sk_\pke, c) = \tilde{m}$, $B$ can use its access to the plaintext-checking oracle and check if $\pco(\tilde{m}, c) = 1$. This means that for every decapsulation query $B$ services, $B$ needs to make at least one plaintext-checking query. Therefore, $B$ needs to make at least $q_D$ plaintext-checking query.
-        \item When $B$ receives its challenge ciphertext $c_\pke^\ast$, it can sample a uniformly random key $k^\ast \leftsample \mathcal{K}_\mac$, produce the corresponding tag $t^\ast \leftarrow \mac(k^\ast, c^\ast_\pke)$, and sample a uniformly random session keys $K_0, K_1 \leftsample \mathcal{K}_\kem$. $B$ then passes $c^\ast = (c^\ast_\pke, t^\ast)$ as the challenge ciphertext and a coin-flip $K_b$ as the challenge session key.
-    \end{enumerate}
+    \begin{equation*}
+        \adv_{G_2}(A) - \adv_{G_3}(A) \leq P\left[\texttt{QUERY H}\right]
+    \end{equation*}
 
-    If $A$ ever queries $G$ or $H$ with the decryption of $c^\ast_\pke$, $B$ will be able to detect it using the plaintext-checking oracle. From where $B$ is guaranteed to win the \texttt{OW-PCA} game. Therefore:
+    Since in game 3, both $K_0$ and $K_1$ are uniformly random and independent of all other variables, no adversary can have any advantage: $\adv_{G_3}(A) = 0$.
+
+    \begin{figure}[H]
+        \begin{floatrow}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$B(\pk, {c^\prime}^\ast)$}\label{alg:ow-pca-adversary}
+                    \begin{algorithmic}[1]
+                        \State $k \leftsample \mathcal{K}_\mac$
+                        \State $t \leftarrow \mac(k, {c^\prime}^\ast)$
+                        \State $c^\ast \leftarrow ({c^\prime}^\ast, t)$
+                        \State $K \leftsample \mathcal{K}_\kem$
+                        \State $\hat{b} \leftarrow A^{
+                            \mathcal{O}^\decap_B, \mathcal{O}^G_B, \mathcal{O}^H_B
+                        }(\pk, c^\ast, K)$
+                        \If{$\texttt{ABORT}(m)$}
+                            \State \Return $m$
+                        \EndIf
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^\decap_B(c)$}\label{alg:sim-decap-oracle-b}
+                    \begin{algorithmic}[1]
+                        \State $(c^\prime, t) \leftarrow c$
+                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
+                            % \tilde{m} = \decrypt(\sk^\prime, c^\prime)
+                            \pco(c^\prime, \tilde{m}) = 1
+                            \land \mac(\tilde{k}, c^\prime) = t
+                        $}
+                            \State $K \leftarrow H(\tilde{m}, c^\prime)$
+                        \Else
+                            \State $K \leftarrow H(z, c^\prime)$
+                        \EndIf
+                        \State \Return $K$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+        \end{floatrow}
+        \begin{floatrow}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^G_B(m)$}\label{alg:hash-oracle-g-b}
+                    \begin{algorithmic}[1]
+                        \If{$\pco(m, {c^\prime}^\ast) = 1$}
+                            \State $\texttt{ABORT}(m)$
+                        \EndIf
+                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
+                            \State \Return $\tilde{k}$
+                        \EndIf
+                        \State $k \leftsample \mathcal{K}_\mac$
+                        \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
+                        \State \Return $k$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+            \ffigbox{
+                \begin{algorithm}[H]
+                    \caption{$\mathcal{O}^H_B(m, c)$}\label{alg:hash-oracle-h-b}
+                    \begin{algorithmic}
+                        \If{$\pco(m, {c^\prime}^\ast) = 1$}
+                            \State $\texttt{ABORT}(m)$
+                        \EndIf
+                        \If{$
+                            \exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H 
+                            : \tilde{m} = m \land \tilde{c} = c
+                        $}
+                            \State \Return $\tilde{K}$
+                        \EndIf
+                        \State $K \leftsample \mathcal{K}_\kem$
+                        \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
+                        \State \Return $K$
+                    \end{algorithmic}
+                \end{algorithm}
+            }{}
+        \end{floatrow}
+    \end{figure}
+    We will bound $P[\texttt{QUERY G}]$ and $P[\texttt{QUERY H}]$ by constructing a OW-PCA adversary $B$ against the underlying PKE that uses $A$ as a sub-routine. $B$'s behaviors are described in algorithms \ref{alg:ow-pca-adversary}, \ref{alg:sim-decap-oracle-b}, \ref{alg:hash-oracle-g-b}, and \ref{alg:hash-oracle-h-b}.
+
+    $B$ simulates game 3 for $A$: receiving the public key $\pk$ and challenge encryption ${c^\prime}^\ast$, $B$ samples random MAC key and session key to produce the challenge encapsulation, then feeds it to $A$. When simulating the decapsulation oracle, $B$ uses the plaintext-checking oracle to look for matching queries in $\mathcal{L}^G$. When simulaitng the hash oracles, $B$ uses the plaintext-checking oracle to detect when $m^\ast = \decrypt(\sk^\prime, {c^\prime}^\star)$ has been queried. When $m^\ast$ is queried, $B$ terminates $A$ and returns $m^\ast$ to win the OW-PCA game. In other words:
 
     \begin{equation*}
         \begin{aligned}
-            P[\texttt{QUERY G}^\ast] &\leq \texttt{Adv}_\texttt{OW-PCA}(B) \\
-            P[\texttt{QUERY H}^\ast] &\leq \texttt{Adv}_\texttt{OW-PCA}(B)
+            P\left[\texttt{QUERY G}\right] &\leq \adv_\texttt{OW-PCA}(B) \\
+            P\left[\texttt{QUERY H}\right] &\leq \adv_\texttt{OW-PCA}(B) \\
         \end{aligned}
     \end{equation*}
 
-    Combining all inequalities above, we have:
-
-    \begin{equation*}
-        \texttt{Adv}_0(A) \leq q_D \cdot \epsilon_\mac + 2 \texttt{Adv}_\texttt{OW-PCA}(B)
-    \end{equation*}
+    Combining all equations above produce the desired security bound.
 \end{proof}
 
 \section{Application to Kyber}\label{sec:experimental-results}
@@ -609,31 +750,9 @@ Based on the security reduction in section \ref{sec:main-results} we chose stand
 Compared to Kyber using the FO transform, our proposed construction adds a small amount of runtime overhead (for computing a digest) in the encapsulation routine and a small increase in ciphertext size (for the 128-bit tag). In exchange, we see significant performance runtime savings in the decapsulation routines. This trade-off is especially meaningful in a key exchange protocol where one party has substantially more computationl resource than the other. For example, in many experimental implementation of TLS with post-quantum KEMs (such as \href{https://blog.cloudflare.com/the-tls-post-quantum-experiment/}{CECPQ2}), the client (might be IoT devices) runs $\keygen$ and $\decap$ while the server (usually data centers) runs $\encap$.
 
 \section{Conclusions and future works}\label{sec:future-works}
-
-\begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox[300px]{
-            \begin{algorithm}[H]
-                \caption{$\pco(m, c)$}\label{alg:pco-using-decap-oracle}
-                \begin{algorithmic}[1]
-                    \State $k \leftarrow G(m)$
-                    \State $t \leftarrow \mac(k, c)$
-                    \State \Return $\llbrack \mathcal{O}^\decap((c, t)) = H(m, c)\rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        }{
-            \caption{Every decapsulation oracle can be converted into a plaintext-checking oracle}
-            \label{fig:pco-using-decap-oracle}
-        }
-    \end{floatrow}
-\end{figure}
-
+% TODO: need to rework this
 
 We applied the ``encrypt-then-MAC'' transformation to Kyber, which we speculated to be safe to use in ephemeral key exchange where each decapsulation key can only be used to decapsulate one ciphertext, and saw meaningful performance improvements over using the Fujisaki-Okamoto transformation. Unfortunately, the resulting KEM does not achieve the desired full IND-CCA2 security. This is because every chosen-ciphertext attack agaisnt the ```encrypt-then-MAC''' KEM can be converted into a plaintext-checking attack against the the underlying PKE (see algorithm \ref{alg:pco-using-decap-oracle}), and the IND-CPA subroutines of Kyber are known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. This observation, combined with theorem \ref{thm:ow-pca-implies-kem-ind-cca2}, results in the following security equivalence:
-
-\begin{lemma}
-    $\kem_\etm$ is IND-CCA2 secure if and only if the input $\pke$ is OW-PCA secure
-\end{lemma}
 
 However, if the input $\pke$ is OW-CPA secure and rigid (which implies OW-PCA security), then the $U^\bot_m, U^{\not\bot}_m$ transformations from \cite{hofheinz2017modular} can build an IND-CCA2 secure KEM with almost no overhead, as the encapsulation and decapsulation routine each only adds a hash of the plaintext on top of the input encryption and decryption routine. This leaves a gap between OW-PCA security and \emph{OW-CPA + rigidity} in which the ``encrypt-then-MAC'' transformation is a superior strategy for building KEM from a PKE. It remains an open problem to find a suitable PKE that is OW-PCA but not rigid.
 
