@@ -54,8 +54,8 @@
 \newcommand{\fotplus}{\texttt{FOT+}}
 
 %%%% 4. TITLE %%%%
-\title[IND-CCA2 secure KEM using encrypt-then-MAC]{
-Fast Fujisaki-Okamoto transformation  using encrypt-then-mac and applications to Kyber}
+\title{
+Faster generic IND-CCA2 secure KEM using ``encrypt-then-MAC''}
 %%%% NOTES:
 % - If the title is too long, or includes special macro, please
 %   provide a "running title" as optional argument: \title[Short]{Long}
@@ -77,7 +77,7 @@ Fast Fujisaki-Okamoto transformation  using encrypt-then-mac and applications to
 
 %%%% 6. ABSTRACT %%%%
 \begin{abstract}
-  The modular Fujisaki-Okamoto (FO) transformation takes public-key encryption with weaker security and constructs a key encapsulation mechanism (KEM) with indistinguishability under adaptive chosen ciphertext attacks. While the modular FO transform enjoys tight security bound and quantum resistance, it also suffers from computational inefficiency and vulnerabilities to side-channel attacks due to using de-randomization and re-encryption for providing ciphertext integrity. In this work, we propose an alternative KEM construction that achieves ciphertext integrity using a message authentication code (MAC) and instantiate a concrete instance using ML-KEM. Our experimental results showed that where the encryption routine incurs heavy computational cost, replacing re-encryption with MAC provides substantial performance improvements at comparable security level.
+  The modular Fujisaki-Okamoto (FO) transformation takes public-key encryption with weaker security and constructs a key encapsulation mechanism (KEM) with indistinguishability under adaptive chosen ciphertext attacks. While the modular FO transform enjoys tight security bound and quantum resistance, it also suffers from computational inefficiency and vulnerabilities to side-channel attacks due to using de-randomization and re-encryption for providing ciphertext integrity. In this work, we propose an alternative KEM construction that achieves ciphertext integrity using a message authentication code (MAC) and instantiate a concrete instance using Kyber. Our experimental results showed that where the encryption routine incurs heavy computational cost, replacing re-encryption with MAC provides substantial performance improvements at comparable security level.
 \end{abstract}
 
 
@@ -85,20 +85,20 @@ Fast Fujisaki-Okamoto transformation  using encrypt-then-mac and applications to
 \section{Introduction}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works \cite{hofheinz2017modular} extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals}, FrodoKEM \cite{bos2016frodo}, and SABER \cite{d2018saber}.
 
-The current state of the FO transformation enjoys tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many deficiencies to be improved on. One such shortcoming is the use of re-encryption for providing ciphertext integrity \cite{bernstein2018towards}, which requires the decapsulation routine to run the encryption routine as a subroutine. In many post-quantum schemes, such as Kyber, the encryption routine is substantially more expensive than the decryption routine, so running the encryption routine in the decapsulation routine inflates the computational cost of the decapsulator. In addition, running the encryption as a subroutine introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key \cite{ravi2019generic}\cite{ueno2022curse}.
+The current state of the FO transformation enjoys proven tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many deficiencies to be improved on. One such shortcoming is the use of re-encryption for providing ciphertext integrity \cite{bernstein2018towards}, which requires the decapsulation routine to run the encryption routine as a subroutine. In many post-quantum schemes, such as Kyber, the encryption routine is substantially more expensive than the decryption routine, so running the encryption routine in the decapsulation routine inflates the computational cost of the decapsulator. In addition, running the encryption as a subroutine introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key \cite{ravi2019generic}\cite{ueno2022curse}.
 
-The problem of ciphertext integrity was solved in symmetric cryptography: given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using ``encrypt-then-mac'' provides authenticated encryption \cite{bellare2000authenticated}. We took inspiration from this strategy and applied a similar technique to transform an IND-CPA secure public-key encryption scheme into an IND-CCA2 secure key encapsulation mechanism. Using a message authentication code for ciphertext integrity replaces the re-encryption step in decryption with the computation of an authenticator, which offers significant performance improvements while maintaining comparable level of security.
+The problem of ciphertext integrity was solved in symmetric cryptography: given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using ``encrypt-then-mac'' provides authenticated encryption \cite{bellare2000authenticated}. We took inspiration from this strategy and applied a similar technique to transform an OW-PCA secure public-key encryption scheme into an IND-CCA2 secure key encapsulation mechanism. Using a message authentication code for ciphertext integrity replaces the re-encryption step in decryption with the computation of an authenticator, which offers significant performance improvements while maintaining comparable level of security.
 
 The main challenge in applying ``encrypt-then-mac'' to public-key cryptography is the lack of a pre-shared symmetric key. We proposed to derive the symmetric key by hashing the plaintext message. In section \ref{sec:main-results}, we prove that under the random oracle model, if the input public-key encryption scheme is one-way secure against plaintext-checking attack and the input message authentication code is one-time existentially unforgeable, then the transformed key encapsulation mechanism is IND-CCA2 secure.
 
-In section \ref{sec:experimental-results}, we instantiate concrete instances of our constructions by combining Kyber with GMAC and Poly1305. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal overhead in the encapsulation routine.
+In section \ref{sec:experimental-results}, we instantiate concrete instances of our constructions by combining Kyber with GMAC and Poly1305. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal runtime overhead in the encapsulation routine and a small increase in ciphertext size.
 
 \section{Preliminaries and previous results}
 
 \subsection{Public-key encryption scheme}
 A public key encryption scheme $\pke$ is a collection of three routines $(\keygen, \encrypt, \decrypt)$ defined over some message space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Where the encryption routine is probabilistic, the source of randomness is denoted by the coin space $\mathcal{R}$.
 
-The encryption routine $\encrypt(\pk, m)$ takes a public key, a plaintext message, and outputs a ciphertext $c \in \mathcal{C}$. Where the encryption routine is probabilistic, specifying a pseudorandom seed $r \in \mathcal{R}$ will make the encryption routine behave deterministically. The decryption routine $\decrypt(\sk, c)$ takes a secret key, a ciphertext, and outputs the decryption $\hat{m}$ if the ciphertext is valid under the given secret key, or the rejection symbol $\bot$ if the ciphertext is invalid.
+The encryption routine $\encrypt(\pk, m)$ takes a public key, a plaintext message, and outputs a ciphertext $c \in \mathcal{C}$. Where the encryption routine is probabilistic, specifying a pseudorandom seed $r \in \mathcal{R}$ will make the encryption routine behave deterministically. The decryption routine $\decrypt(\sk, c)$ takes a secret key, a ciphertext, and outputs the decryption $\hat{m}$ if the ciphertext is valid. Some PKE will explicitly reject invalid ciphertext, in which case the decryption routine will output the rejection symbol $\bot$
 
 We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
 
@@ -146,7 +146,7 @@ In the \texttt{OW-ATK} game (see figure \ref{alg:pke-ow-atk-game}), an adversary
 The capabilities of the oracle $\mathcal{O}_\texttt{ATK}$ depends on the choice of security goal $\texttt{ATK}$. Particularly relevant to our result is security against plaintext-checking attack (PCA), for which the adversary has access to a plaintext-checking oracle (PCO) (see figure \ref{alg:pco}). A PCO takes as input a plaintext-ciphertext pair $(m, c)$ and returns \texttt{True} if $m$ is the decryption of $c$ or \texttt{False} otherwise.
 
 \subsection{Key encapsulation mechanism (KEM)}
-A key encapsulation mechanism is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a ``fake'' session key that depends on the ciphertext and some other secret values.
+A key encapsulation mechanism is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a fake session key that depends on the ciphertext and some other secret values.
 
 The IND-CCA security of a KEM is defined by an adversarial game in which an adversary's goal is to distinguish pseudorandom shared secret (generated by running the $\encap$ routine) and a truly random value.
 
@@ -373,9 +373,9 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
     \caption{$\kem_\etm$ routines}\label{fig:etm-routines} 
 \end{figure}
 
-The key generation routine of $\kem_\etm$ is largely identical to that of the $\pke$, only a secret value $z$ is sampled as the implicit rejection symbol. In the encapsulation routine, a MAC key is derived from the randomly sampled plaintext $k \leftarrow G(m)$, then used to sign the unauthenticated ciphertext $c^\prime$. Because the encryption routine might be randomized, the session key is derived from both the message and the ciphertext. Finally, the unauthenticated ciphertext $c^\prime$ and the tag $t$ combine into the authenticated ciphertext $c$, which is transmitted to the peer. In the decapsulation routine, the decryption $\hat{m}$ of the unauthenticated ciphertext is used to re-derive the MAC key $\hat{k}$, which is then used to re-compute the tag $\hat{t}$. The ciphertext is considered valid if and only if the recomputed tag is identical to the input tag.
+The key generation routine of $\kem_\etm$ is largely identical to that of the $\pke$, only a secret value $z$ is sampled as the implicit rejection symbol. In the encapsulation routine, a MAC key is derived from the randomly sampled plaintext $k \leftarrow G(m)$, then used to sign the unauthenticated ciphertext $c^\prime$. Because the encryption routine might be randomized, the session key is derived from both the message and the ciphertext. Finally, the unauthenticated ciphertext $c^\prime$ and the tag $t$ combine into the authenticated ciphertext $c$ that would be transmitted to the peer. In the decapsulation routine, the decryption $\hat{m}$ of the unauthenticated ciphertext is used to re-derive the MAC key $\hat{k}$, which is then used to re-compute the tag $\hat{t}$. The ciphertext is considered valid if and only if the recomputed tag is identical to the input tag.
 
-For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without also knowing $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryptions that the adversary does not already know. 
+For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without knowing its preimage $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryptions that the adversary does not already know. 
 
 \begin{figure}[H]
     \begin{floatrow}
@@ -395,7 +395,7 @@ For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphert
     \end{floatrow}
 \end{figure}
 
-However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle, so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
+However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle (algorithm \ref{alg:pco-using-decap-oracle}), so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
 
 On the other hand, if the underlying PKE is one-way secure against plaintext-checking attack that makes $q$ plaintext-checking queries, then ``encrypt-then-MAC'' KEM is semantically secure under chosen ciphertext attacks making the same number of decapsulation queries:
 
@@ -521,7 +521,7 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
         \leq \adv_\texttt{OT-MAC}(C)
     \end{equation*}
 
-    Across all $q$ decapsulation queries, the probability that at least one query is a forgery is thus at most $q \cdot \adv_\texttt{OT-MAC}(C)$. By the difference lemma:
+    Across all $q$ decapsulation queries, the probability that at least one query is a forgery is thus at most $q \cdot P\left[\mathcal{O}^\decap(c) \neq \mathcal{O}^\decap_1(c)\right]$. By the difference lemma:
 
     \begin{equation*}
         \adv_{G_0}(A) - \adv_{G_1}(A) \leq q\cdot  \adv_\texttt{OT-MAC}(C)
@@ -547,6 +547,7 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
                 \begin{algorithm}[H]
                     \caption{$B(\pk, {c^\prime}^\ast)$}\label{alg:ow-pca-adversary}
                     \begin{algorithmic}[1]
+                        \State $z \leftsample \mathcal{M}$
                         \State $k \leftsample \mathcal{K}_\mac$
                         \State $t \leftarrow \mac(k, {c^\prime}^\ast)$
                         \State $c^\ast \leftarrow ({c^\prime}^\ast, t)$
@@ -619,7 +620,7 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
     \end{figure}
     We will bound $P[\texttt{QUERY G}]$ and $P[\texttt{QUERY H}]$ by constructing a OW-PCA adversary $B$ against the underlying PKE that uses $A$ as a sub-routine. $B$'s behaviors are described in algorithms \ref{alg:ow-pca-adversary}, \ref{alg:sim-decap-oracle-b}, \ref{alg:hash-oracle-g-b}, and \ref{alg:hash-oracle-h-b}.
 
-    $B$ simulates game 3 for $A$: receiving the public key $\pk$ and challenge encryption ${c^\prime}^\ast$, $B$ samples random MAC key and session key to produce the challenge encapsulation, then feeds it to $A$. When simulating the decapsulation oracle, $B$ uses the plaintext-checking oracle to look for matching queries in $\mathcal{L}^G$. When simulaitng the hash oracles, $B$ uses the plaintext-checking oracle to detect when $m^\ast = \decrypt(\sk^\prime, {c^\prime}^\star)$ has been queried. When $m^\ast$ is queried, $B$ terminates $A$ and returns $m^\ast$ to win the OW-PCA game. In other words:
+    $B$ simulates game 3 for $A$: receiving the public key $\pk$ and challenge encryption ${c^\prime}^\ast$, $B$ samples random MAC key and session key to produce the challenge encapsulation, then feeds it to $A$. When simulating the decapsulation oracle, $B$ uses the plaintext-checking oracle to look for matching queries in $\mathcal{L}^G$. When simulating the hash oracles, $B$ uses the plaintext-checking oracle to detect when $m^\ast = \decrypt(\sk^\prime, {c^\prime}^\star)$ has been queried. When $m^\ast$ is queried, $B$ terminates $A$ and returns $m^\ast$ to win the OW-PCA game. In other words:
 
     \begin{equation*}
         \begin{aligned}
@@ -653,11 +654,11 @@ We took the IND-CPA PKE routines (algorithms 4, 5, 6 in \cite{avanzi2019crystals
         \State $m \leftsample \{0,1\}^{256}$
         \State $m'= H(m)$
             \Comment{Do not output system RNG directly}
-        \State $(\bar{K}, K_\mac) = G(m' \Vert H(\pk))$
+        \State $(\bar{K}, k) = G(m' \Vert H(\pk))$
             \Comment{G is instantiated with SHA3-512}
         \State $r \leftsample \mathcal{R}$
         \State $c^\prime  \leftarrow \texttt{Kyber.CPAPKE.Enc}(\pk, m', r)$
-            \State $t=\mac(K_\mac, c^\prime)$
+            \State $t=\mac(k, c^\prime)$
         \State $K = \texttt{KDF}(\bar{K} \Vert t)$
             \Comment{\texttt{KDF} is instantiated with Shake256}
         \State $c \leftarrow (c^\prime, t)$
@@ -673,8 +674,8 @@ We took the IND-CPA PKE routines (algorithms 4, 5, 6 in \cite{avanzi2019crystals
         \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
         \State $(c^\prime, t) \leftarrow c$
         \State $\hat{m} = \texttt{Kyber.CPAPKE.Dec}(\sk^\prime, c^\prime)$ 
-        \State $(\overline{K}, K_\mac) =   G(m^\prime \Vert h)$
-        \State $\hat{t}=\mac(K_\mac, c)$
+        \State $(\overline{K}, k) =   G(m^\prime \Vert h)$
+        \State $\hat{t}=\mac(k, c)$
         \If{$\hat{t} = t$}
             \State $K  = \texttt{KDF}(\bar{K} \Vert t)$ 
          \Else 
@@ -750,11 +751,11 @@ Based on the security reduction in section \ref{sec:main-results} we chose stand
 Compared to Kyber using the FO transform, our proposed construction adds a small amount of runtime overhead (for computing a digest) in the encapsulation routine and a small increase in ciphertext size (for the 128-bit tag). In exchange, we see significant performance runtime savings in the decapsulation routines. This trade-off is especially meaningful in a key exchange protocol where one party has substantially more computationl resource than the other. For example, in many experimental implementation of TLS with post-quantum KEMs (such as \href{https://blog.cloudflare.com/the-tls-post-quantum-experiment/}{CECPQ2}), the client (might be IoT devices) runs $\keygen$ and $\decap$ while the server (usually data centers) runs $\encap$.
 
 \section{Conclusions and future works}\label{sec:future-works}
-% TODO: need to rework this
+We applied the ``encrypt-then-MAC'' transformation to Kyber and saw meaningful performance improvements over using de-randomization and re-encryption. Unfortunately the resulting KEM does not achieve the desired full IND-CCA2 security, because Kyber is known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. We speculate that while Kyber with ``encrypt-then-MAC'' could not achieve the full IND-CCA2 security, it can still be safe for use in ephemeral key exchange, where each secret key is used to decrypt at most one ciphertext (the KR-PCA requires a few hundred decryption queries to recover the secret key).
 
-We applied the ``encrypt-then-MAC'' transformation to Kyber, which we speculated to be safe to use in ephemeral key exchange where each decapsulation key can only be used to decapsulate one ciphertext, and saw meaningful performance improvements over using the Fujisaki-Okamoto transformation. Unfortunately, the resulting KEM does not achieve the desired full IND-CCA2 security. This is because every chosen-ciphertext attack agaisnt the ```encrypt-then-MAC''' KEM can be converted into a plaintext-checking attack against the the underlying PKE (see algorithm \ref{alg:pco-using-decap-oracle}), and the IND-CPA subroutines of Kyber are known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. This observation, combined with theorem \ref{thm:ow-pca-implies-kem-ind-cca2}, results in the following security equivalence:
+In section \ref{sec:main-results}, we showed that if the input PKE is OW-PCA secure, then the resulting KEM is IND-CCA2 secure. One sufficient condition for OW-PCA security is one-way security plus rigidity. If the input PKE is rigid, then $m = \decrypt(\sk, c)$ is equivalent to $c = \encrypt(\pk, m)$, so a plaintext-checking oracle can be simulated without any secret information. However, the $U_m^{\not\bot}$ transformation in \cite{hofheinz2017modular} can already transform an OW-CPA secure and rigid PKE into an IND-CCA2 secure KEM with minimal overhead: the encapsulation and decapsulation routines each adds a hash of the plaintext to the encryption and decryption routine. In other words, where the input PKE is rigid, ``encrypt-then-MAC'' doesn't offer any performance advantage. It remains an open problem whether there exists a PKE that is OW-PCA secure but not rigid. If such a PKE exists, then ``encrypt-then-MAC'' would be a preferable strategy for constructing an IND-CCA2 KEM.
 
-However, if the input $\pke$ is OW-CPA secure and rigid (which implies OW-PCA security), then the $U^\bot_m, U^{\not\bot}_m$ transformations from \cite{hofheinz2017modular} can build an IND-CCA2 secure KEM with almost no overhead, as the encapsulation and decapsulation routine each only adds a hash of the plaintext on top of the input encryption and decryption routine. This leaves a gap between OW-PCA security and \emph{OW-CPA + rigidity} in which the ``encrypt-then-MAC'' transformation is a superior strategy for building KEM from a PKE. It remains an open problem to find a suitable PKE that is OW-PCA but not rigid.
+
 
 %%%% 8. BILBIOGRAPHY %%%%
 \bibliographystyle{alpha}
