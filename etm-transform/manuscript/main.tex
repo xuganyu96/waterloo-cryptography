@@ -698,27 +698,7 @@ We took the IND-CPA PKE routines (algorithms 4, 5, 6 in \cite{avanzi2019crystals
     We chose to use MAC with 256-bit key size and 128-bit tag size. When modeling the security threats, we assumed that the adversary may have access to quantum computers, making it necessary to use the maximal key size of common MACs while maintaining the minimum 128-bit security. On the other hand, the tag size can be relative small because the decapsulator (aka the decapsulation oracle) is assumed to be a classical computer, so there is no quantum speedup on brute-forcing a valid tag.
 \end{remark}
 
-When instantiating an instance $\kem(\keygen, \encap, \decap)$, there are a variety of possible MAC's to choose from. For each of the security level and choice of MAC, we measured the number of CPU cycles needed to produce a digest of Kyber's ciphertext. The MAC implementations are taken from OpenSSL and run on an Intel MacBook Pro with i7-9700h (TODO: run it on a server). The median measurements are reported in table \ref{tbl:standalone-mac-perf}.
-
-\begin{table}[H]
-    \centering
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        Name & Security & 768 bytes & 1088 bytes & 1568 bytes \\
-        \hline
-        CMAC & many-time & 5022 & 5442 & 6090 \\
-        \hline
-        KMAC-256 & many-time & 7934 & 9862 & 11742 \\
-        \hline
-        GMAC & one-time & 2778 & 2756 & 2762 \\
-        \hline
-        Poly1305 & one-time & 1128 & 1218 & 1338 \\
-        \hline
-    \end{tabular}
-    \caption{Standalone $\mac$ performances}\label{tbl:standalone-mac-perf}
-\end{table}
-
-Based on the security reduction in section \ref{sec:main-results} we chose standalone GMAC and Poly1305 for their substantial performance advantage over other constructions. We modified the reference implementation (https://github.com/pq-crystals/kyber) to implement the proposed construction, then measured the CPU cycles needed to run each of routines. The median CPU cycles are reported in table \ref{tbl:kyber-ae-perf}.
+When instantiating an instance of $\kem(\keygen, \encap, \decap)$, there are a variety of MAC's to chose from. We experimented with Poly1305, AES-256-GCM (aka GMAC), AES-256-CBC (aka CMAC), and KMAC-256. We instantiated an intance of the ``encrypt-then-MAC'' KEM using each of the chosen MAC, then measured the median number of CPU cycles needed to perform the key generation, encapsulation, and decapsulation routines among 10000 runs. The Kyber implementation is taken from the reference implementation (https://github.com/pq-crystals/kyber). MAC implementations are taken from OpenSSL 3.3.1. The source code is compiled with GCC 11.4.1 on Amazon Linux 2. Performance measurements were taken from a c7a.medium AWS EC2 instance with a AMD EPYC 9R14 (1) @ 3.700GHz. The experimental results are listed in table \ref{tbl:kyber-ae-perf}.
 
 \begin{table}[H]
     \centering
@@ -726,23 +706,35 @@ Based on the security reduction in section \ref{sec:main-results} we chose stand
         \hline
         Name & Security level & $\keygen$ & $\encap$ & $\decap$ \\
         \hline
-        Kyber512 & 128 bits &  & &  \\
+        Kyber512 & 128 bits & 75945 & 91467& 121185 \\
         \hline
-        Kyber768 & 192 bits &  & &  \\
+        Kyber512 + Poly1305& 128 bits & 76907 & 93157 & 33733 \\
         \hline
-        Kyber1024 & 256 bits &  & &  \\
+        Kyber512 + GMAC& 128 bits & 76917 & 95419 & 37725 \\
         \hline
-        Kyber512 + GMAC& 128 bits &  & &  \\
+        Kyber512 + CMAC& 128 bits & 76907 & 99839 & 40117 \\
         \hline
-        Kyber768 + GMAC& 192 bits &  & &  \\
+        Kyber512 + KMAC-256& 128 bits & 76387 & 101009 & 40741 \\
         \hline
-        Kyber1024 + GMAC& 256 bits &  & &  \\
+        Kyber768 & 192 bits & 129895 & 146405& 186445 \\
         \hline
-        Kyber512 + Poly1305& 128 bits &  & &  \\
+        Kyber768 + Poly1305& 192 bits & 128205 & 146405& 43315 \\
         \hline
-        Kyber768 + Poly1305& 192 bits &  & &  \\
+        Kyber768 + GMAC& 192 bits & 127997 & 149525 & 46513 \\
         \hline
-        Kyber1024 + Poly1305& 256 bits &  & &  \\
+        Kyber768 + CMAC& 192 bits & 129167 & 151007 & 49841 \\
+        \hline
+        Kyber768 + KMAC-256& 192 bits & 128829 & 155219 & 52415 \\
+        \hline
+        Kyber1024 & 256 bits & 194921 & 199185 & 246245 \\
+        \hline
+        Kyber1024 + Poly1305& 256 bits & 196013 & 205763 & 51375 \\
+        \hline
+        Kyber1024 + GMAC& 256 bits & 196039 & 208805 & 54573 \\
+        \hline
+        Kyber1024 + CMAC& 256 bits & 195389 & 213667 & 59175 \\
+        \hline
+        Kyber1024 + KMAC-256& 256 bits & 196117 & 216761 & 62269 \\
         \hline
     \end{tabular}
     \caption{Performance measurements}\label{tbl:kyber-ae-perf}
