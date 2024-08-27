@@ -240,6 +240,7 @@ Where the $H_\text{xpoly}$ is a universal hash function:
 \end{lemma}
 \begin{proof}
     See \cite{boneh2020graduate} lemma 7.11
+    % TODO: need more detailed citations
 \end{proof}
 
 \subsection{Related works}
@@ -652,12 +653,12 @@ We took the IND-CPA PKE routines (algorithms 4, 5, 6 in \cite{avanzi2019crystals
     \caption{\texttt{Kyber.CCAKEM.Encap$^+$(\pk)}}\label{alg:kyber-ae-encap}
     \begin{algorithmic}[1]
         \State $m \leftsample \{0,1\}^{256}$
-        \State $m'= H(m)$
-            \Comment{Do not output system RNG directly}
-        \State $(\bar{K}, k) = G(m' \Vert H(\pk))$
-            \Comment{G is instantiated with SHA3-512}
-        \State $r \leftsample \mathcal{R}$
-        \State $c^\prime  \leftarrow \texttt{Kyber.CPAPKE.Enc}(\pk, m', r)$
+        % \State $m'= H(m)$
+        %     \Comment{Do not output system RNG directly}
+        \State $(\bar{K}, r, k) = G(m \Vert H(\pk))$
+            \Comment{G is instantiated with SHA3-768}
+ 
+        \State $c^\prime  \leftarrow \texttt{Kyber.CPAPKE.Enc}(\pk, m, r)$
             \State $t=\mac(k, c^\prime)$
         \State $K = \texttt{KDF}(\bar{K} \Vert t)$
             \Comment{\texttt{KDF} is instantiated with Shake256}
@@ -706,44 +707,84 @@ When instantiating an instance of $\kem(\keygen, \encap, \decap)$, there are a v
         \hline
         Name & Security level & $\keygen$ & $\encap$ & $\decap$ \\
         \hline
-        Kyber512 & 128 bits & 75945 & 91467& 121185 \\
+        % TODO: change to ML-KEM-512/768/1024
+        ML-KEM-512 & 128 bits & 75945 & 91467& 121185 \\
         \hline
-        Kyber512 + Poly1305& 128 bits & 76907 & 93157 & 33733 \\
+        ML-KEM-512 + Poly1305& 128 bits & 76907 & 93157 & 33733 \\
         \hline
-        Kyber512 + GMAC& 128 bits & 76917 & 95419 & 37725 \\
+        ML-KEM-512 + GMAC& 128 bits & 76917 & 95419 & 37725 \\
         \hline
-        Kyber512 + CMAC& 128 bits & 76907 & 99839 & 40117 \\
+        ML-KEM-512 + CMAC& 128 bits & 76907 & 99839 & 40117 \\
         \hline
-        Kyber512 + KMAC-256& 128 bits & 76387 & 101009 & 40741 \\
+        ML-KEM-512 + KMAC-256& 128 bits & 76387 & 101009 & 40741 \\
         \hline
-        Kyber768 & 192 bits & 129895 & 146405& 186445 \\
+        ML-KEM-768 & 192 bits & 129895 & 146405& 186445 \\
         \hline
-        Kyber768 + Poly1305& 192 bits & 128205 & 146405& 43315 \\
+        ML-KEM-768 + Poly1305& 192 bits & 128205 & 146405& 43315 \\
         \hline
-        Kyber768 + GMAC& 192 bits & 127997 & 149525 & 46513 \\
+        ML-KEM-768 + GMAC& 192 bits & 127997 & 149525 & 46513 \\
         \hline
-        Kyber768 + CMAC& 192 bits & 129167 & 151007 & 49841 \\
+        ML-KEM-768 + CMAC& 192 bits & 129167 & 151007 & 49841 \\
         \hline
-        Kyber768 + KMAC-256& 192 bits & 128829 & 155219 & 52415 \\
+        ML-KEM-768 + KMAC-256& 192 bits & 128829 & 155219 & 52415 \\
         \hline
-        Kyber1024 & 256 bits & 194921 & 199185 & 246245 \\
+        ML-KEM-1024 & 256 bits & 194921 & 199185 & 246245 \\
         \hline
-        Kyber1024 + Poly1305& 256 bits & 196013 & 205763 & 51375 \\
+        ML-KEM-1024 + Poly1305& 256 bits & 196013 & 205763 & 51375 \\
         \hline
-        Kyber1024 + GMAC& 256 bits & 196039 & 208805 & 54573 \\
+        ML-KEM-1024 + GMAC& 256 bits & 196039 & 208805 & 54573 \\
         \hline
-        Kyber1024 + CMAC& 256 bits & 195389 & 213667 & 59175 \\
+        ML-KEM-1024 + CMAC& 256 bits & 195389 & 213667 & 59175 \\
         \hline
-        Kyber1024 + KMAC-256& 256 bits & 196117 & 216761 & 62269 \\
+        ML-KEM-1024 + KMAC-256& 256 bits & 196117 & 216761 & 62269 \\
         \hline
+        % TODO: also do a short comparison with Kyber Round 3
+        % TODO: KeyGen, Encap, and Decap CPU cycles should be separate tables
+        % TODO: also include MAC performances on different ciphertext sizes
     \end{tabular}
     \caption{Performance measurements}\label{tbl:kyber-ae-perf}
 \end{table}
 
 Compared to Kyber using the FO transform, our proposed construction adds a small amount of runtime overhead (for computing a digest) in the encapsulation routine and a small increase in ciphertext size (for the 128-bit tag). In exchange, we see significant performance runtime savings in the decapsulation routines. This trade-off is especially meaningful in a key exchange protocol where one party has substantially more computationl resource than the other. For example, in many experimental implementation of TLS with post-quantum KEMs (such as \href{https://blog.cloudflare.com/the-tls-post-quantum-experiment/}{CECPQ2}), the client (might be IoT devices) runs $\keygen$ and $\decap$ while the server (usually data centers) runs $\encap$.
 
+\section{Experimental Evaluation}
+We implement our scheme in C on top of {\sf CRYSTALS-Kyber}'s implementation available \cite{}. We use the Poly1305 MAC from {\sf OpenSSL} with a key of size 256 bits and a tag size of 128 bits. Our experiments were run on a desktop with a 2.3 GHz Intel Core i9 laptop (Coffee Lake) with 16 GB RAM. The codes were compiled using \texttt{clange 14.0.0}. 
+%with \texttt{-std=c99 -O1 -fomit-frame-pointer flag}. 
+Table~\ref{tab:ExpResults} reports the cycle counts for three different instances of Keyber, namely . The cycle counts reported in Table~\ref{tab:ExpResults} are the average of the cycle counts of 10000 executions of all algorithms. 
+\begin{table}[h]
+\centering
+\begin{tabular}{|c|c||c|c| |c|c| |c|c|} \hline
+\multicolumn{4}{|c|}{Kyber512}  & \multicolumn{2}{|c|}{Kyber512+Poly1305} & \multicolumn{2}{|c|}{Kyber512+GMAC} \\ \hline
+\multicolumn{2}{|l|}{Size in bytes} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} \\ \hline 
+{\bf sk:} & 1632 (or 32) & {\bf $\keygen$:} &  & {\bf $\keygen$:} & & {\bf $\keygen$:} & \\ \hline 
+{\bf pk:} & 800 & {\bf $\encap$:} & & {\bf $\encap^+$:} & & {\bf $\encap^+$:} & \\ \hline 
+{\bf ct:} & 768 & {\bf $\decap$:} &  & {\bf $\decap^+$:} & & {\bf $\decap^+$:} & \\ \hline 
+\hline 
+\multicolumn{4}{|c|}{Kyber768}  & \multicolumn{2}{|c|}{Kyber768+Poly1305} & \multicolumn{2}{|c|}{Kyber768+GMAC} \\ \hline
+\multicolumn{2}{|l|}{Size in bytes} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} \\ \hline 
+{\bf sk:} & 2400 (or 32) & {\bf $\keygen$:} & & {\bf $\keygen$:} & & {\bf $\keygen$:} & \\ \hline 
+{\bf pk:} & 1184 & {\bf $\encap$:} & & {\bf $\encap^+$:} &  & {\bf $\encap^+$:} & \\ \hline 
+{\bf ct:} & 1088 & {\bf $\decap$:} &  & {\bf $\decap^+$:} & & {\bf $\decap^+$:} & \\ \hline 
+\hline 
+\multicolumn{4}{|c|}{Kyber1024}  & \multicolumn{2}{|c|}{Kyber1024+Poly1305} & \multicolumn{2}{|c|}{Kyber1024+GMAC} \\ \hline
+\multicolumn{2}{|l|}{Size in bytes} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} \\ \hline 
+{\bf sk:} & 3168 (or 32) & {\bf $\keygen$:} & & {\bf $\keygen$:} & & {\bf $\keygen$:} & \\ \hline 
+{\bf pk:} & 1568 & {\bf $\encap$:} & & {\bf $\encap^+$:} & & {\bf $\encap^+$:} & \\ \hline 
+{\bf ct:} & 1568 & {\bf $\decap$:} & & {\bf $\decap^+$:} & & {\bf $\decap^+$:} & \\ \hline 
+\end{tabular}
+\caption{Cycle counts in AVX2 on a Coffee Lake laptop}
+\label{tab:ExpResults}
+\end{table}
+
+\begin{itemize}
+\item Forward secrecy: Mutual authentication protocol using KEM, computing the number of key-excahnge per second for both Kyber and ours. 
+\item Two tables, one-time MAC and many-time MAC, separate encap and decap in 2 tables
+\item Look at OpenSSL for GMAC with no AES-256. 
+\item Also setup networking experiment on AWS
+\end{itemize}
+
 \section{Conclusions and future works}\label{sec:future-works}
-We applied the ``encrypt-then-MAC'' transformation to Kyber and saw meaningful performance improvements over using de-randomization and re-encryption. Unfortunately the resulting KEM does not achieve the desired full IND-CCA2 security, because Kyber is known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. We speculate that while Kyber with ``encrypt-then-MAC'' could not achieve the full IND-CCA2 security, it can still be safe for use in ephemeral key exchange, where each secret key is used to decrypt at most one ciphertext (the KR-PCA requires a few hundred decryption queries to recover the secret key).
+\emph{Comparison with Fujisaki-Okamoto transformation:} We applied the ``encrypt-then-MAC'' transformation to Kyber and saw meaningful performance improvements over using de-randomization and re-encryption. Unfortunately the resulting KEM does not achieve the desired full IND-CCA2 security, because Kyber is known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. We speculate that while Kyber with ``encrypt-then-MAC'' could not achieve the full IND-CCA2 security, it can still be safe for use in ephemeral key exchange, where each secret key is used to decrypt at most one ciphertext (the KR-PCA requires a few hundred decryption queries to recover the secret key).
 
 In section \ref{sec:main-results}, we showed that if the input PKE is OW-PCA secure, then the resulting KEM is IND-CCA2 secure. One sufficient condition for OW-PCA security is one-way security plus rigidity. If the input PKE is rigid, then $m = \decrypt(\sk, c)$ is equivalent to $c = \encrypt(\pk, m)$, so a plaintext-checking oracle can be simulated without any secret information. However, the $U_m^{\not\bot}$ transformation in \cite{hofheinz2017modular} can already transform an OW-CPA secure and rigid PKE into an IND-CCA2 secure KEM with minimal overhead: the encapsulation and decapsulation routines each adds a hash of the plaintext to the encryption and decryption routine. In other words, where the input PKE is rigid, ``encrypt-then-MAC'' doesn't offer any performance advantage. It remains an open problem whether there exists a PKE that is OW-PCA secure but not rigid. If such a PKE exists, then ``encrypt-then-MAC'' would be a preferable strategy for constructing an IND-CCA2 KEM.
 
