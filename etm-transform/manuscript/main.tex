@@ -52,6 +52,7 @@
 \newcommand{\norm}[1]{\left\lvert #1 \right\rvert}
 \newcommand{\adv}{\texttt{Adv}}
 \newcommand{\fotplus}{\texttt{FOT+}}
+\newcommand{\us}{\mu s}
 
 %%%% 4. TITLE %%%%
 \title{
@@ -747,8 +748,345 @@ When instantiating an instance of $\kem(\keygen, \encap, \decap)$, there are a v
 
 Compared to Kyber using the FO transform, our proposed construction adds a small amount of runtime overhead (for computing a digest) in the encapsulation routine and a small increase in ciphertext size (for the 128-bit tag). In exchange, we see significant performance runtime savings in the decapsulation routines. This trade-off is especially meaningful in a key exchange protocol where one party has substantially more computationl resource than the other. For example, in many experimental implementation of TLS with post-quantum KEMs (such as \href{https://blog.cloudflare.com/the-tls-post-quantum-experiment/}{CECPQ2}), the client (might be IoT devices) runs $\keygen$ and $\decap$ while the server (usually data centers) runs $\encap$.
 
+\subsection{Key exchange protocols}\label{sec:key-exchange-protocols}
+A common deployment of key encapsulation mechanism is key exchange. \cite{bos2018crystals} described three key exchange protocols: unauthenticated key exchange, unilaterally authenticated key exchange, and mutually authenticated key exchange. We instantiated an implementation of each of the key exchange protocol with different variations of the ``encrypt-then-MAC'' KEM and compared round trip time with instantiations using ML-KEM with identical security levels. For clarity, we denote the party who initiates the key exchange to be the client, and the other party to be the server.
+
+\subsubsection{Unauthenticated key exchange (UKEX)}\label{sec:unauthenticated-key-exchange}
+In unauthenticated key exchange, the client first generates an ephemeral keypair, the transmits the ephemeral public key to the server. The server uses the ephemeral public key to run the encapsulation routine, which returns an ephemeral shared secret and an ephemeral ciphertext. The server transmits the ephemeral ciphertext to the client, whereupon the client decapsulates the ephemeral ciphertext to recover the ephemeral shared secret. Finally, client and server both runs a key-derivation function on the shared secret to derive the session key.
+
+Note that although the two parties already have a shared secret after client decapsulation of the ephemeral ciphertext, a key derivation function is still applied. This is done so that the implementation of the unauthenticated key exchange is consistent with the implementation of other authenticated key exchange, where the session key is derived from multiple shared secrets.
+
+\begin{figure}[H]
+    \begin{floatrow}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\texttt{UKEX}_\texttt{C}$}\label{alg:unauthenticated-kex-client}
+                \begin{algorithmic}[1]
+                    \State $(\pk_e, \sk_e) \leftsample \keygen()$
+                    \State $\texttt{send}(\pk_e)$
+                    \State $c_e \leftarrow \texttt{read}()$
+                    \State $K_e \leftarrow \decap(\sk_e, c_e)$
+                    \State $K \leftarrow \texttt{KDF}(K)$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        }{\caption{UKEX Client}}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\texttt{UKEX}_\texttt{S}$}\label{alg:unauthenticated-kex-server}
+                \begin{algorithmic}[1]
+                    \State $\pk_e \leftarrow \texttt{read}()$
+                    \State $(c_e, K_e) \leftsample \encap(\pk_e)$
+                    \State $\texttt{send}(c_e)$
+                    \State $K \leftarrow \texttt{KDF}(K_e)$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        }{\caption{UKEX Server}}
+    \end{floatrow}
+\end{figure}
+
+The round trip time measures the time between the moment before client generates the ephemeral keypair and the moment after client derives the session key. A total of 10000 rounds of key exchanges were performed, with the median and average RTT recorded below:
+
+\begin{table}[H]
+    \caption{Unauthenticated key exchange performance}\label{tbl:unauthenticated-kex}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-512} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{92$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{97$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-512 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-512 + GMAC} \\
+        \hline
+        Median RTT & 70$\us$ & Median RTT & 73$\us$ \\
+        \hline
+        Average RTT & 72$\us$ & Average RTT & 76$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-512 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-512 + KMAC} \\
+        \hline
+        Median RTT & 75$\us$ & Median RTT & 76$\us$ \\
+        \hline
+        Average RTT & 79$\us$ & Average RTT & 78$\us$ \\
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-768} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{135$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{140$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-768 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-768 + GMAC} \\
+        \hline
+        Median RTT & 99$\us$ & Median RTT & 101$\us$ \\
+        \hline
+        Average RTT & 104$\us$ & Average RTT & 105$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-768 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-768 + KMAC} \\
+        \hline
+        Median RTT & 103$\us$ & Median RTT & 103$\us$ \\
+        \hline
+        Average RTT & 109$\us$ & Average RTT & 107$\us$ \\
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-1024} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{193$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{199$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-1024 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-1024 + GMAC} \\
+        \hline
+        Median RTT & 138$\us$ & Median RTT & 140$\us$ \\
+        \hline
+        Average RTT & 141$\us$ & Average RTT & 145$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-1024 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-1024 + KMAC} \\
+        \hline
+        Median RTT & 143$\us$ & Median RTT & 144$\us$ \\
+        \hline
+        Average RTT & 148$\us$ & Average RTT & 149$\us$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Unilaterally authenticated key exchange(UAKE)}\label{sec:uakex}
+Common communication protocols, including TLS 1.3, perform unilaterally authenticated key exchange, where the server authenticates itself to the client, but client authentication is optional. In this scenario, the client possesses the server's long-term public key, while the server possesses the corresponding secret key.
+
+\begin{figure}[H]
+    \begin{floatrow}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\texttt{UAKE}_\texttt{C}(\pk_s)$}\label{alg:uakex-client}
+                \begin{algorithmic}[1]
+                    \Require Server's long-term $\pk_s$
+                    \State $(\pk_e, \sk_e) \leftsample \keygen()$
+                    \State $(c_s, K_s) \leftsample \encap(\pk_s)$
+                    \State $\texttt{send}(\pk_e, c_s)$
+                    \State $c_e \leftarrow \texttt{read}()$
+                    \State $K_e \leftarrow \decap(\sk_e, c_e)$
+                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_s)$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        }{\caption{UAKE Client}}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\texttt{UAKE}_\texttt{S}(\sk_s)$}\label{alg:uakex-server}
+                \begin{algorithmic}[1]
+                    \Require Server's long-term $\sk_s$
+                    \State $(\pk_e, c_s) \leftarrow \texttt{read}()$
+                    \State $K_s \leftarrow \decap(\sk_s, c_s)$
+                    \State $(c_e, K_e) \leftsample \encap(\pk_e)$
+                    \State $\texttt{send}(c_e)$
+                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_s)$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        }{\caption{UKEX Server}}
+    \end{floatrow}
+\end{figure}
+
+\begin{table}[H]
+    \caption{UAKE performance}\label{tbl:uake}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-512} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{145$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{151$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-512 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-512 + GMAC} \\
+        \hline
+        Median RTT & 103$\us$ & Median RTT & 106$\us$ \\
+        \hline
+        Average RTT & 106$\us$ & Average RTT & 110$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-512 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-512 + KMAC} \\
+        \hline
+        Median RTT & 108$\us$ & Median RTT & 109$\us$ \\
+        \hline
+        Average RTT & 112$\us$ & Average RTT & 113$\us$ \\
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-768} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{215$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{222$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-768 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-768 + GMAC} \\
+        \hline
+        Median RTT & 144$\us$ & Median RTT & 149$\us$ \\
+        \hline
+        Average RTT & 150$\us$ & Average RTT & 156$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-768 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-768 + KMAC} \\
+        \hline
+        Median RTT & 153$\us$ & Median RTT & 154$\us$ \\
+        \hline
+        Average RTT & 160$\us$ & Average RTT & 159$\us$ \\
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-1024} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{310$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{318$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-1024 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-1024 + GMAC} \\
+        \hline
+        Median RTT & 202$\us$ & Median RTT & 212$\us$ \\
+        \hline
+        Average RTT & 209$\us$ & Average RTT & 228$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-1024 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-1024 + KMAC} \\
+        \hline
+        Median RTT & 212$\us$ & Median RTT & 213$\us$ \\
+        \hline
+        Average RTT & 218$\us$ & Average RTT & 220$\us$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsubsection{Mutually authenticated key exchange (AKE)}\label{sec:akex}
+Mutually authenticated key exchange is largely identical to unilaterally authenticated key exchange, except for that client authentication is required. This means that client possesses server's long-term public key and its own long-term secret key, while the server possesses client's long-term public key and its own long-term secret key. The session key is derived from three shared secrets.
+
+\begin{figure}[H]
+    \begin{floatrow}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\texttt{AKE}_\texttt{C}(\pk_s, \sk_c)$}\label{alg:akex-client}
+                \begin{algorithmic}[1]
+                    \Require Server's long-term $\pk_s$
+                    \Require Client's long-term $\sk_s$
+                    \State $(\pk_e, \sk_e) \leftsample \keygen()$
+                    \State $(c_s, K_s) \leftsample \encap(\pk_s)$
+                    \State $\texttt{send}(\pk_e, c_s)$
+                    \State $(c_e, c_c) \leftarrow \texttt{read}()$
+                    \State $K_e \leftarrow \decap(\sk_e, c_e)$
+                    \State $K_c \leftarrow \decap(\sk_e, c_c)$
+                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_s \Vert K_c)$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        }{\caption{AKE Client}}
+        \ffigbox{
+            \begin{algorithm}[H]
+                \caption{$\texttt{AKE}_\texttt{S}(\sk_s, \pk_c)$}\label{alg:akex-server}
+                \begin{algorithmic}[1]
+                    \Require Server's long-term $\sk_s$
+                    \Require Client's long-term $\pk_c$
+                    \State $(\pk_e, c_s) \leftarrow \texttt{read}()$
+                    \State $K_s \leftarrow \decap(\sk_s, c_s)$
+                    \State $(c_e, K_e) \leftsample \encap(\pk_e)$
+                    \State $(c_c, K_c) \leftsample \encap(\pk_c)$
+                    \State $\texttt{send}(c_e, c_c)$
+                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_s \Vert K_c)$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        }{\caption{AKE Server}}
+    \end{floatrow}
+\end{figure}
+
+\begin{table}[H]
+    \caption{AKE performance}\label{tbl:ake}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-512} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{200$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{213$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-512 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-512 + GMAC} \\
+        \hline
+        Median RTT & 133$\us$ & Median RTT & 139$\us$ \\
+        \hline
+        Average RTT & 138$\us$ & Average RTT & 143$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-512 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-512 + KMAC} \\
+        \hline
+        Median RTT & 143$\us$ & Median RTT & 145$\us$ \\
+        \hline
+        Average RTT & 148$\us$ & Average RTT & 151$\us$ \\
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-768} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{294$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{301$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-768 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-768 + GMAC} \\
+        \hline
+        Median RTT & 190$\us$ & Median RTT & 197$\us$ \\
+        \hline
+        Average RTT & 196$\us$ & Average RTT & 210$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-768 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-768 + KMAC} \\
+        \hline
+        Median RTT & 202$\us$ & Median RTT & 204$\us$ \\
+        \hline
+        Average RTT & 208$\us$ & Average RTT & 210$\us$ \\
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-1024} \\
+        \hline
+        \multicolumn{2}{|c|}{Median RTT}
+        & \multicolumn{2}{|c|}{512$\us$} \\
+        \hline
+        \multicolumn{2}{|c|}{Average RTT}
+        & \multicolumn{2}{|c|}{511$\us$} \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-1024 + Poly1305}
+        & \multicolumn{2}{|c|}{ML-KEM-1024 + GMAC} \\
+        \hline
+        Median RTT & 266$\us$ & Median RTT & 273$\us$ \\
+        \hline
+        Average RTT & 273$\us$ & Average RTT & 282$\us$ \\
+        \hline\hline
+        \multicolumn{2}{|c|}{ML-KEM-1024 + CMAC}
+        & \multicolumn{2}{|c|}{ML-KEM-1024 + KMAC} \\
+        \hline
+        Median RTT & 280$\us$ & Median RTT & 282$\us$ \\
+        \hline
+        Average RTT & 287$\us$ & Average RTT & 288$\us$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
 \section{Experimental Evaluation}
-We implement our scheme in C on top of {\sf CRYSTALS-Kyber}'s implementation available \cite{}. We use the Poly1305 MAC from {\sf OpenSSL} with a key of size 256 bits and a tag size of 128 bits. Our experiments were run on a desktop with a 2.3 GHz Intel Core i9 laptop (Coffee Lake) with 16 GB RAM. The codes were compiled using \texttt{clange 14.0.0}. 
+We implement our scheme in C on top of {\sf CRYSTALS-Kyber}'s implementation available. We use the Poly1305 MAC from {\sf OpenSSL} with a key of size 256 bits and a tag size of 128 bits. Our experiments were run on a desktop with a 2.3 GHz Intel Core i9 laptop (Coffee Lake) with 16 GB RAM. The codes were compiled using \texttt{clange 14.0.0}. 
 %with \texttt{-std=c99 -O1 -fomit-frame-pointer flag}. 
 Table~\ref{tab:ExpResults} reports the cycle counts for three different instances of Keyber, namely . The cycle counts reported in Table~\ref{tab:ExpResults} are the average of the cycle counts of 10000 executions of all algorithms. 
 \begin{table}[h]
