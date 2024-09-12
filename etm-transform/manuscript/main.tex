@@ -635,9 +635,96 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
 \end{proof}
 
 \section{Implementation}\label{sec:implementation}
-ML-KEM (based on \cite{bos2018crystals}\cite{avanzi2019crystals}) is an IND-CCA2 secure key encapsulation mechanism standardized by NIST in FIPS 203. ML-KEM achieves IND-CCA2 security first by constructing a public-key encryption scheme whose IND-CPA security is derived from the hardness of the module learning with error (MLWE) problems, then applying the Fujisaki-Okamoto transformation. We extended the reference C implementation of ML-KEM (https://github.com/pq-crystals/kyber) to implement our ``encrypt-then-MAC'' transformation and compared the performance characteristics of our instantiation with ML-KEM.
+Originally known as Kyber \cite{bos2018crystals}\cite{avanzi2019crystals}, ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized in FIPS 203 by NIST. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}.\keygen, \texttt{K-PKE}.\encrypt, \texttt{K-PKE}.\decrypt$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine suffers from computational inefficiency.
+
+We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment.
+
+A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (TODO: citation). The ``encrypt-then-MAC'' routines are listed in algorithms \ref{alg:ml-kem-etm-keygen}, \ref{alg:ml-kem-etm-encap}, and \ref{alg:ml-kem-etm-decap}.
+
+\begin{algorithm}[H]
+    \caption{\texttt{ML-KEM-ETM.KeyGen()}}\label{alg:ml-kem-etm-keygen}
+    \begin{algorithmic}[1]
+        \State $z \leftsample \{0,1\}^{256}$
+        \State $(\pk, \sk^\prime) \leftsample \texttt{K-PKE}.\keygen()$
+        \State $h \leftarrow H(\pk)$
+            \Comment{$H$ is \texttt{SHA3-256}}
+        \State $\sk \leftarrow (sk^\prime \Vert \pk \Vert h \Vert z)$
+        \State \Return $(\pk, \sk)$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+    \caption{\texttt{ML-KEM-ETM.Encap}(\pk)}\label{alg:ml-kem-etm-encap}
+    \begin{algorithmic}[1]
+        \Require Public key $\pk$
+        \State $m \leftsample \{0,1\}^{256}$
+        \State $(\overline{K}, r, k) \leftarrow \texttt{XOF}(m \Vert H(\pk))$
+            \Comment{\texttt{XOF} is \texttt{Shake256}, outputting 768 bits}
+        \State $c^\prime \leftarrow \texttt{K-PKE}.\encrypt(\pk, m, r)$
+        \State $t \leftarrow \mac(k, c^\prime)$
+        \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
+            \Comment{\texttt{KDF} is \texttt{Shake256}, outputting 256 bits}
+        \State $c \leftarrow (c^\prime, c)$
+        \State \Return $(c, K)$
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+    \caption{$\texttt{ML-KEM-ETM.Decap}(\sk, c)$}\label{alg:ml-kem-etm-decap}
+    \begin{algorithmic}[1]
+        \Require Secret key $\sk = (\sk^\prime \Vert \pk \Vert h \Vert z)$
+        \Require Ciphertext $c = (c^\prime \Vert t)$
+        \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
+        \State $(c^\prime, t) \leftarrow c$
+        \State $\hat{m} \leftarrow \texttt{K-PKE}.\decrypt(\sk^\prime, c^\prime)$
+        \State $(\overline{K}, \hat{r}, \hat{k}) \leftarrow \texttt{XOF}(\hat{m} \Vert h)$
+        \State $\hat{t} \leftarrow \mac(\hat{k}, c^\prime)$
+        \If{$\hat{t} = t$}
+            \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
+        \Else
+            \State $K \leftarrow \texttt{KDF}(z \Vert t)$
+        \EndIf
+        \State \Return $K$
+    \end{algorithmic}
+\end{algorithm}
+
+Our implementation extended from the reference implementation by the PQCrystals team (https://github.com/pq-crystals/kyber). All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance with an AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM.
 
 \subsection{Choosing a message authenticator}
+When instantiating \texttt{ML-KEM-ETM}, there are a variety of message authentication codes to choose from. We selected four categories that cover a wide range of designs: \begin{enumerate}
+    \item Poly1305, a Carter-Wegman style MAC operating on a prime field
+    \item GMAC (AES-256-GCM), a Carter-Wegman style MAC operating on a binary field
+    \item CMAC (AES-256-CBC), a CBC-MAC
+    \item KMAC-256, which is a keyed hash function based on Keccak
+\end{enumerate}
+
+We tested each MAC's throughput by measuring the CPU cycles needed to compute a tag on the ciphertext returned by \texttt{K-PKE}. The length of the ciphertext varies depending on the security level. The measurements are summarized in table \ref{tbl:mac-performance}.
+
+\begin{table}
+    \caption{MAC performance}\label{tbl:mac-performance}
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        \multicolumn{4}{|c|}{ML-KEM-512} \\
+        \hline
+        \multicolumn{2}{|c|}{Ciphertext size (bytes): }
+        & \multicolumn{2}{|c|}{768} \\
+        \hline
+        \multicolumn{2}{|c|}{Poly1305}
+        & \multicolumn{2}{|c|}{GMAC} \\
+        \hline
+        Median & 909 & Median & 3899 \\
+        \hline
+        Average & 2823 & Average & 4859 \\
+        \hline
+        \multicolumn{2}{|c|}{CMAC}
+        & \multicolumn{2}{|c|}{KMAC} \\
+        \hline
+        Median & 6291 & Median & 7565 \\
+        \hline
+        Average & 6373 & Average & 7791 \\
+        \hline
+    \end{tabular}
+\end{table}
 
 \subsection{KEM performance}
 
