@@ -634,6 +634,15 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
     Combining all equations above produce the desired security bound.
 \end{proof}
 
+\section{Implementation}\label{sec:implementation}
+ML-KEM (based on \cite{bos2018crystals}\cite{avanzi2019crystals}) is an IND-CCA2 secure key encapsulation mechanism standardized by NIST in FIPS 203. ML-KEM achieves IND-CCA2 security first by constructing a public-key encryption scheme whose IND-CPA security is derived from the hardness of the module learning with error (MLWE) problems, then applying the Fujisaki-Okamoto transformation. We extended the reference C implementation of ML-KEM (https://github.com/pq-crystals/kyber) to implement our ``encrypt-then-MAC'' transformation and compared the performance characteristics of our instantiation with ML-KEM.
+
+\subsection{Choosing a message authenticator}
+
+\subsection{KEM performance}
+
+\subsection{Key exchange performance}
+
 \section{Application to Kyber}\label{sec:experimental-results}
 % TODO: organize into three subsection:
 % 1. Choosing a MAC
