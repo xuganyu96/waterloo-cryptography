@@ -691,37 +691,80 @@ A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (
 Our implementation extended from the reference implementation by the PQCrystals team (https://github.com/pq-crystals/kyber). All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance with an AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM.
 
 \subsection{Choosing a message authenticator}
-When instantiating \texttt{ML-KEM-ETM}, there are a variety of message authentication codes to choose from. We selected four categories that cover a wide range of designs: \begin{enumerate}
+When instantiating \texttt{ML-KEM-ETM}, there are a variety of message authentication codes to choose from. We selected four instances covering a wide range of designs: \begin{enumerate}
     \item Poly1305, a Carter-Wegman style MAC operating on a prime field
     \item GMAC (AES-256-GCM), a Carter-Wegman style MAC operating on a binary field
     \item CMAC (AES-256-CBC), a CBC-MAC
-    \item KMAC-256, which is a keyed hash function based on Keccak
+    \item KMAC-256, a keyed hash function based on Keccak
 \end{enumerate}
 
 We tested each MAC's throughput by measuring the CPU cycles needed to compute a tag on the ciphertext returned by \texttt{K-PKE}. The length of the ciphertext varies depending on the security level. The measurements are summarized in table \ref{tbl:mac-performance}.
 
-\begin{table}
+\begin{table}[H]
     \caption{MAC performance}\label{tbl:mac-performance}
-    \begin{tabular}{|c|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
         \hline
-        \multicolumn{4}{|c|}{ML-KEM-512} \\
+        \multicolumn{8}{|c|}{ML-KEM-512} \\
         \hline
-        \multicolumn{2}{|c|}{Ciphertext size (bytes): }
-        & \multicolumn{2}{|c|}{768} \\
+        \multicolumn{4}{|c|}{Ciphertext size (bytes): }
+        & \multicolumn{4}{|c|}{768} \\
         \hline
-        \multicolumn{2}{|c|}{Poly1305}
-        & \multicolumn{2}{|c|}{GMAC} \\
-        \hline
-        Median & 909 & Median & 3899 \\
-        \hline
-        Average & 2823 & Average & 4859 \\
-        \hline
-        \multicolumn{2}{|c|}{CMAC}
+        \multicolumn{2}{|c|}{Poly1305} 
+        & \multicolumn{2}{|c|}{GMAC} 
+        & \multicolumn{2}{|c|}{CMAC} 
         & \multicolumn{2}{|c|}{KMAC} \\
         \hline
-        Median & 6291 & Median & 7565 \\
+        Median & 909 
+        & Median & 3899 
+        & Median & 6291 
+        & Median & 6373\\
         \hline
-        Average & 6373 & Average & 7791 \\
+        Average & 2823 
+        & Average & 4859 
+        & Average & 6373 
+        & Average & 7791 \\
+        \hline
+        \hline
+        \multicolumn{8}{|c|}{ML-KEM-768} \\
+        \hline
+        \multicolumn{4}{|c|}{Ciphertext size (bytes): }
+        & \multicolumn{4}{|c|}{1088} \\
+        \hline
+        \multicolumn{2}{|c|}{Poly1305} 
+        & \multicolumn{2}{|c|}{GMAC} 
+        & \multicolumn{2}{|c|}{CMAC} 
+        & \multicolumn{2}{|c|}{KMAC} \\
+        \hline
+        Median & 961 
+        & Median & 3899 
+        & Median & 7305 
+        & Median & 9697 \\
+        \hline
+        Average & 2704 
+        & Average & 4827 
+        & Average & 7588 
+        & Average & 9928 \\
+        \hline
+        \hline
+        \multicolumn{8}{|c|}{ML-KEM-1024} \\
+        \hline
+        \multicolumn{4}{|c|}{Ciphertext size (bytes): }
+        & \multicolumn{4}{|c|}{1568} \\
+        \hline
+        \multicolumn{2}{|c|}{Poly1305} 
+        & \multicolumn{2}{|c|}{GMAC} 
+        & \multicolumn{2}{|c|}{CMAC} 
+        & \multicolumn{2}{|c|}{KMAC} \\
+        \hline
+        Median & 1065 
+        & Median & 4055 
+        & Median & 8735 
+        & Median & 11647 \\
+        \hline
+        Average & 1809 
+        & Average & 5026 
+        & Average & 8772 
+        & Average & 12186 \\
         \hline
     \end{tabular}
 \end{table}
