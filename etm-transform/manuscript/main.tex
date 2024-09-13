@@ -416,6 +416,7 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
 \end{lemma}
 
 \subsection{Proof of theorem \ref{thm:ow-pca-implies-kem-ind-cca2}}
+% TODO: write some intuition first?
 \begin{proof}
     We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of games.
 
@@ -770,126 +771,186 @@ We tested each MAC's throughput by measuring the CPU cycles needed to compute a 
 \end{table}
 
 \subsection{KEM performance}
+Compared to the $U^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in ML-KEM, the ``encrypt-then-MAC'' transformation the following trade-off when given the same input sub-routines: \begin{enumerate}
+    \item Both encapsulation and decapsulation add a small amount of overhead for needing to hash both the PKE plaintext and the PKE ciphertext when deriving the shared secret, where as the $U^{\not\bot}_m$ transformation only needs to hash the PKE plaintext.
+    \item The encapsulation routine adds a small amount of run-time overhead for computing the authenticator
+    \item The decapsulation routine enjoys substantial runtime speedup because \emph{re-encryption} is replaced with computing an authenticator
+    \item Ciphertext size increases by the size of an authenticator
+\end{enumerate}
 
-\subsection{Key exchange performance}
+Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the ``encrypt-then-MAC'' transformation over the $U^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the ML-KEM-ETM can be found in table \ref{tbl:kem-performance}
 
-\section{Application to Kyber}\label{sec:experimental-results}
-% TODO: organize into three subsection:
-% 1. Choosing a MAC
-% 2. Comparing CPU cycles
-% 3. Comparing KEX RTT
-
-CRYSTALS-Kyber \cite{bos2018crystals}\cite{avanzi2019crystals} is an IND-CCA2 secure key encapsulation mechanism whose security is based on the conjecture hardness of the decisional Module Learning with Error problem. To achieve the the IND-CCA2 security, Kyber first constructs an IND-CPA secure public key encryption scheme based on \cite{lpr2013ideal}, then apply a slightly modified variation of the Fujisaki-Okamoto transformation described in \cite{hofheinz2017modular}. The resulting decapsulation routine is especially inefficient because Kyber's IND-CPA encryption routine incurs significantly more computational cost than the decryption routine. This makes Kyber a prime target for demonstrating the performance improvements enjoyed by the ``encrypt-then-MAC'' KEM construction.
-
-We took the IND-CPA PKE routines (algorithms 4, 5, 6 in \cite{avanzi2019crystals}) and applied the ``encrypt-then-MAC'' transformation. The resulting KEM routines are described in algorithms \ref{alg:kyber-ae-keygen}, \ref{alg:kyber-ae-encap}, and \ref{alg:kyber-ae-decap}.
-
-\begin{algorithm}[H]
-    \caption{\texttt{Kyber.CCAKEM.KeyGen()}}\label{alg:kyber-ae-keygen}
-    \begin{algorithmic}[1]
-        \State $z \leftsample \{0,1\}^{256}$
-        \State $(\pk, \sk^\prime) \leftsample \texttt{Kyber.CPAPKE.KeyGen()}$
-        \State $\sk = (\sk^\prime, \pk, H(\pk), z)$
-            \Comment{H is instantiated with SHA3-256}
-        \State \Return $(\pk, \sk)$
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-    \caption{\texttt{Kyber.CCAKEM.Encap$^+$(\pk)}}\label{alg:kyber-ae-encap}
-    \begin{algorithmic}[1]
-        \State $m \leftsample \{0,1\}^{256}$
-        % \State $m'= H(m)$
-        %     \Comment{Do not output system RNG directly}
-        \State $(\bar{K}, r, k) = G(m \Vert H(\pk))$
-            \Comment{G is instantiated with SHA3-768}
- 
-        \State $c^\prime  \leftarrow \texttt{Kyber.CPAPKE.Enc}(\pk, m, r)$
-            \State $t=\mac(k, c^\prime)$
-        \State $K = \texttt{KDF}(\bar{K} \Vert t)$
-            \Comment{\texttt{KDF} is instantiated with Shake256}
-        \State $c \leftarrow (c^\prime, t)$
-        \State \Return $(c, K)$
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-    \caption{$\texttt{Kyber.CCAKEM.Decap}^+ (\sk, c)$}\label{alg:kyber-ae-decap}
-    \begin{algorithmic}[1]
-        \Require Secret key $\sk = (\sk^\prime, \pk, H(\pk), z)$
-        \Require Ciphertext $c = (c^\prime, t)$
-        \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
-        \State $(c^\prime, t) \leftarrow c$
-        \State $\hat{m} = \texttt{Kyber.CPAPKE.Dec}(\sk^\prime, c^\prime)$ 
-        \State $(\overline{K}, k) =   G(m^\prime \Vert h)$
-        \State $\hat{t}=\mac(k, c)$
-        \If{$\hat{t} = t$}
-            \State $K  = \texttt{KDF}(\bar{K} \Vert t)$ 
-         \Else 
-            \State $K  = \texttt{KDF}(z \Vert t)$ 
-        \EndIf
-            \State \Return $K$
-    \end{algorithmic}
-\end{algorithm}
-
-\begin{remark}
-    We derive the MAC key from both the plaintext $m$ and the public key $\pk$ for the same reason \cite{avanzi2019crystals} derives the pseudorandom coin from both $m$ and $\pk$. One is to allow both parties to participate in the encryption process, the other is to prevent a quantum adversary from pre-computing a large table of MAC keys that can then be brute-forced.
-\end{remark}
-\begin{remark}
-    We chose to derive the shared secret $K$ from the ciphertext digest $t$ instead of the ciphertext itself, which saves a few Keccak permutations since $t$ is only 128 bits while the full ciphertext could span more than a thousand bytes. This should not impact the security of the scheme since finding collision for an unknown MAC key constitutes a forgery attack on the MAC.
-\end{remark}
-\begin{remark}
-    We constructed the ``encrypt-then-MAC'' transformation to use implicit rejection so that we can directly use existing implementation of Kyber with minimal modification. In principle, a construction with explicit rejection should also be equally secure and efficient.
-\end{remark}
-\begin{remark}
-    We chose to use MAC with 256-bit key size and 128-bit tag size. When modeling the security threats, we assumed that the adversary may have access to quantum computers, making it necessary to use the maximal key size of common MACs while maintaining the minimum 128-bit security. On the other hand, the tag size can be relative small because the decapsulator (aka the decapsulation oracle) is assumed to be a classical computer, so there is no quantum speedup on brute-forcing a valid tag.
-\end{remark}
-
-When instantiating an instance of $\kem(\keygen, \encap, \decap)$, there are a variety of MAC's to chose from. We experimented with Poly1305, AES-256-GCM (aka GMAC), AES-256-CBC (aka CMAC), and KMAC-256. We instantiated an intance of the ``encrypt-then-MAC'' KEM using each of the chosen MAC, then measured the median number of CPU cycles needed to perform the key generation, encapsulation, and decapsulation routines among 10000 runs. The Kyber implementation is taken from the reference implementation (https://github.com/pq-crystals/kyber). MAC implementations are taken from OpenSSL 3.3.1. The source code is compiled with GCC 11.4.1 on Amazon Linux 2. Performance measurements were taken from a c7a.medium AWS EC2 instance with a AMD EPYC 9R14 (1) @ 3.700GHz. The experimental results are listed in table \ref{tbl:kyber-ae-perf}.
-
-\begin{table}[H]
-    \centering
-    \begin{tabular}{|c|c|c|c|c|}
+\begin{table}
+    \caption{CPU cycles of each KEM routine}\label{tbl:kem-performance}
+    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+        \hline\hline
+        \multicolumn{8}{|c|}{\bf ML-KEM-512} \\
         \hline
-        Name & Security level & $\keygen$ & $\encap$ & $\decap$ \\
+        \multicolumn{2}{|c|}{public key size} 
+        & \multicolumn{2}{|c|}{800 bytes}
+        & \multicolumn{4}{|c|}{ \keygen} \\
         \hline
-        ML-KEM-512 & 128 bits & 75945 & 91467& 121185 \\
+        \multicolumn{2}{|c|}{secret key size} 
+        & \multicolumn{2}{|c|}{1632 bytes} 
+        & \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{75945} \\
         \hline
-        ML-KEM-512 + Poly1305& 128 bits & 76907 & 93157 & 33733 \\
+        \multicolumn{2}{|c|}{ciphertext size} 
+        & \multicolumn{2}{|c|}{768 bytes} 
+        & \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{76171} \\
         \hline
-        ML-KEM-512 + GMAC& 128 bits & 76917 & 95419 & 37725 \\
+        \multicolumn{4}{|c|}{ \encap}
+        & \multicolumn{4}{|c|}{\decap} \\
         \hline
-        ML-KEM-512 + CMAC& 128 bits & 76907 & 99839 & 40117 \\
+        \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{91467} 
+        & \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{121185} \\
         \hline
-        ML-KEM-512 + KMAC-256& 128 bits & 76387 & 101009 & 40741 \\
+        \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{92065} 
+        & \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{121650} \\
         \hline
-        ML-KEM-768 & 192 bits & 129895 & 146405& 186445 \\
+        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + Poly1305}
+        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + GMAC} \\
         \hline
-        ML-KEM-768 + Poly1305& 192 bits & 128205 & 146405& 43315 \\
+        \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$}
+        & \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$} \\
         \hline
-        ML-KEM-768 + GMAC& 192 bits & 127997 & 149525 & 46513 \\
+        Median & 93157 & Median & 33773 
+        & Median & 97369 & Median & 37725 \\
         \hline
-        ML-KEM-768 + CMAC& 192 bits & 129167 & 151007 & 49841 \\
+        Average & 93626 & Average & 33908 
+        & Average & 97766 & Average & 37831 \\
         \hline
-        ML-KEM-768 + KMAC-256& 192 bits & 128829 & 155219 & 52415 \\
+        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + CMAC}
+        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + KMAC} \\
         \hline
-        ML-KEM-1024 & 256 bits & 194921 & 199185 & 246245 \\
+        \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$}
+        & \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$} \\
         \hline
-        ML-KEM-1024 + Poly1305& 256 bits & 196013 & 205763 & 51375 \\
+        Median & 99839 & Median & 40117 & Median & 101009 & Median & 40741 \\
         \hline
-        ML-KEM-1024 + GMAC& 256 bits & 196039 & 208805 & 54573 \\
+        Average & 99959 & Average & 39943 & Average & 101313 & Average & 40916 \\
+        \hline\hline
+        \multicolumn{8}{|c|}{\bf ML-KEM-768} \\
         \hline
-        ML-KEM-1024 + CMAC& 256 bits & 195389 & 213667 & 59175 \\
+        \multicolumn{2}{|c|}{public key size} 
+        & \multicolumn{2}{|c|}{1184 bytes}
+        & \multicolumn{4}{|c|}{ \keygen} \\
         \hline
-        ML-KEM-1024 + KMAC-256& 256 bits & 196117 & 216761 & 62269 \\
+        \multicolumn{2}{|c|}{secret key size} 
+        & \multicolumn{2}{|c|}{2400 bytes} 
+        & \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{129895} \\
         \hline
-        % TODO: also do a short comparison with Kyber Round 3
-        % TODO: KeyGen, Encap, and Decap CPU cycles should be separate tables
-        % TODO: also include MAC performances on different ciphertext sizes
+        \multicolumn{2}{|c|}{ciphertext size} 
+        & \multicolumn{2}{|c|}{1088 bytes} 
+        & \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{130650} \\
+        \hline
+        \multicolumn{4}{|c|}{ \encap}
+        & \multicolumn{4}{|c|}{\decap} \\
+        \hline
+        \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{146405} 
+        & \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{186445} \\
+        \hline
+        \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{147400} 
+        & \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{187529} \\
+        \hline
+        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + Poly1305}
+        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + GMAC} \\
+        \hline
+        \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$}
+        & \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$} \\
+        \hline
+        Median & 146405 & Median & 43315 
+        & Median & 149525 & Median & 46513 \\
+        \hline
+        Average & 146860 & Average & 43463 
+        & Average & 150128 & Average & 46706 \\
+        \hline
+        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + CMAC}
+        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + KMAC} \\
+        \hline
+        \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$}
+        & \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$} \\
+        \hline
+        Median & 153139 & Median & 49841 & Median & 155219 & Median & 52415 \\
+        \hline
+        Average & 153735 & Average & 50074 & Average & 155848 & Average & 52611 \\
+        \hline\hline
+        \multicolumn{8}{|c|}{\bf ML-KEM-1024} \\
+        \hline
+        \multicolumn{2}{|c|}{public key size} 
+        & \multicolumn{2}{|c|}{1568 bytes}
+        & \multicolumn{4}{|c|}{ \keygen} \\
+        \hline
+        \multicolumn{2}{|c|}{secret key size} 
+        & \multicolumn{2}{|c|}{3168 bytes} 
+        & \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{194921} \\
+        \hline
+        \multicolumn{2}{|c|}{ciphertext size} 
+        & \multicolumn{2}{|c|}{1568 bytes} 
+        & \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{195465} \\
+        \hline
+        \multicolumn{4}{|c|}{ \encap}
+        & \multicolumn{4}{|c|}{\decap} \\
+        \hline
+        \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{199185} 
+        & \multicolumn{2}{|c|}{Median} 
+        & \multicolumn{2}{|c|}{246245} \\
+        \hline
+        \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{199903} 
+        & \multicolumn{2}{|c|}{Average} 
+        & \multicolumn{2}{|c|}{247320} \\
+        \hline
+        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + Poly1305}
+        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + GMAC} \\
+        \hline
+        \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$}
+        & \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$} \\
+        \hline
+        Median & 205763 & Median & 51375 
+        & Median & 208805 & Median & 54573 \\
+        \hline
+        Average & 206499 & Average & 51562 
+        & Average & 209681 & Average & 54780 \\
+        \hline
+        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + CMAC}
+        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + KMAC} \\
+        \hline
+        \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$}
+        & \multicolumn{2}{|c|}{ $\encap$}
+        & \multicolumn{2}{|c|}{$\decap$} \\
+        \hline
+        Median & 213667 & Median & 59175 & Median & 216761 & Median & 62269 \\
+        \hline
+        Average & 214483 & Average & 59408 & Average & 217468 & Average & 62516 \\
+        \hline\hline
     \end{tabular}
-    \caption{Performance measurements}\label{tbl:kyber-ae-perf}
 \end{table}
-
-Compared to Kyber using the FO transform, our proposed construction adds a small amount of runtime overhead (for computing a digest) in the encapsulation routine and a small increase in ciphertext size (for the 128-bit tag). In exchange, we see significant performance runtime savings in the decapsulation routines. This trade-off is especially meaningful in a key exchange protocol where one party has substantially more computationl resource than the other. For example, in many experimental implementation of TLS with post-quantum KEMs (such as \href{https://blog.cloudflare.com/the-tls-post-quantum-experiment/}{CECPQ2}), the client (might be IoT devices) runs $\keygen$ and $\decap$ while the server (usually data centers) runs $\encap$.
 
 \subsection{Key exchange protocols}\label{sec:key-exchange-protocols}
 A common application of key encapsulation mechanism is key exchange protocols, where two parties establish a shared secret using a public channel. \cite{bos2018crystals} described three key exchange protocols: unauthenticated key exchange (KE), unilaterally authenticated key exchange (UAKE), and mutually authenticated key exchange (AKE). We instantiated an implementation for each of the three key exchange protocols using different variations of the ``encrypt-then-MAC'' KEM and compared round trip time with implementations instantiated using ML-KEM.
@@ -1132,40 +1193,10 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
     \end{tabular}
 \end{table}
 
-\section{Experimental Evaluation}
-We implement our scheme in C on top of {\sf CRYSTALS-Kyber}'s implementation available. We use the Poly1305 MAC from {\sf OpenSSL} with a key of size 256 bits and a tag size of 128 bits. Our experiments were run on a desktop with a 2.3 GHz Intel Core i9 laptop (Coffee Lake) with 16 GB RAM. The codes were compiled using \texttt{clange 14.0.0}. 
-%with \texttt{-std=c99 -O1 -fomit-frame-pointer flag}. 
-Table~\ref{tab:ExpResults} reports the cycle counts for three different instances of Keyber, namely . The cycle counts reported in Table~\ref{tab:ExpResults} are the average of the cycle counts of 10000 executions of all algorithms. 
-\begin{table}[h]
-\centering
-\begin{tabular}{|c|c||c|c| |c|c| |c|c|} \hline
-\multicolumn{4}{|c|}{Kyber512}  & \multicolumn{2}{|c|}{Kyber512+Poly1305} & \multicolumn{2}{|c|}{Kyber512+GMAC} \\ \hline
-\multicolumn{2}{|l|}{Size in bytes} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} \\ \hline 
-{\bf sk:} & 1632 (or 32) & {\bf $\keygen$:} &  & {\bf $\keygen$:} & & {\bf $\keygen$:} & \\ \hline 
-{\bf pk:} & 800 & {\bf $\encap$:} & & {\bf $\encap^+$:} & & {\bf $\encap^+$:} & \\ \hline 
-{\bf ct:} & 768 & {\bf $\decap$:} &  & {\bf $\decap^+$:} & & {\bf $\decap^+$:} & \\ \hline 
-\hline 
-\multicolumn{4}{|c|}{Kyber768}  & \multicolumn{2}{|c|}{Kyber768+Poly1305} & \multicolumn{2}{|c|}{Kyber768+GMAC} \\ \hline
-\multicolumn{2}{|l|}{Size in bytes} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} \\ \hline 
-{\bf sk:} & 2400 (or 32) & {\bf $\keygen$:} & & {\bf $\keygen$:} & & {\bf $\keygen$:} & \\ \hline 
-{\bf pk:} & 1184 & {\bf $\encap$:} & & {\bf $\encap^+$:} &  & {\bf $\encap^+$:} & \\ \hline 
-{\bf ct:} & 1088 & {\bf $\decap$:} &  & {\bf $\decap^+$:} & & {\bf $\decap^+$:} & \\ \hline 
-\hline 
-\multicolumn{4}{|c|}{Kyber1024}  & \multicolumn{2}{|c|}{Kyber1024+Poly1305} & \multicolumn{2}{|c|}{Kyber1024+GMAC} \\ \hline
-\multicolumn{2}{|l|}{Size in bytes} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} & \multicolumn{2}{|l|}{Clock cycles (AVX2)} \\ \hline 
-{\bf sk:} & 3168 (or 32) & {\bf $\keygen$:} & & {\bf $\keygen$:} & & {\bf $\keygen$:} & \\ \hline 
-{\bf pk:} & 1568 & {\bf $\encap$:} & & {\bf $\encap^+$:} & & {\bf $\encap^+$:} & \\ \hline 
-{\bf ct:} & 1568 & {\bf $\decap$:} & & {\bf $\decap^+$:} & & {\bf $\decap^+$:} & \\ \hline 
-\end{tabular}
-\caption{Cycle counts in AVX2 on a Coffee Lake laptop}
-\label{tab:ExpResults}
-\end{table}
 
-\begin{itemize}
-\item Two tables, one-time MAC and many-time MAC, separate encap and decap in 2 tables
-\item Look at OpenSSL for GMAC with no AES-256. 
-\item Also setup networking experiment on AWS
-\end{itemize}
+%TODO: Two tables, one-time MAC and many-time MAC, separate encap and decap in 2 tables
+%TODO: Look at OpenSSL for GMAC with no AES-256. 
+%TODO: Also setup networking experiment on AWS
 
 \section{Conclusions and future works}\label{sec:future-works}
 \emph{Comparison with Fujisaki-Okamoto transformation:} We applied the ``encrypt-then-MAC'' transformation to Kyber and saw meaningful performance improvements over using de-randomization and re-encryption. Unfortunately the resulting KEM does not achieve the desired full IND-CCA2 security, because Kyber is known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. We speculate that while Kyber with ``encrypt-then-MAC'' could not achieve the full IND-CCA2 security, it can still be safe for use in ephemeral key exchange, where each secret key is used to decrypt at most one ciphertext (the KR-PCA requires a few hundred decryption queries to recover the secret key).
