@@ -1,0 +1,136 @@
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+
+% Custom commands
+\usepackage{crypto-primitives}
+% Quantum notations
+\newcommand{\qbra}[1]{\left\langle {#1} \right\rvert}
+\newcommand{\qket}[1]{\left\lvert {#1} \right\rangle}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{
+    Homework 1
+}
+\author{
+    Ganyu Xu
+}
+% Leave the date field empty to display the date of compilation
+% \date{}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{Distinguish quantum states}
+\subsection*{(a)}
+Let $\psi_0 = \qket{1}$ and $\psi_1 = \frac{1}{\sqrt{2}}\qket{0} - \frac{1}{\sqrt{2}}\qket{1}$. I claim without proof that \textbf{an optimal distinguisher can be achieved using $R(\theta)$} for some rotation $\theta$. Without loss of generality, we define the distinguisher to be $\hat{b} \leftarrow D(\phi_b)$ where $b \leftsample \{0,1\}$ and $\hat{b}$ is $D$'s guess at the choice of quantum state.
+
+After the rotation, the quantum states are as follows:
+
+\begin{equation*}
+    \begin{aligned}
+        R \cdot \psi_0 &= \begin{bmatrix}
+            \cos(\theta) & -\sin(\theta) \\
+            \sin(\theta) & \cos(\theta)
+        \end{bmatrix} \cdot \begin{bmatrix}
+            0 \\ 1
+        \end{bmatrix} \\
+        &= \begin{bmatrix}
+            -\sin(\theta) \\ \cos(\theta)
+        \end{bmatrix}
+    \end{aligned}
+\end{equation*}
+
+\begin{equation*}
+    \begin{aligned}
+        R \cdot \psi_1 &= \begin{bmatrix}
+            \cos(\theta) & -\sin(\theta) \\
+            \sin(\theta) & \cos(\theta)
+        \end{bmatrix} \cdot \begin{bmatrix}
+            \frac{1}{\sqrt{2}} \\ -\frac{1}{\sqrt{2}}
+        \end{bmatrix} \\
+        &= \begin{bmatrix}
+            \frac{1}{\sqrt{2}}\cos(\theta) + \frac{1}{\sqrt{2}}\sin(\theta) \\
+            \frac{1}{\sqrt{2}}\sin(\theta) - \frac{1}{\sqrt{2}}\cos(\theta)
+        \end{bmatrix}
+    \end{aligned}
+\end{equation*}
+
+The probability of successfully distinguishing the quantum state is as follows:
+
+\begin{equation*}
+    \begin{aligned}
+        P[\hat{b} = b]
+        &= P[\hat{b} = b \cap b = 0] + P[\hat{b} = b \cap b = 1] \\
+        &= P[\hat{b} = b \mid b = 0] \cdot P[b = 0] 
+            + P[\hat{b} = b \mid b = 1] \cdot P[b = 1] \\
+        &= \frac{1}{2}(P[\hat{b} = b \mid b = 0] + P[\hat{b} = b \mid b = 1]) \\
+        &= \frac{1}{2}(P[R\psi_0 = 0] + P[R\psi_1 = 1]) \\
+        &= \frac{1}{2}(\sin^2(\theta) + (
+                \frac{1}{\sqrt{2}}\sin(\theta) - \frac{1}{\sqrt{2}}\cos(\theta)
+            )^2)
+    \end{aligned}
+\end{equation*}
+
+To maximize $P[\hat{b} = b]$ with respect to $\theta$, take the derivative:
+
+\begin{equation*}
+    \begin{aligned}
+        \frac{dP}{d\theta}
+        &= \frac{1}{2}\left(
+            2\sin\theta\cos\theta
+            + 2(
+                \frac{1}{\sqrt{2}}\sin\theta - \frac{1}{\sqrt{2}}\cos\theta
+            ) \cdot \frac{d}{d\theta}\left\lbrack 
+                \frac{1}{\sqrt{2}}\sin\theta - \frac{1}{\sqrt{2}}\cos\theta
+            \right\rbrack
+        \right) \\
+        &= \frac{1}{2}\left(
+            \sin{2\theta}
+            + 2(
+                \frac{1}{\sqrt{2}}\sin\theta - \frac{1}{\sqrt{2}}\cos\theta
+            ) \cdot \left(
+                \frac{1}{\sqrt{2}}\cos\theta + \frac{1}{\sqrt{2}}\sin\theta
+            \right)
+        \right) \\
+        &= \frac{1}{2}\left(
+            \sin{2\theta} -\cos{2\theta}
+        \right) \\
+        \frac{d^2P}{d\theta^2} &= \cos{\theta} + \sin{\theta}
+    \end{aligned}
+\end{equation*}
+
+Solving the first derivative yields $\theta = \frac{1}{8}\pi$ or $\theta = \frac{5}{8}\pi$, but only the second solution makes the second derivative negative and is thus a local maximum.
+
+Thus an optimal distinguisher can be built by rotation $R(\frac{5}{8}\pi)$, the maximal probability is:
+
+\begin{equation*}
+    \frac{1}{2}\left(
+        \sin^2{\frac{5}{8}\pi} + \left(
+            \frac{1}{\sqrt{2}}\sin{\frac{5}{8}\pi} - \frac{1}{\sqrt{2}}\cos{\frac{5}{8}\pi}
+        \right)^2
+    \right)
+    \approx 0.85355
+\end{equation*}
+
+\end{document}
