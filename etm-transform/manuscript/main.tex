@@ -1,4 +1,13 @@
 %%%% 1. DOCUMENTCLASS %%%%
+%
+% TODO: Algo 9, 10, 11 should be one algorithms
+%   similarly agorithm 13-21, 22-24, 25-30
+% TODO: the implementation should be called ML-KEM+
+% TODO: Table 2 should be called ML-KEM+, as well
+% TODO: Table 3 should be broken up: pk/sk/keygen measurements should be one table, ct/encap/decap measurements should be one table for clearer comparison "
+% TODO: Table 4-6 need double lines to separate security level
+% TODO: need more thorough references
+% TODO: need better intro and conclusion (but later)
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
 \documentclass[floatrow,journal=tches,submission]{iacrtrans}
 %%%% NOTES:
@@ -85,14 +94,15 @@ Faster generic IND-CCA2 secure KEM using ``encrypt-then-MAC''}
 %%%% 7. PAPER CONTENT %%%%
 \section{Introduction}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works \cite{hofheinz2017modular} extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals}, FrodoKEM \cite{bos2016frodo}, and SABER \cite{d2018saber}.
+% TODO: Mention and cite ML-KEM
 
-The current state of the FO transformation enjoys proven tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many deficiencies to be improved on. One such shortcoming is the use of re-encryption for providing ciphertext integrity \cite{bernstein2018towards}, which requires the decapsulation routine to run the encryption routine as a subroutine. In many post-quantum schemes, such as Kyber, the encryption routine is substantially more expensive than the decryption routine, so running the encryption routine in the decapsulation routine inflates the computational cost of the decapsulator. In addition, running the encryption as a subroutine introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key \cite{ravi2019generic}\cite{ueno2022curse}.
+The current state of the FO transformation enjoys proven tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many open problems. One such problem is the substantial computational cost of using \emph{de-randomization} and \emph{re-encryption} \cite{bernstein2018towards} for providing ciphertext integrity. In many post-quantum schemes, including ML-KEM, the input encryption routine is substantially more expensive than the input decryption routine, so running the encryption as a subroutine dominates the runtime cost of the decapsulation routine. While not the focus of this project, \emph{re-encryption} also introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key, as demonstrated in \cite{ravi2019generic} and \cite{ueno2022curse}.
 
-The problem of ciphertext integrity was solved in symmetric cryptography: given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using ``encrypt-then-mac'' provides authenticated encryption \cite{bellare2000authenticated}. We took inspiration from this strategy and applied a similar technique to transform an OW-PCA secure public-key encryption scheme into an IND-CCA2 secure key encapsulation mechanism. Using a message authentication code for ciphertext integrity replaces the re-encryption step in decryption with the computation of an authenticator, which offers significant performance improvements while maintaining comparable level of security.
+We are inspired by how ciphertext integrity is achieved in symmetric cryptography: given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using in a pattern called ``encrypt-then-MAC'' provides proven authenticated encryption \cite{bellare2000authenticated}. ``encrypt-then-MAC'' is now the most widely accepted method for doing symmetric encryption as AES-GCM \cite{mcgrew2004galois} and ChaCha20-Poly1305 \cite{nir2018chacha20}.
 
-The main challenge in applying ``encrypt-then-mac'' to public-key cryptography is the lack of a pre-shared symmetric key. We proposed to derive the symmetric key by hashing the plaintext message. In section \ref{sec:main-results}, we prove that under the random oracle model, if the input public-key encryption scheme is one-way secure against plaintext-checking attack and the input message authentication code is one-time existentially unforgeable, then the transformed key encapsulation mechanism is IND-CCA2 secure.
+The main challenge in applying ``encrypt-then-MAC'' to public-key cryptography is the lack of a pre-shared symmetric key. We took inspiration from hybrid public-key encryption schemes (HPKE) such as .We proposed to derive the symmetric key by hashing the plaintext message. In section \ref{sec:main-results}, we prove that under the random oracle model, if the input public-key encryption scheme is one-way secure against plaintext-checking attack and the input message authentication code is one-time existentially unforgeable, then the transformed key encapsulation mechanism is IND-CCA2 secure.
 
-In section \ref{sec:experimental-results}, we instantiate concrete instances of our constructions by combining Kyber with GMAC and Poly1305. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal runtime overhead in the encapsulation routine and a small increase in ciphertext size.
+In section \ref{sec:implementation}, we instantiate concrete instances of our constructions by combining Kyber with GMAC and Poly1305. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal runtime overhead in the encapsulation routine and a small increase in ciphertext size.
 
 \section{Preliminaries and previous results}
 
