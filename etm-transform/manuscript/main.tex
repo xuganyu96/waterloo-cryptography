@@ -113,31 +113,33 @@ The encryption routine $\encrypt(\pk, m)$ takes a public key, a plaintext messag
 
 We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
 
+\def\algowatkgame{
+    \begin{algorithm}[H]
+        \caption{
+            The $\texttt{OW-ATK}$ game
+        }\label{alg:pke-ow-atk-game}
+        \begin{algorithmic}[1]
+            \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+            \State $m^\ast \leftsample \mathcal{M}$
+            \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
+            \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
+            \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+}
+\def\algpco{
+    \begin{algorithm}[H]
+        \caption{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}\label{alg:pco}
+        \begin{algorithmic}[1]
+            \State \Return $\llbrack \decrypt(\sk, c) = m \rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+}
 \begin{figure}[H]
     \begin{floatrow}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{
-                    The $\texttt{OW-ATK}$ game
-                }\label{alg:pke-ow-atk-game}
-                \begin{algorithmic}[1]
-                    \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-                    \State $m^\ast \leftsample \mathcal{M}$
-                    \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
-                    \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
-                    \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        }
+        \ffigbox{\algowatkgame}
         {\caption{The \texttt{OW-ATK} game}}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}\label{alg:pco}
-                \begin{algorithmic}[1]
-                    \State \Return $\llbrack \decrypt(\sk, c) = m \rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        }
+        \ffigbox{\algpco}
         {\caption{Plaintext-checking oracle}}
     \end{floatrow}
     \label{fig:pco-and-cvo}
