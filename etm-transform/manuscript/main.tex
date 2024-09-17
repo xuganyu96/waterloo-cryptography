@@ -9,7 +9,7 @@
 % TODO: need more thorough references
 % TODO: need better intro and conclusion (but later)
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
-\documentclass[floatrow,journal=tches,submission]{iacrtrans}
+\documentclass[journal=tches,submission]{iacrtrans}
 %%%% NOTES:
 % - Change "journal=tosc" to "journal=tches" if needed
 % - Change "submission" to "final" for final version
@@ -20,6 +20,7 @@
 %%%% 2. PACKAGES %%%%
 \usepackage{algorithm}
 \usepackage{algpseudocode}
+\usepackage{caption}
 % \usepackage[demo]{graphicx}
 
 %%%% 3. AUTHOR, INSTITUTE %%%%
@@ -115,37 +116,40 @@ We discuss the security of a $\pke$ using the sequence of games described in \ci
 
 \def\algowatkgame{
     \begin{algorithm}[H]
-        \caption{
-            The $\texttt{OW-ATK}$ game
-        }\label{alg:pke-ow-atk-game}
+        \caption*{The $\texttt{OW-ATK}$ game}
         \begin{algorithmic}[1]
             \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
             \State $m^\ast \leftsample \mathcal{M}$
             \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
-            \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
+            \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(
+                1^\lambda, \pk, c^\ast
+            )$
             \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
         \end{algorithmic}
     \end{algorithm}
 }
 \def\algpco{
     \begin{algorithm}[H]
-        \caption{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}\label{alg:pco}
+        \caption*{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}
         \begin{algorithmic}[1]
             \State \Return $\llbrack \decrypt(\sk, c) = m \rrbrack$
         \end{algorithmic}
     \end{algorithm}
 }
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox{\algowatkgame}
-        {\caption{The \texttt{OW-ATK} game}}
-        \ffigbox{\algpco}
-        {\caption{Plaintext-checking oracle}}
-    \end{floatrow}
-    \label{fig:pco-and-cvo}
+    \centering
+    \begin{minipage}[b]{0.49\textwidth}
+        \algowatkgame
+    \end{minipage}
+    \begin{minipage}[b]{0.49\textwidth}
+        \algpco
+    \end{minipage}
+    \caption{
+        One-way security game of PKE (left) and plaintext-checking oracle (right)
+    }\label{fig:ow-game-pco}
 \end{figure}
 
-In the \texttt{OW-ATK} game (see figure \ref{alg:pke-ow-atk-game}), an adversary's goal is to recover the decryption of a randomly generated ciphertext. A challenger randomly samples a keypair and a challenge plaintext $m^\ast$, encrypts the challenge plaintext $c^\ast \leftsample \encrypt(\pk, m^\ast)$, then gives $\pk$ and $c^\ast$ to the adversary $A$. The adversary $A$, with access to some oracle $\mathcal{O}_\texttt{ATK}$, outputs a guess decryption $\hat{m}$. $A$ wins the game if its guess $\hat{m}$ is equal to the challenge plaintext $m^\ast$. The \textit{advantage} $\adv_\texttt{OW-ATK}$ of an adversary in this game is the probability that it wins the game:
+In the \texttt{OW-ATK} game (see figure \ref{fig:ow-game-pco}), an adversary's goal is to recover the decryption of a randomly generated ciphertext. A challenger randomly samples a keypair and a challenge plaintext $m^\ast$, encrypts the challenge plaintext $c^\ast \leftsample \encrypt(\pk, m^\ast)$, then gives $\pk$ and $c^\ast$ to the adversary $A$. The adversary $A$, with access to some oracle $\mathcal{O}_\texttt{ATK}$, outputs a guess decryption $\hat{m}$. $A$ wins the game if its guess $\hat{m}$ is equal to the challenge plaintext $m^\ast$. The \textit{advantage} $\adv_\texttt{OW-ATK}$ of an adversary in this game is the probability that it wins the game:
 
 \begin{equation*}
     \adv_\texttt{OW-ATK}(A) = P\left[
@@ -156,7 +160,7 @@ In the \texttt{OW-ATK} game (see figure \ref{alg:pke-ow-atk-game}), an adversary
     \right]
 \end{equation*}
 
-The capabilities of the oracle $\mathcal{O}_\texttt{ATK}$ depends on the choice of security goal $\texttt{ATK}$. Particularly relevant to our result is security against plaintext-checking attack (PCA), for which the adversary has access to a plaintext-checking oracle (PCO) (see figure \ref{alg:pco}). A PCO takes as input a plaintext-ciphertext pair $(m, c)$ and returns \texttt{True} if $m$ is the decryption of $c$ or \texttt{False} otherwise.
+The capabilities of the oracle $\mathcal{O}_\texttt{ATK}$ depends on the choice of security goal $\texttt{ATK}$. Particularly relevant to our result is security against plaintext-checking attack (PCA), for which the adversary has access to a plaintext-checking oracle (PCO) (see figure \ref{fig:ow-game-pco}). A PCO takes as input a plaintext-ciphertext pair $(m, c)$ and returns \texttt{True} if $m$ is the decryption of $c$ or \texttt{False} otherwise.
 
 \subsection{Key encapsulation mechanism (KEM)}
 A key encapsulation mechanism is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a fake session key that depends on the ciphertext and some other secret values.
@@ -164,36 +168,31 @@ A key encapsulation mechanism is a collection of three routines $(\keygen, \enca
 The IND-CCA security of a KEM is defined by an adversarial game in which an adversary's goal is to distinguish pseudorandom shared secret (generated by running the $\encap$ routine) and a truly random value.
 
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{
-                    \texttt{IND-CCA} game for \kem
-                }\label{alg:kem-ind-cca-game}
-                
-                \begin{algorithmic}[1]
-                    \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-                    \State $(c^\ast, K_0) \leftsample \encap(\pk)$
-                    \State $K_1 \leftsample \mathcal{K}$
-                    \State $b \leftsample \{0, 1\}$
-                    \State $\hat{b} \leftsample A^{\mathcal{O}_\decap}(
-                        1^\lambda, \pk, c^\ast, K_b
-                    )$
-                    \State \Return $\llbrack \hat{b} = b \rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{The \texttt{KEM-IND-CCA2} game}}
-        \ffigbox{
-            \begin{algorithm}[H]
-            \caption{
-                $\mathcal{O}_\decap(c)$
-            }
+    \centering
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{KEM-IND-CCA2 game}
             \begin{algorithmic}[1]
-                \State \Return $\decap(\sk, c)$
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $(c^\ast, K_0) \leftsample \encap(\pk)$
+                \State $K_1 \leftsample \mathcal{K}$
+                \State $b \leftsample \{0, 1\}$
+                \State $\hat{b} \leftsample A^{\mathcal{O}_\decap}(
+                    1^\lambda, \pk, c^\ast, K_b
+                )$
+                \State \Return $\llbrack \hat{b} = b \rrbrack$
             \end{algorithmic}
-            \end{algorithm}
-        }{\caption{Decapsulation oracle}}
-    \end{floatrow}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+        \caption*{$\mathcal{O}_\decap(c)$}
+        \begin{algorithmic}[1]
+            \State \Return $\decap(\sk, c)$
+        \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{IND-CCA2 game for KEM (left) and decapsulation oracle (right)}\label{fig:kem-game}
 \end{figure}
 
 
@@ -211,23 +210,23 @@ A message authentication code $\mac$ is a collection of routines $(\sign, \verif
 The security of a MAC is defined in an adversarial game in which an adversary, with access to some signing oracle $\mathcal{O}_\sign(m)$, tries to forge a new valid message-tag pair that has never been queried before. The existential unforgeability under chosen message attack (EUF-CMA) game is shown below:
 
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox[250px]{
-            \begin{algorithm}[H]
-                \caption{The EUF-CMA game}\label{alg:mac-euf-cma-game}
+    \centering
+    \begin{minipage}{0.7\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{EUF-CMA} game}
 
-                \begin{algorithmic}[1]
-                    \State $k^\ast \leftsample \mathcal{K}$
-                    \State $(\hat{m}, \hat{t}) \leftsample \mathcal{A}^{\mathcal{O}_\sign}()$
-                    \State \Return $
-                        \llbrack \verify(k^\ast, \hat{m}, \hat{t}) 
-                        \land (\hat{m}, \hat{t}) \not\in \mathcal{O}_\sign
-                        \rrbrack
-                    $
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{The \texttt{EUF-CMA} game}}
-    \end{floatrow}
+            \begin{algorithmic}[1]
+                \State $k^\ast \leftsample \mathcal{K}$
+                \State $(\hat{m}, \hat{t}) \leftsample \mathcal{A}^{\mathcal{O}_\sign}()$
+                \State \Return $
+                    \llbrack \verify(k^\ast, \hat{m}, \hat{t}) 
+                    \land (\hat{m}, \hat{t}) \not\in \mathcal{O}_\sign
+                    \rrbrack
+                $
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{The existential forgery game}\label{fig:euf-cma-game}
 \end{figure}
 
 The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
@@ -285,11 +284,11 @@ let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.40\textwidth}
+    \begin{minipage}[t]{0.49\textwidth}
         \begin{algorithm}[H]
-            \caption{$\keygen()$}\label{alg:fo-keygen}
+            \caption*{$\kem\texttt{.}\keygen()$}
             \begin{algorithmic}[1]
-                \State $(\pk, \sk^\prime) \leftsample \keygen_\pke()$
+                \State $(\pk, \sk^\prime) \leftsample \pke\texttt{.}\keygen()$
                 \State $z \leftsample \mathcal{M}$
                 \State $\sk \leftarrow (\sk^\prime, z)$
                     \Comment{$U^{\not\bot}, U^{\not\bot}_m$}
@@ -298,15 +297,12 @@ let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\
                 \State \Return $(\pk, \sk)$
             \end{algorithmic}
         \end{algorithm}
-    \end{minipage}
-    \hspace{0.05\textwidth}
-    \begin{minipage}{0.45\textwidth}
         \begin{algorithm}[H]
-            \caption{$\encap(\pk)$}\label{alg:fo-encap}
+            \caption*{$\kem\texttt{.}\encap(\pk)$}
             \begin{algorithmic}[1]
                 \State $m \leftsample \mathcal{M}$
                 \State $r \leftarrow G(m)$
-                \State $c \leftarrow \encrypt(\pk, m, r)$
+                \State $c \leftarrow \pke\texttt{.}\encrypt(\pk, m, r)$
                 \State $K \leftarrow H(m, c)$
                     \Comment{$U^\bot, U^{\not\bot}$}
                 \State $K \leftarrow H(m)$
@@ -315,14 +311,16 @@ let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\
             \end{algorithmic}
         \end{algorithm}
     \end{minipage}
-    \vspace{0.5cm}
-    \begin{minipage}{\textwidth}
+    \begin{minipage}[t]{0.5\textwidth}
         \begin{algorithm}[H]
-            \caption{$\decap(\sk=(\sk^\prime, z), c)$}\label{alg:fo-decap}
+            \caption*{$\kem\texttt{.}\decap(\sk, c)$}
             \begin{algorithmic}[1]
-                \State $\hat{m} \leftarrow \decrypt(\sk^\prime, c)$
+                \Ensure $\sk = (\sk^\prime, z)$
+                \Ensure $\sk^\prime$ is valid PKE secret key
+                \Ensure $z$ is valid PKE plaintext
+                \State $\hat{m} \leftarrow \pke\texttt{.}\decrypt(\sk^\prime, c)$
                 \State $\hat{r} \leftarrow G(\hat{m})$
-                \State $\hat{c} \leftarrow \encrypt(\pk, \hat{m}, \hat{r})$
+                \State $\hat{c} \leftarrow \pke\texttt{.}\encrypt(\pk, \hat{m}, \hat{r})$
                 \If{$\hat{c} = c$}
                     \State $K \leftarrow H(\hat{m})$
                         \Comment{$U_m^\bot, U_m^{\not\bot}$}
@@ -347,43 +345,53 @@ The modular FO transformations enjoy tight security bounds and proven quantum re
 Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $\mac: \mathcal{K}_\mac \times \mathcal{B}^\ast \rightarrow \mathcal{T}$ be a deterministic message authentication code that takes a key $k \in \mathcal{K}_\mac$, some message $m \in \mathcal{B}^\ast$, and outputs a digest $t \in \mathcal{T}$. Let $G: \mathcal{M} \rightarrow \mathcal{K}_\mac$ be a hash function that maps from $\pke$'s plaintext space to $\mac$'s key space. Let $H: \mathcal{B}^\ast \rightarrow \mathcal{K}_\kem$ be a hash function that maps bit strings into the set of possible shared secrets. The ``encrypt-then-MAC'' transformation $\etm[\pke, \mac, G, H]$ constructs a key encapsulation mechanism $\kem_\etm(\keygen_\kem, \encap, \decap)$, whose routines are described in figure \ref{fig:etm-routines}.
 
 \begin{figure}[H]
-    \center
-    \begin{algorithm}[H]
-        \caption{$\keygen_\etm$}\label{alg:etm-keygen}
-        \begin{algorithmic}[1]
-            \State $(\pk, \sk^\prime) \leftsample \keygen(1^\lambda)$
-            \State $z \leftsample \mathcal{M}$
-            \State $\sk \leftarrow (\sk^\prime, z)$
-            \State \Return $(\pk, \sk)$
-        \end{algorithmic}
-    \end{algorithm}
-    \begin{algorithm}[H]
-        \caption{$\encap(\pk)$}\label{alg:etm-encap}
-        \begin{algorithmic}[1]
-            \State $m \leftsample \mathcal{M}$
-            \State $k \leftarrow G(m)$
-            \State $c^\prime \leftsample \encrypt(\pk, m)$
-            \State $t \leftarrow \mac(k, c^\prime)$
-            \State $K \leftarrow H(m, c^\prime)$
-            \State $c \leftarrow (c^\prime, t)$
-            \State \Return $(c, K)$
-        \end{algorithmic}
-    \end{algorithm}
-    \begin{algorithm}[H]
-        \caption{$\decap(\sk, c)$}\label{alg:etm-decap}
-        \begin{algorithmic}[1]
-            \State $(c^\prime, t) \leftarrow c$
-            \State $(\sk^\prime, z) \leftarrow \sk$
-            \State $\hat{m} \leftarrow \decrypt(\sk^\prime, c^\prime)$
-            \State $\hat{k} \leftarrow G(\hat{m})$
-            \If{$\mac(\hat{k}, c^\prime) \neq t$}
-                \State $K \leftarrow H(z, c^\prime)$
-            \Else
-                \State $K \leftarrow H(\hat{m}, c^\prime)$
-            \EndIf
-            \State \Return $K$
-        \end{algorithmic}
-    \end{algorithm}
+    \centering
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\kem_\etm.\keygen()$}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk^\prime) \leftsample \pke\texttt{.}\keygen()$
+                \State $z \leftsample \mathcal{M}$
+                \State $\sk \leftarrow \sk^\prime \Vert z$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+        \begin{algorithm}[H]
+            \caption*{$\kem_\etm.\encap(\pk)$}
+            \begin{algorithmic}[1]
+                \Ensure $\pk$ is some $\pke$ public key
+                \State $m \leftsample \mathcal{M}$
+                \State $k \leftarrow G(m)$
+                \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m)$
+                \State $t \leftarrow \mac(k, c^\prime)$
+                \State $K \leftarrow H(m, c^\prime)$
+                \State $c \leftarrow c^\prime \Vert t$
+                \State \Return $(c, K)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\kem_\etm.\decap(\sk, c)$}
+            \begin{algorithmic}[1]
+                \Require $c = c^\prime \Vert t, \sk = sk^\prime \Vert z$
+                \Ensure $c^\prime$ is some $\pke$ ciphertext
+                \Ensure $t$ is some $\mac$ tag
+                \Ensure $\sk^\prime$ is some $\pke$ secret key
+                \Ensure $z$ is some $\pke$ plaintext
+                \State $(c^\prime, t) \leftarrow c$
+                \State $(\sk^\prime, z) \leftarrow \sk$
+                \State $\hat{m} \leftarrow \pke\texttt{.}\decrypt(\sk^\prime, c^\prime)$
+                \State $\hat{k} \leftarrow G(\hat{m})$
+                \If{$\mac(\hat{k}, c^\prime) \neq t$}
+                    \State $K \leftarrow H(z, c^\prime)$
+                \Else
+                    \State $K \leftarrow H(\hat{m}, c^\prime)$
+                \EndIf
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
     \caption{$\kem_\etm$ routines}\label{fig:etm-routines} 
 \end{figure}
 
@@ -392,21 +400,18 @@ The key generation routine of $\kem_\etm$ is largely identical to that of the $\
 For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without knowing its preimage $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryptions that the adversary does not already know. 
 
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox[300px]{
-            \begin{algorithm}[H]
-                \caption{$\pco(m, c)$}\label{alg:pco-using-decap-oracle}
-                \begin{algorithmic}[1]
-                    \State $k \leftarrow G(m)$
-                    \State $t \leftarrow \mac(k, c)$
-                    \State \Return $\llbrack \mathcal{O}^\decap((c, t)) = H(m, c)\rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        }{
-            \caption{Every decapsulation oracle can be converted into a plaintext-checking oracle}
-            \label{fig:pco-using-decap-oracle}
-        }
-    \end{floatrow}
+    \centering
+    \begin{minipage}{0.6\textwidth}
+    \begin{algorithm}[H]
+        \caption*{$\pco(m, c)$}
+        \begin{algorithmic}[1]
+            \State $k \leftarrow G(m)$
+            \State $t \leftarrow \mac(k, c)$
+            \State \Return $\llbrack \mathcal{O}^\decap((c, t)) = H(m, c)\rrbrack$
+        \end{algorithmic}
+    \end{algorithm}
+    \end{minipage}
+    \caption{Every decapsulation oracle can be converted into a plaintext-checking oracle}\label{fig:pco-using-decap-oracle}
 \end{figure}
 
 However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle (algorithm \ref{alg:pco-using-decap-oracle}), so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
@@ -430,100 +435,97 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
 \subsection{Proof of theorem \ref{thm:ow-pca-implies-kem-ind-cca2}}
 % TODO: write some intuition first?
 \begin{proof}
-    We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of games.
+    We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of games. The sequence of games is summarized in figure \ref{fig:etm-ind-cc2-sequence-of-games}.
 
-    \begin{figure}[H]
-        \begin{floatrow}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{IND-CCA2 game for KEM}\label{alg:game-0}
-                    \begin{algorithmic}[1]
-                        \State $(\pk, \sk) \leftsample \keygen_\etm()$
-                        \State $m^\ast \leftsample \mathcal{M}$
-                        \State $c^\prime \leftsample \encrypt(\pk, m^\ast)$
-                        \State $k^\ast \leftarrow G(m^\ast)$
-                        \State $t \leftarrow \mac(k, c^\prime)$
-                        \State $c^\ast \leftarrow (c^\prime, t)$
-                        \State $K_0 \leftarrow H(m^\ast, c^\prime)$
-                        \State $K_1 \leftsample \mathcal{K}_\kem$
-                        \State $b \leftsample \{0,1\}$
-                        \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap}(\pk, c^\ast, K_b)$
-                        \State \Return $\llbrack \hat{b} = b \rrbrack$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^\decap(c)$}\label{alg:true-decap-oracle}
-                    \begin{algorithmic}[1]
-                        \State $(c^\prime, t) \leftarrow c$
-                        \State $\hat{m} = \decrypt(\sk^\prime, c^\prime)$
-                        \State $\hat{k} \leftarrow G(\hat{m})$
-                        \If{$\mac(\hat{k}, c^\prime) = t$}
-                            \State $K \leftarrow H(\hat{m}, c^\prime)$
-                        \Else 
-                            \State $K \leftarrow H(z, c^\prime)$
-                        \EndIf 
-                        \State \Return $K$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-        \end{floatrow}
-        \begin{floatrow}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^G(m)$}\label{alg:hash-oracle-g}
-                    \begin{algorithmic}[1]
-                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
-                            \State \Return $\tilde{k}$
-                        \EndIf
-                        \State $k \leftsample \mathcal{K}_\mac$
-                        \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
-                        \State \Return $k$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^H(m, c)$}\label{alg:hash-oracle-h}
-                    \begin{algorithmic}[1]
-                        \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H : \tilde{m} = m \land \tilde{c} = c$}
-                            \State \Return $\tilde{K}$
-                        \EndIf
-                        \State $K \leftsample \mathcal{K}_\kem$
-                        \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
-                        \State \Return $K$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-        \end{floatrow}
+    \begin{figure}[h]
+        \centering
+        \begin{minipage}[t]{0.5\textwidth}
+            \begin{algorithm}[H]
+                \caption*{\texttt{IND-CCA2} game for $\kem_\etm$}
+                \begin{algorithmic}[1]
+                    \State $(\pk, \sk) \leftsample \kem_\etm\texttt{.}\keygen()$
+                    \State $m^\ast \leftsample \mathcal{M}$
+                    \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m^\ast)$
+                    \State $k^\ast \leftarrow G(m^\ast)$
+                        \Comment{Game 0-1}
+                    \State $k^\ast \leftsample \mathcal{K}_\mac$
+                        \Comment{Game 2-3}
+                    \State $t \leftarrow \mac(k^\ast, c^\prime)$
+                    \State $c^\ast \leftarrow c^\prime \Vert t$
+                    \State $K_0 \leftarrow H(m^\ast, c^\prime)$
+                        \Comment{Game 0-2}
+                    \State $K_0 \leftsample \mathcal{K}_\kem$
+                        \Comment{Game 3}
+                    \State $K_1 \leftsample \mathcal{K}_\kem$
+                    \State $b \leftsample \{0,1\}$
+                    \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap}(\pk, c^\ast, K_b)$
+                        \Comment{Game 0}
+                    \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap_1}(\pk, c^\ast, K_b)$
+                        \Comment{Game 1-3}
+                    \State \Return $\llbrack \hat{b} = b \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^G(m)$}
+                \begin{algorithmic}[1]
+                    \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
+                        \State \Return $\tilde{k}$
+                    \EndIf
+                    \State $k \leftsample \mathcal{K}_\mac$
+                    \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
+                    \State \Return $k$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \begin{minipage}[t]{0.49\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^\decap(c)$}
+                \begin{algorithmic}[1]
+                    \State $(c^\prime, t) \leftarrow c$
+                    \State $\hat{m} = \decrypt(\sk^\prime, c^\prime)$
+                    \State $\hat{k} \leftarrow G(\hat{m})$
+                    \If{$\mac(\hat{k}, c^\prime) = t$}
+                        \State $K \leftarrow H(\hat{m}, c^\prime)$
+                    \Else 
+                        \State $K \leftarrow H(z, c^\prime)$
+                    \EndIf 
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+            \vspace{-0.5cm}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^\decap_1(c)$}
+                \begin{algorithmic}[1]
+                    \State $(c^\prime, t) \leftarrow c$
+                    \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
+                        \tilde{m} = \decrypt(\sk^\prime, c^\prime)
+                        \land \mac(\tilde{k}, c^\prime) = t
+                    $}
+                        \State $K \leftarrow H(\tilde{m}, c^\prime)$
+                    \Else
+                        \State $K \leftarrow H(z, c^\prime)$
+                    \EndIf
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+            \vspace{-0.5cm}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^H(m, c)$}
+                \begin{algorithmic}[1]
+                    \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H : \tilde{m} = m \land \tilde{c} = c$}
+                        \State \Return $\tilde{K}$
+                    \EndIf
+                    \State $K \leftsample \mathcal{K}_\kem$
+                    \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \caption{Sequence of games}\label{fig:etm-ind-cc2-sequence-of-games}
     \end{figure}
+
 
     \emph{Game 0} is the standard IND-CCA2 game for KEMs. The decapsulation oracle $\mathcal{O}^\decap$ executes the decapsulation routine using the challenge keypair and return the results faithfully. The queries made to the hash oracles $\mathcal{O}^G, \mathcal{O}^H$ are recorded to their respective tapes $\mathcal{L}^G, \mathcal{L}^H$.
-
-    \begin{figure}[H]
-        \begin{floatrow}
-            \ffigbox[270px]{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^\decap_1(c)$}\label{alg:sim-decap-oracle}
-                    \begin{algorithmic}[1]
-                        \State $(c^\prime, t) \leftarrow c$
-                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
-                            \tilde{m} = \decrypt(\sk^\prime, c^\prime)
-                            \land \mac(\tilde{k}, c^\prime) = t
-                        $}
-                            \State $K \leftarrow H(\tilde{m}, c^\prime)$
-                        \Else
-                            \State $K \leftarrow H(z, c^\prime)$
-                        \EndIf
-                        \State \Return $K$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{
-                \caption{Simulated decapsulation oracle}
-            }
-        \end{floatrow}
-    \end{figure}
 
     \emph{Game 1} is identical to game 0 except that the true decapsulation oracle $\mathcal{O}^\decap$ is replaced with a simulated oracle $\mathcal{O}^\decap_1$. Instead of directly decrypting $c^\prime$ as in the decapsulation routine, the simulated oracle searches through the tape $\mathcal{L}^G$ to find a matching query $(\tilde{m}, \tilde{k})$ such that $\tilde{m}$ is the decryption of $c^\prime$. The simulated oracle then uses $\tilde{k}$ to validate the tag $t$ against $c^\prime$.
 
@@ -556,84 +558,78 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
 
     Since in game 3, both $K_0$ and $K_1$ are uniformly random and independent of all other variables, no adversary can have any advantage: $\adv_{G_3}(A) = 0$.
 
-    \begin{figure}[H]
-        \begin{floatrow}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$B(\pk, {c^\prime}^\ast)$}\label{alg:ow-pca-adversary}
-                    \begin{algorithmic}[1]
-                        \State $z \leftsample \mathcal{M}$
-                        \State $k \leftsample \mathcal{K}_\mac$
-                        \State $t \leftarrow \mac(k, {c^\prime}^\ast)$
-                        \State $c^\ast \leftarrow ({c^\prime}^\ast, t)$
-                        \State $K \leftsample \mathcal{K}_\kem$
-                        \State $\hat{b} \leftarrow A^{
-                            \mathcal{O}^\decap_B, \mathcal{O}^G_B, \mathcal{O}^H_B
-                        }(\pk, c^\ast, K)$
-                        \If{$\texttt{ABORT}(m)$}
-                            \State \Return $m$
-                        \EndIf
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^\decap_B(c)$}\label{alg:sim-decap-oracle-b}
-                    \begin{algorithmic}[1]
-                        \State $(c^\prime, t) \leftarrow c$
-                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
-                            % \tilde{m} = \decrypt(\sk^\prime, c^\prime)
-                            \pco(c^\prime, \tilde{m}) = 1
-                            \land \mac(\tilde{k}, c^\prime) = t
-                        $}
-                            \State $K \leftarrow H(\tilde{m}, c^\prime)$
-                        \Else
-                            \State $K \leftarrow H(z, c^\prime)$
-                        \EndIf
-                        \State \Return $K$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-        \end{floatrow}
-        \begin{floatrow}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^G_B(m)$}\label{alg:hash-oracle-g-b}
-                    \begin{algorithmic}[1]
-                        \If{$\pco(m, {c^\prime}^\ast) = 1$}
-                            \State $\texttt{ABORT}(m)$
-                        \EndIf
-                        \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
-                            \State \Return $\tilde{k}$
-                        \EndIf
-                        \State $k \leftsample \mathcal{K}_\mac$
-                        \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
-                        \State \Return $k$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-            \ffigbox{
-                \begin{algorithm}[H]
-                    \caption{$\mathcal{O}^H_B(m, c)$}\label{alg:hash-oracle-h-b}
-                    \begin{algorithmic}
-                        \If{$\pco(m, {c^\prime}^\ast) = 1$}
-                            \State $\texttt{ABORT}(m)$
-                        \EndIf
-                        \If{$
-                            \exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H 
-                            : \tilde{m} = m \land \tilde{c} = c
-                        $}
-                            \State \Return $\tilde{K}$
-                        \EndIf
-                        \State $K \leftsample \mathcal{K}_\kem$
-                        \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
-                        \State \Return $K$
-                    \end{algorithmic}
-                \end{algorithm}
-            }{}
-        \end{floatrow}
+    \begin{figure}[h]
+        \begin{minipage}[t]{0.49\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$B(\pk, {c^\prime}^\ast)$}
+                \begin{algorithmic}[1]
+                    \State $z \leftsample \mathcal{M}$
+                    \State $k \leftsample \mathcal{K}_\mac$
+                    \State $t \leftarrow \mac(k, {c^\prime}^\ast)$
+                    \State $c^\ast \leftarrow ({c^\prime}^\ast, t)$
+                    \State $K \leftsample \mathcal{K}_\kem$
+                    \State $\hat{b} \leftarrow A^{
+                        \mathcal{O}^\decap_B, \mathcal{O}^G_B, \mathcal{O}^H_B
+                    }(\pk, c^\ast, K)$
+                    \If{$\texttt{ABORT}(m)$}
+                        \State \Return $m$
+                    \EndIf
+                \end{algorithmic}
+            \end{algorithm}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^H_B(m, c)$}
+                \begin{algorithmic}
+                    \If{$\pco(m, {c^\prime}^\ast) = 1$}
+                        \State $\texttt{ABORT}(m)$
+                    \EndIf
+                    \If{$
+                        \exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H 
+                        : \tilde{m} = m \land \tilde{c} = c
+                    $}
+                        \State \Return $\tilde{K}$
+                    \EndIf
+                    \State $K \leftsample \mathcal{K}_\kem$
+                    \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}\hfill
+        \begin{minipage}[t]{0.49\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^\decap_B(c)$}
+                \begin{algorithmic}[1]
+                    \State $(c^\prime, t) \leftarrow c$
+                    \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
+                        % \tilde{m} = \decrypt(\sk^\prime, c^\prime)
+                        \pco(c^\prime, \tilde{m}) = 1
+                        \land \mac(\tilde{k}, c^\prime) = t
+                    $}
+                        \State $K \leftarrow H(\tilde{m}, c^\prime)$
+                    \Else
+                        \State $K \leftarrow H(z, c^\prime)$
+                    \EndIf
+                    \State \Return $K$
+                \end{algorithmic}
+            \end{algorithm}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^G_B(m)$}
+                \begin{algorithmic}[1]
+                    \If{$\pco(m, {c^\prime}^\ast) = 1$}
+                        \State $\texttt{ABORT}(m)$
+                    \EndIf
+                    \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
+                        \State \Return $\tilde{k}$
+                    \EndIf
+                    \State $k \leftsample \mathcal{K}_\mac$
+                    \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
+                    \State \Return $k$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \caption{OW-PCA adversary $B$ simulates game 3 for IND-CCA2 adversary $A$}\label{fig:ow-pca-simulates-game-3}
     \end{figure}
-    We will bound $P[\texttt{QUERY G}]$ and $P[\texttt{QUERY H}]$ by constructing a OW-PCA adversary $B$ against the underlying PKE that uses $A$ as a sub-routine. $B$'s behaviors are described in algorithms \ref{alg:ow-pca-adversary}, \ref{alg:sim-decap-oracle-b}, \ref{alg:hash-oracle-g-b}, and \ref{alg:hash-oracle-h-b}.
+
+    We will bound $P[\texttt{QUERY G}]$ and $P[\texttt{QUERY H}]$ by constructing a OW-PCA adversary $B$ against the underlying PKE that uses $A$ as a sub-routine. $B$'s behaviors are summarized in figure \ref{fig:ow-pca-simulates-game-3}.
 
     $B$ simulates game 3 for $A$: receiving the public key $\pk$ and challenge encryption ${c^\prime}^\ast$, $B$ samples random MAC key and session key to produce the challenge encapsulation, then feeds it to $A$. When simulating the decapsulation oracle, $B$ uses the plaintext-checking oracle to look for matching queries in $\mathcal{L}^G$. When simulating the hash oracles, $B$ uses the plaintext-checking oracle to detect when $m^\ast = \decrypt(\sk^\prime, {c^\prime}^\star)$ has been queried. When $m^\ast$ is queried, $B$ terminates $A$ and returns $m^\ast$ to win the OW-PCA game. In other words:
 
@@ -652,54 +648,61 @@ Originally known as Kyber \cite{bos2018crystals}\cite{avanzi2019crystals}, ML-KE
 
 We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment.
 
-A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (TODO: citation). The ``encrypt-then-MAC'' routines are listed in algorithms \ref{alg:ml-kem-etm-keygen}, \ref{alg:ml-kem-etm-encap}, and \ref{alg:ml-kem-etm-decap}.
+A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (TODO: citation). The ``encrypt-then-MAC'' routines are described in figure \ref{fig:ml-kem-plus-routines}.
 
-\begin{algorithm}[H]
-    \caption{\texttt{ML-KEM-ETM.KeyGen()}}\label{alg:ml-kem-etm-keygen}
-    \begin{algorithmic}[1]
-        \State $z \leftsample \{0,1\}^{256}$
-        \State $(\pk, \sk^\prime) \leftsample \texttt{K-PKE}.\keygen()$
-        \State $h \leftarrow H(\pk)$
-            \Comment{$H$ is \texttt{SHA3-256}}
-        \State $\sk \leftarrow (sk^\prime \Vert \pk \Vert h \Vert z)$
-        \State \Return $(\pk, \sk)$
-    \end{algorithmic}
-\end{algorithm}
+\begin{figure}[H]
+    \centering
 
-\begin{algorithm}[H]
-    \caption{\texttt{ML-KEM-ETM.Encap}(\pk)}\label{alg:ml-kem-etm-encap}
-    \begin{algorithmic}[1]
-        \Require Public key $\pk$
-        \State $m \leftsample \{0,1\}^{256}$
-        \State $(\overline{K}, r, k) \leftarrow \texttt{XOF}(m \Vert H(\pk))$
-            \Comment{\texttt{XOF} is \texttt{Shake256}, outputting 768 bits}
-        \State $c^\prime \leftarrow \texttt{K-PKE}.\encrypt(\pk, m, r)$
-        \State $t \leftarrow \mac(k, c^\prime)$
-        \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
-            \Comment{\texttt{KDF} is \texttt{Shake256}, outputting 256 bits}
-        \State $c \leftarrow (c^\prime, c)$
-        \State \Return $(c, K)$
-    \end{algorithmic}
-\end{algorithm}
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{ML-KEM}^\texttt{+}\texttt{.}\keygen\texttt{()}$}
+            \begin{algorithmic}[1]
+                \State $z \leftsample \{0,1\}^{256}$
+                \State $(\pk, \sk^\prime) \leftsample \texttt{K-PKE}.\keygen()$
+                \State $h \leftarrow H(\pk)$
+                \State $\sk \leftarrow (sk^\prime \Vert \pk \Vert h \Vert z)$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}\vspace{-0.5cm}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{ML-KEM}^\texttt{+}\texttt{.}\encap\texttt{(\pk)}$}
+            \begin{algorithmic}[1]
+                \Require Public key $\pk$
+                \State $m \leftsample \{0,1\}^{256}$
+                \State $(\overline{K}, r, k) \leftarrow \texttt{XOF}(m \Vert H(\pk))$
+                \State $c^\prime \leftarrow \texttt{K-PKE}.\encrypt(\pk, m, r)$
+                \State $t \leftarrow \mac(k, c^\prime)$
+                \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
+                \State $c \leftarrow (c^\prime, c)$
+                \State \Return $(c, K)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{ML-KEM}^\texttt{+}\texttt{.}\decap\texttt{(\sk, c)}$}
+            \begin{algorithmic}[1]
+                \Require Secret key $\sk = (\sk^\prime \Vert \pk \Vert h \Vert z)$
+                \Require Ciphertext $c = (c^\prime \Vert t)$
+                \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
+                \State $(c^\prime, t) \leftarrow c$
+                \State $\hat{m} \leftarrow \texttt{K-PKE}.\decrypt(\sk^\prime, c^\prime)$
+                \State $(\overline{K}, \hat{r}, \hat{k}) \leftarrow \texttt{XOF}(\hat{m} \Vert h)$
+                \State $\hat{t} \leftarrow \mac(\hat{k}, c^\prime)$
+                \If{$\hat{t} = t$}
+                    \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
+                \Else
+                    \State $K \leftarrow \texttt{KDF}(z \Vert t)$
+                \EndIf
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
 
-\begin{algorithm}[H]
-    \caption{$\texttt{ML-KEM-ETM.Decap}(\sk, c)$}\label{alg:ml-kem-etm-decap}
-    \begin{algorithmic}[1]
-        \Require Secret key $\sk = (\sk^\prime \Vert \pk \Vert h \Vert z)$
-        \Require Ciphertext $c = (c^\prime \Vert t)$
-        \State $(\sk^\prime, \pk, h, z) \leftarrow \sk$
-        \State $(c^\prime, t) \leftarrow c$
-        \State $\hat{m} \leftarrow \texttt{K-PKE}.\decrypt(\sk^\prime, c^\prime)$
-        \State $(\overline{K}, \hat{r}, \hat{k}) \leftarrow \texttt{XOF}(\hat{m} \Vert h)$
-        \State $\hat{t} \leftarrow \mac(\hat{k}, c^\prime)$
-        \If{$\hat{t} = t$}
-            \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
-        \Else
-            \State $K \leftarrow \texttt{KDF}(z \Vert t)$
-        \EndIf
-        \State \Return $K$
-    \end{algorithmic}
-\end{algorithm}
+    \caption{$\texttt{ML-KEM}^+$ routines}\label{fig:ml-kem-plus-routines}
+\end{figure}
+
+
 
 Our implementation extended from the reference implementation by the PQCrystals team (https://github.com/pq-crystals/kyber). All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance with an AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM.
 
@@ -714,6 +717,7 @@ When instantiating \texttt{ML-KEM-ETM}, there are a variety of message authentic
 We tested each MAC's throughput by measuring the CPU cycles needed to compute a tag on the ciphertext returned by \texttt{K-PKE}. The length of the ciphertext varies depending on the security level. The measurements are summarized in table \ref{tbl:mac-performance}.
 
 \begin{table}[H]
+    \centering
     \caption{MAC performance}\label{tbl:mac-performance}
     \begin{tabular}{|c|c|c|c|c|c|c|c|}
         \hline
@@ -793,6 +797,7 @@ Compared to the $U^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in
 Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the ``encrypt-then-MAC'' transformation over the $U^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the ML-KEM-ETM can be found in table \ref{tbl:kem-performance}
 
 \begin{table}
+    \centering
     \caption{CPU cycles of each KEM routine}\label{tbl:kem-performance}
     \begin{tabular}{|c|c|c|c|c|c|c|c|}
         \hline\hline
@@ -970,28 +975,28 @@ A common application of key encapsulation mechanism is key exchange protocols, w
 For clarity, we denote the party who sends the first message to be the client and the other party to be the server. Round trip time (RTT) is defined to be the time interval between the moment before the client starts generating ephemeral keypairs and the moment after the client derives the final session key. All experiements are run on a pair of AWS c7a.medium instances both located in the \texttt{us-west-2} region. For each experiment, a total of 10,000 rounds of key exchange are performed, with the median and average round trip time (measured in microsecond) recorded.
 
 \subsubsection{Unauthenticated key exchange (KE)}\label{sec:unauthenticated-key-exchange}
-In unauthenticated key exchange, a single pair of ephemeral keypair $(\pk_e, \sk_e) \leftsample \keygen()$ is generated by the client. The client transmits the ephemeral public key $\pk_e$ to the server, who runs the encapsulation routine $(c_e, K_e) \leftsample \encap(\pk_e)$ and transmits the ciphertext $c_e$ back to the client. The client finally decapsulates the ciphertext to recover the shared secret $K_e \leftarrow \decap(\sk_e, c_e)$. The specific steps are described in algorithms \ref{alg:ke-client}, \ref{alg:ke-server}.
+In unauthenticated key exchange, a single pair of ephemeral keypair $(\pk_e, \sk_e) \leftsample \keygen()$ is generated by the client. The client transmits the ephemeral public key $\pk_e$ to the server, who runs the encapsulation routine $(c_e, K_e) \leftsample \encap(\pk_e)$ and transmits the ciphertext $c_e$ back to the client. The client finally decapsulates the ciphertext to recover the shared secret $K_e \leftarrow \decap(\sk_e, c_e)$. The key exchange routines are summarized in figure \ref{fig:ke-routines}.
 
 Note that in our implementation, a key derivation function (\texttt{KDF}) is applied to the ephemeral shared secret to derive the final session key. This step is added to maintain consistency with other authenticated key exchange protocols, where the final session key is derived from multiple shared secrets. The key derivation function is instantiated using Shake256, and the final session key is 256 bits in length.
 
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox{
+    \centering
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{KE}_\texttt{C}()$}\label{alg:ke-client}
+            \begin{algorithmic}[1]
+                \State $(\pk_e, \sk_e) \leftsample \keygen()$
+                \State $\texttt{send}(\pk_e)$
+                \State $c_e \leftarrow \texttt{read}()$
+                \State $K_e \leftarrow \decap(\sk_e, c_e)$
+                \State $K \leftarrow \texttt{KDF}(K)$
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.49\textwidth}
             \begin{algorithm}[H]
-                \caption{$\texttt{KE}_\texttt{C}$}\label{alg:ke-client}
-                \begin{algorithmic}[1]
-                    \State $(\pk_e, \sk_e) \leftsample \keygen()$
-                    \State $\texttt{send}(\pk_e)$
-                    \State $c_e \leftarrow \texttt{read}()$
-                    \State $K_e \leftarrow \decap(\sk_e, c_e)$
-                    \State $K \leftarrow \texttt{KDF}(K)$
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{KE Client}}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\texttt{KE}_\texttt{S}$}\label{alg:ke-server}
+                \caption*{$\texttt{KE}_\texttt{S}()$}\label{alg:ke-server}
                 \begin{algorithmic}[1]
                     \State $\pk_e \leftarrow \texttt{read}()$
                     \State $(c_e, K_e) \leftsample \encap(\pk_e)$
@@ -1000,13 +1005,15 @@ Note that in our implementation, a key derivation function (\texttt{KDF}) is app
                     \State \Return $K$
                 \end{algorithmic}
             \end{algorithm}
-        }{\caption{KE Server}}
-    \end{floatrow}
+    \end{minipage}
+
+    \caption{Unauthenticated key exchange (KE) routines}\label{fig:ke-routines}
 \end{figure}
 
 The RTT comparison is summarized in table \ref{tbl:ke-rtt}
 
 \begin{table}[H]
+    \centering
     \caption{Unauthenticated key exchange RTT comparison}\label{tbl:ke-rtt}
     \begin{tabular}{|c|c|c|}
         \hline
@@ -1046,47 +1053,49 @@ The RTT comparison is summarized in table \ref{tbl:ke-rtt}
 \end{table}
 
 \subsubsection{Unilaterally authenticated key exchange (UAKE)}\label{sec:uakex}
-In unilaterally authenticated key exchange, the authenticating party proves its identity to the other party by demonstrating possession of a secret key that corresponds to a published long-term public key. In this implementation, the client possesses the long-term public key $\pk_S$ of the server, and the server authenticates itself by demonstrating possession of the corresponding long-term secret key $\sk_S$. Details are described in algorithms \ref{alg:uake-client} and \ref{alg:uake-server}.
+In unilaterally authenticated key exchange, the authenticating party proves its identity to the other party by demonstrating possession of a secret key that corresponds to a published long-term public key. In this implementation, the client possesses the long-term public key $\pk_S$ of the server, and the server authenticates itself by demonstrating possession of the corresponding long-term secret key $\sk_S$. UAKE routines are summarized in figure \ref{fig:uake-routines}.
 
 In addition to the long-term key, the client will also generate an ephemeral keypair as it does in an unauthenticated key exchange, and the session key is derived by applying the \texttt{KDF} to the concatenation of both the ephemeral shared secret and the shared secret encapsulated under server's long-term key. This helps the key exchange to achieve weak forward secrecy (citation needed).
 
 Using KEM for authentication is especially interesting within the context of post-quantum cryptography: post-quantum KEM schemes usually enjoy better performance characteristics than post-quantum signature schemes with faster runtime, smaller memory footprint, and smaller communication sizes. KEMTLS was proposed in 2020 as an alternative to existing TLS handshake protocols, and many experimental implementations have demonstrated the performance advantage. (citation needed).
 
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\texttt{UAKE}_\texttt{C}(\pk_S)$}\label{alg:uake-client}
-                \begin{algorithmic}[1]
-                    \Require Server's long-term $\pk_S$
-                    \State $(\pk_e, \sk_e) \leftsample \keygen()$
-                    \State $(c_S, K_S) \leftsample \encap(\pk_S)$
-                    \State $\texttt{send}(\pk_e, c_S)$
-                    \State $c_e \leftarrow \texttt{read}()$
-                    \State $K_e \leftarrow \decap(\sk_e, c_e)$
-                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S)$
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{UAKE Client}}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\texttt{UAKE}_\texttt{S}(\sk_S)$}\label{alg:uake-server}
-                \begin{algorithmic}[1]
-                    \Require Server's long-term $\sk_S$
-                    \State $(\pk_e, c_S) \leftarrow \texttt{read}()$
-                    \State $K_S \leftarrow \decap(\sk_S, c_S)$
-                    \State $(c_e, K_e) \leftsample \encap(\pk_e)$
-                    \State $\texttt{send}(c_e)$
-                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S)$
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{UAKE Server}}
-    \end{floatrow}
+    \centering
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{UAKE}_\texttt{C}(\pk_S)$}
+            \begin{algorithmic}[1]
+                \Require Server's long-term $\pk_S$
+                \State $(\pk_e, \sk_e) \leftsample \keygen()$
+                \State $(c_S, K_S) \leftsample \encap(\pk_S)$
+                \State $\texttt{send}(\pk_e, c_S)$
+                \State $c_e \leftarrow \texttt{read}()$
+                \State $K_e \leftarrow \decap(\sk_e, c_e)$
+                \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S)$
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{UAKE}_\texttt{S}(\sk_S)$}
+            \begin{algorithmic}[1]
+                \Require Server's long-term $\sk_S$
+                \State $(\pk_e, c_S) \leftarrow \texttt{read}()$
+                \State $K_S \leftarrow \decap(\sk_S, c_S)$
+                \State $(c_e, K_e) \leftsample \encap(\pk_e)$
+                \State $\texttt{send}(c_e)$
+                \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S)$
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{Unilaterally authenticated key exchange (UAKE) routines}\label{fig:uake-routines}
 \end{figure}
 
 \begin{table}[H]
+    \centering
     \caption{UAKE RTT comparison}\label{tbl:uake-rtt}
     \begin{tabular}{|c|c|c|}
         \hline
@@ -1129,44 +1138,46 @@ Using KEM for authentication is especially interesting within the context of pos
 Mutually authenticated key exchange is largely identical to unilaterally authenticated key exchange, except for that client authentication is required. This means that client possesses server's long-term public key and its own long-term secret key, while the server possesses client's long-term public key and its own long-term secret key. The session key is derived by applying \texttt{KDF} onto the concatenation of shared secrets produced under the ephemeral keypair, server's long-term keypair, and client's long-term keypair, in this order.
 
 \begin{figure}[H]
-    \begin{floatrow}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\texttt{AKE}_\texttt{C}(\pk_S, \sk_C)$}\label{alg:ake-client}
-                \begin{algorithmic}[1]
-                    \Require Server's long-term $\pk_S$
-                    \Require Client's long-term $\sk_C$
-                    \State $(\pk_e, \sk_e) \leftsample \keygen()$
-                    \State $(c_S, K_S) \leftsample \encap(\pk_S)$
-                    \State $\texttt{send}(\pk_e, c_S)$
-                    \State $(c_e, c_C) \leftarrow \texttt{read}()$
-                    \State $K_e \leftarrow \decap(\sk_e, c_e)$
-                    \State $K_C \leftarrow \decap(\sk_e, c_C)$
-                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S \Vert K_C)$
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{AKE Client}}
-        \ffigbox{
-            \begin{algorithm}[H]
-                \caption{$\texttt{AKE}_\texttt{S}(\sk_S, \pk_C)$}\label{alg:akex-server}
-                \begin{algorithmic}[1]
-                    \Require Server's long-term $\sk_S$
-                    \Require Client's long-term $\pk_C$
-                    \State $(\pk_e, c_S) \leftarrow \texttt{read}()$
-                    \State $K_S \leftarrow \decap(\sk_S, c_S)$
-                    \State $(c_e, K_e) \leftsample \encap(\pk_e)$
-                    \State $(c_C, K_C) \leftsample \encap(\pk_C)$
-                    \State $\texttt{send}(c_e, c_C)$
-                    \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S \Vert K_C)$
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-        }{\caption{AKE Server}}
-    \end{floatrow}
+    \centering
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{AKE}_\texttt{C}(\pk_S, \sk_C)$}
+            \begin{algorithmic}[1]
+                \Require Server's long-term $\pk_S$
+                \Require Client's long-term $\sk_C$
+                \State $(\pk_e, \sk_e) \leftsample \keygen()$
+                \State $(c_S, K_S) \leftsample \encap(\pk_S)$
+                \State $\texttt{send}(\pk_e, c_S)$
+                \State $(c_e, c_C) \leftarrow \texttt{read}()$
+                \State $K_e \leftarrow \decap(\sk_e, c_e)$
+                \State $K_C \leftarrow \decap(\sk_e, c_C)$
+                \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S \Vert K_C)$
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \begin{minipage}[b]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{AKE}_\texttt{S}(\sk_S, \pk_C)$}
+            \begin{algorithmic}[1]
+                \Require Server's long-term $\sk_S$
+                \Require Client's long-term $\pk_C$
+                \State $(\pk_e, c_S) \leftarrow \texttt{read}()$
+                \State $K_S \leftarrow \decap(\sk_S, c_S)$
+                \State $(c_e, K_e) \leftsample \encap(\pk_e)$
+                \State $(c_C, K_C) \leftsample \encap(\pk_C)$
+                \State $\texttt{send}(c_e, c_C)$
+                \State $K \leftarrow \texttt{KDF}(K_e \Vert K_S \Vert K_C)$
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    
+    \caption{Mutually authenticated key exchange (AKE) routines}\label{fig:ake-routines}
 \end{figure}
 
 \begin{table}[H]
+    \centering
     \caption{AKE RTT comparison}\label{tbl:ake-rtt}
     \begin{tabular}{|c|c|c|}
         \hline
