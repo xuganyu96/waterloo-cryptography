@@ -21,6 +21,7 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage{caption}
+\usepackage{multirow}
 % \usepackage[demo]{graphicx}
 
 %%%% 3. AUTHOR, INSTITUTE %%%%
@@ -796,176 +797,117 @@ Compared to the $U^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in
 
 Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the ``encrypt-then-MAC'' transformation over the $U^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the ML-KEM-ETM can be found in table \ref{tbl:kem-performance}
 
-\begin{table}
+\begin{table}[h]
     \centering
+    \footnotesize
     \caption{CPU cycles of each KEM routine}\label{tbl:kem-performance}
-    \begin{tabular}{|c|c|c|c|c|c|c|c|}
-        \hline\hline
-        \multicolumn{8}{|c|}{\bf ML-KEM-512} \\
+
+    \begin{tabular}[t]{|cc|}
         \hline
-        \multicolumn{2}{|c|}{public key size} 
-        & \multicolumn{2}{|c|}{800 bytes}
-        & \multicolumn{4}{|c|}{ \keygen} \\
+        \multicolumn{2}{|c|}{\bf ML-KEM-512} \\
         \hline
-        \multicolumn{2}{|c|}{secret key size} 
-        & \multicolumn{2}{|c|}{1632 bytes} 
-        & \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{75945} \\
+        \multicolumn{2}{|c|}{size parameters (bytes)} \\
+        pubkey size & 800 \\
+        seckey size & 1632 \\
+        ciphertext size & 768 \\
         \hline
-        \multicolumn{2}{|c|}{ciphertext size} 
-        & \multicolumn{2}{|c|}{768 bytes} 
-        & \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{76171} \\
+        \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
+        Median & 75945 \\
+        Average & 76171 \\
         \hline
-        \multicolumn{4}{|c|}{ \encap}
-        & \multicolumn{4}{|c|}{\decap} \\
+    \end{tabular}
+    \begin{tabular}[t]{|c|c|c|c|c|}
         \hline
-        \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{91467} 
-        & \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{121185} \\
+        \multirow{2}{*}{KEM variant} 
+        & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
+        & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
+        \cline{2-5}
+        & Median & Average & Median & Average \\
         \hline
-        \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{92065} 
-        & \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{121650} \\
+        \texttt{ML-KEM-512} & 91467 & 92065 & 121185 & 121650 \\
         \hline
-        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + Poly1305}
-        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + GMAC} \\
+        \texttt{Kyber512} & ??? & ??? & ??? & ??? \\
         \hline
-        \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$}
-        & \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$} \\
+        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & 93157 & 93626 & 33733 & 33908 \\
         \hline
-        Median & 93157 & Median & 33773 
-        & Median & 97369 & Median & 37725 \\
+        $\texttt{ML-KEM-512}^+$ w/ GMAC & 97369 & 97766 & 37725 & 37831 \\
         \hline
-        Average & 93626 & Average & 33908 
-        & Average & 97766 & Average & 37831 \\
+        $\texttt{ML-KEM-512}^+$ w/ CMAC & 99739 & 99959 & 40117 & 39943 \\
         \hline
-        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + CMAC}
-        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-512 + KMAC} \\
+        $\texttt{ML-KEM-512}^+$ w/ KMAC & 101009 & 101313 & 40741 & 40916 \\
         \hline
-        \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$}
-        & \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$} \\
+    \end{tabular}\vspace{0.3cm}
+
+    \begin{tabular}[t]{|cc|}
         \hline
-        Median & 99839 & Median & 40117 & Median & 101009 & Median & 40741 \\
+        \multicolumn{2}{|c|}{\bf ML-KEM-768} \\
         \hline
-        Average & 99959 & Average & 39943 & Average & 101313 & Average & 40916 \\
-        \hline\hline
-        \multicolumn{8}{|c|}{\bf ML-KEM-768} \\
+        \multicolumn{2}{|c|}{size parameters (bytes)} \\
+        pubkey size & 1184 \\
+        seckey size & 2400 \\
+        ciphertext size & 1088 \\
         \hline
-        \multicolumn{2}{|c|}{public key size} 
-        & \multicolumn{2}{|c|}{1184 bytes}
-        & \multicolumn{4}{|c|}{ \keygen} \\
+        \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
+        Median & 129895 \\
+        Average & 130650 \\
         \hline
-        \multicolumn{2}{|c|}{secret key size} 
-        & \multicolumn{2}{|c|}{2400 bytes} 
-        & \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{129895} \\
+    \end{tabular}
+    \begin{tabular}[t]{|c|c|c|c|c|}
         \hline
-        \multicolumn{2}{|c|}{ciphertext size} 
-        & \multicolumn{2}{|c|}{1088 bytes} 
-        & \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{130650} \\
+        \multirow{2}{*}{KEM variant} 
+        & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
+        & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
+        \cline{2-5}
+        & Median & Average & Median & Average \\
         \hline
-        \multicolumn{4}{|c|}{ \encap}
-        & \multicolumn{4}{|c|}{\decap} \\
+        \texttt{ML-KEM-768} & 136405 & 147400 & 186445 & 187529 \\
         \hline
-        \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{146405} 
-        & \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{186445} \\
+        \texttt{Kyber768} & ??? & ??? & ??? & ??? \\
         \hline
-        \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{147400} 
-        & \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{187529} \\
+        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
         \hline
-        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + Poly1305}
-        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + GMAC} \\
+        $\texttt{ML-KEM-768}^+$ w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
         \hline
-        \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$}
-        & \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$} \\
+        $\texttt{ML-KEM-768}^+$ w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
         \hline
-        Median & 146405 & Median & 43315 
-        & Median & 149525 & Median & 46513 \\
+        $\texttt{ML-KEM-768}^+$ w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
         \hline
-        Average & 146860 & Average & 43463 
-        & Average & 150128 & Average & 46706 \\
+    \end{tabular}\vspace{0.3cm}
+
+    \begin{tabular}[t]{|cc|}
         \hline
-        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + CMAC}
-        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-768 + KMAC} \\
+        \multicolumn{2}{|c|}{\bf ML-KEM-1024} \\
         \hline
-        \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$}
-        & \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$} \\
+        \multicolumn{2}{|c|}{size parameters (bytes)} \\
+        pubkey size & 1568 \\
+        seckey size & 3168 \\
+        ciphertext size & 1568 \\
         \hline
-        Median & 153139 & Median & 49841 & Median & 155219 & Median & 52415 \\
+        \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
+        Median & 194921 \\
+        Average & 195465 \\
         \hline
-        Average & 153735 & Average & 50074 & Average & 155848 & Average & 52611 \\
-        \hline\hline
-        \multicolumn{8}{|c|}{\bf ML-KEM-1024} \\
+    \end{tabular}
+    \begin{tabular}[t]{|c|c|c|c|c|}
         \hline
-        \multicolumn{2}{|c|}{public key size} 
-        & \multicolumn{2}{|c|}{1568 bytes}
-        & \multicolumn{4}{|c|}{ \keygen} \\
+        \multirow{2}{*}{KEM variant} 
+        & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
+        & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
+        \cline{2-5}
+        & Median & Average & Median & Average \\
         \hline
-        \multicolumn{2}{|c|}{secret key size} 
-        & \multicolumn{2}{|c|}{3168 bytes} 
-        & \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{194921} \\
+        \texttt{ML-KEM-1024} & 199185 & 199903 & 246245 & 247320 \\
         \hline
-        \multicolumn{2}{|c|}{ciphertext size} 
-        & \multicolumn{2}{|c|}{1568 bytes} 
-        & \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{195465} \\
+        \texttt{Kyber1024} & ??? & ??? & ??? & ??? \\
         \hline
-        \multicolumn{4}{|c|}{ \encap}
-        & \multicolumn{4}{|c|}{\decap} \\
+        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
         \hline
-        \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{199185} 
-        & \multicolumn{2}{|c|}{Median} 
-        & \multicolumn{2}{|c|}{246245} \\
+        $\texttt{ML-KEM-1024}^+$ w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
         \hline
-        \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{199903} 
-        & \multicolumn{2}{|c|}{Average} 
-        & \multicolumn{2}{|c|}{247320} \\
+        $\texttt{ML-KEM-1024}^+$ w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
         \hline
-        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + Poly1305}
-        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + GMAC} \\
+        $\texttt{ML-KEM-1024}^+$ w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
         \hline
-        \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$}
-        & \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$} \\
-        \hline
-        Median & 205763 & Median & 51375 
-        & Median & 208805 & Median & 54573 \\
-        \hline
-        Average & 206499 & Average & 51562 
-        & Average & 209681 & Average & 54780 \\
-        \hline
-        \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + CMAC}
-        & \multicolumn{4}{|c|}{\bf ML-KEM-ETM-1024 + KMAC} \\
-        \hline
-        \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$}
-        & \multicolumn{2}{|c|}{ $\encap$}
-        & \multicolumn{2}{|c|}{$\decap$} \\
-        \hline
-        Median & 213667 & Median & 59175 & Median & 216761 & Median & 62269 \\
-        \hline
-        Average & 214483 & Average & 59408 & Average & 217468 & Average & 62516 \\
-        \hline\hline
     \end{tabular}
 \end{table}
 
