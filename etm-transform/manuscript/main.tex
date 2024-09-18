@@ -954,42 +954,68 @@ Note that in our implementation, a key derivation function (\texttt{KDF}) is app
 
 The RTT comparison is summarized in table \ref{tbl:ke-rtt}
 
-\begin{table}[H]
+\begin{table}[h]
     \centering
     \caption{Unauthenticated key exchange RTT comparison}\label{tbl:ke-rtt}
-    \begin{tabular}{|c|c|c|}
+
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        KEM & median RTT ($\us$) & average RTT ($\us$) \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
         \hline
-        ML-KEM-512 & 92 & 97 \\
+        \texttt{ML-KEM-512} & ??? & ??? & 92 & 97 \\
         \hline
-        ML-KEM-512 + Poly1305 & 70 & 72 \\
+        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & ??? & ??? & 70 & 72 \\
         \hline
-        ML-KEM-512 + GMAC & 73 & 76 \\
+        $\texttt{ML-KEM-512}^+$ w/ GMAC & ??? & ??? & 73 & 76 \\
         \hline
-        ML-KEM-512 + CMAC & 75 & 79 \\
+        $\texttt{ML-KEM-512}^+$ w/ CMAC & ??? & ??? & 75 & 79 \\
         \hline
-        ML-KEM-512 + KMAC & 76 & 78 \\
-        \hline 
-        ML-KEM-768 & 135 & 140 \\
+        $\texttt{ML-KEM-512}^+$ w/ KMAC & ??? & ??? & 76 & 78 \\
         \hline
-        ML-KEM-768 + Poly1305 & 99 & 104 \\
+    \end{tabular}\vspace{0.3cm}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        ML-KEM-768 + GMAC & 101 & 105 \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
         \hline
-        ML-KEM-768 + CMAC & 103 & 109 \\
+        \texttt{ML-KEM-768} & ??? & ??? & 135 & 140 \\
         \hline
-        ML-KEM-768 + KMAC & 103 & 107 \\
+        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & ??? & ??? & 99 & 104 \\
         \hline
-        ML-KEM-1024 & 193 & 199 \\
+        $\texttt{ML-KEM-768}^+$ w/ GMAC & ??? & ??? & 101 & 105 \\
         \hline
-        ML-KEM-1024 + Poly1305 & 138 & 141 \\
+        $\texttt{ML-KEM-768}^+$ w/ CMAC & ??? & ??? & 103 & 109 \\
         \hline
-        ML-KEM-1024 + GMAC & 140 & 145 \\
+        $\texttt{ML-KEM-768}^+$ w/ KMAC & ??? & ??? & 103 & 107 \\
         \hline
-        ML-KEM-1024 + CMAC & 143 & 148 \\
+    \end{tabular}\vspace{0.3cm}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        ML-KEM-1024 + KMAC & 144 & 149 \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
+        \hline
+        \texttt{ML-KEM-1024} & ??? & ??? & 193 & 199 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & ??? & ??? & 138 & 141 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ GMAC & ??? & ??? & 140 & 145 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ CMAC & ??? & ??? & 143 & 148 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ KMAC & ??? & ??? & 144 & 149 \\
         \hline
     \end{tabular}
 \end{table}
@@ -1039,39 +1065,64 @@ Using KEM for authentication is especially interesting within the context of pos
 \begin{table}[H]
     \centering
     \caption{UAKE RTT comparison}\label{tbl:uake-rtt}
-    \begin{tabular}{|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        KEM & median RTT ($\us$) & average RTT ($\us$) \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
         \hline
-        ML-KEM-512 & 145 & 151 \\
+        \texttt{ML-KEM-512} & ??? & ??? & 145 & 151 \\
         \hline
-        ML-KEM-512 + Poly1305 & 103 & 106 \\
+        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & ??? & ??? & 103 & 106 \\
         \hline
-        ML-KEM-512 + GMAC & 106 & 110 \\
+        $\texttt{ML-KEM-512}^+$ w/ GMAC & ??? & ??? & 106 & 110 \\
         \hline
-        ML-KEM-512 + CMAC & 108 & 112 \\
+        $\texttt{ML-KEM-512}^+$ w/ CMAC & ??? & ??? & 108 & 112 \\
         \hline
-        ML-KEM-512 + KMAC & 109 & 113 \\
-        \hline 
-        ML-KEM-768 & 215 & 222 \\
+        $\texttt{ML-KEM-512}^+$ w/ KMAC & ??? & ??? & 109 & 113 \\
         \hline
-        ML-KEM-768 + Poly1305 & 144 & 150 \\
+    \end{tabular}\vspace{0.3cm}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        ML-KEM-768 + GMAC & 149 & 156 \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
         \hline
-        ML-KEM-768 + CMAC & 153 & 160 \\
+        \texttt{ML-KEM-768} & ??? & ??? & 215 & 222 \\
         \hline
-        ML-KEM-768 + KMAC & 154 & 159 \\
+        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & ??? & ??? & 144 & 150 \\
         \hline
-        ML-KEM-1024 & 310 & 318 \\
+        $\texttt{ML-KEM-768}^+$ w/ GMAC & ??? & ??? & 149 & 156 \\
         \hline
-        ML-KEM-1024 + Poly1305 & 202 & 209 \\
+        $\texttt{ML-KEM-768}^+$ w/ CMAC & ??? & ??? & 153 & 160 \\
         \hline
-        ML-KEM-1024 + GMAC & 212 & 228 \\
+        $\texttt{ML-KEM-768}^+$ w/ KMAC & ??? & ??? & 154 & 159 \\
         \hline
-        ML-KEM-1024 + CMAC & 212 & 218 \\
+    \end{tabular}\vspace{0.3cm}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        ML-KEM-1024 + KMAC & 213 & 220 \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
+        \hline
+        \texttt{ML-KEM-1024} & ??? & ??? & 310 & 318 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & ??? & ??? & 202 & 209 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ GMAC & ??? & ??? & 212 & 228 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ CMAC & ??? & ??? & 212 & 218 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ KMAC & ??? & ??? & 213 & 220 \\
         \hline
     \end{tabular}
 \end{table}
@@ -1118,42 +1169,67 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
     \caption{Mutually authenticated key exchange (AKE) routines}\label{fig:ake-routines}
 \end{figure}
 
-\begin{table}[H]
+\begin{table}[h]
     \centering
     \caption{AKE RTT comparison}\label{tbl:ake-rtt}
-    \begin{tabular}{|c|c|c|}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        KEM & median RTT ($\us$) & average RTT ($\us$) \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
         \hline
-        ML-KEM-512 & 200 & 213 \\
+        \texttt{ML-KEM-512} & ??? & ??? & 220 & 213 \\
         \hline
-        ML-KEM-512 + Poly1305 & 133 & 138 \\
+        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & ??? & ??? & 133 & 138 \\
         \hline
-        ML-KEM-512 + GMAC & 139 & 143 \\
+        $\texttt{ML-KEM-512}^+$ w/ GMAC & ??? & ??? & 139 & 143 \\
         \hline
-        ML-KEM-512 + CMAC & 143 & 148 \\
+        $\texttt{ML-KEM-512}^+$ w/ CMAC & ??? & ??? & 143 & 148 \\
         \hline
-        ML-KEM-512 + KMAC & 145 & 151 \\
-        \hline 
-        ML-KEM-768 & 294 & 301 \\
+        $\texttt{ML-KEM-512}^+$ w/ KMAC & ??? & ??? & 145 & 151 \\
         \hline
-        ML-KEM-768 + Poly1305 & 190 & 196 \\
+    \end{tabular}\vspace{0.3cm}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        ML-KEM-768 + GMAC & 197 & 210 \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
         \hline
-        ML-KEM-768 + CMAC & 202 & 208 \\
+        \texttt{ML-KEM-768} & ??? & ??? & 294 & 301 \\
         \hline
-        ML-KEM-768 + KMAC & 204 & 210 \\
+        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & ??? & ??? & 190 & 196 \\
         \hline
-        ML-KEM-1024 & 512 & 511 \\
+        $\texttt{ML-KEM-768}^+$ w/ GMAC & ??? & ??? & 197 & 210 \\
         \hline
-        ML-KEM-1024 + Poly1305 & 266 & 273 \\
+        $\texttt{ML-KEM-768}^+$ w/ CMAC & ??? & ??? & 202 & 208 \\
         \hline
-        ML-KEM-1024 + GMAC & 273 & 282 \\
+        $\texttt{ML-KEM-768}^+$ w/ KMAC & ??? & ??? & 204 & 210 \\
         \hline
-        ML-KEM-1024 + CMAC & 280 & 287 \\
+    \end{tabular}\vspace{0.3cm}
+    \begin{tabular}{|c|c|c|c|c|}
         \hline
-        ML-KEM-1024 + KMAC & 282 & 288 \\
+        \multirow{2}{*}{KEM variant}
+        & \multirow{2}{*}{Client TX size}
+        & \multirow{2}{*}{Server TX size}
+        & \multicolumn{2}{|c|}{RTT time ($\us$)} \\
+        \cline{4-5}
+        & & & Median & Average \\
+        \hline
+        \texttt{ML-KEM-1024} & ??? & ??? & 512 & 511 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & ??? & ??? & 266 & 273 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ GMAC & ??? & ??? & 273 & 282 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ CMAC & ??? & ??? & 280 & 287 \\
+        \hline
+        $\texttt{ML-KEM-1024}^+$ w/ KMAC & ??? & ??? & 282 & 288 \\
         \hline
     \end{tabular}
 \end{table}
