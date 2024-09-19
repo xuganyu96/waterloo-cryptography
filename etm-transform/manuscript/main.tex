@@ -226,30 +226,6 @@ The security of a MAC is defined in an adversarial game in which an adversary, w
 
 The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
 
-We are specifically interested in one-time MAC, whose security goal is identical to EUF-CMA described above, except for the constraint that each secret key can be used to sign exactly one distinct message. This translates to an attack model in which the signing oracle will only answer one signing query. Restricting to one-time usage allows for more efficient MAC constructions. One popular way to build one-time MAC is with universal hash functions (UHF), where each instance is parameterized by a finite field $\mathbb{F}$ and a maximal message length $L \geq 0$. The secret key is a pair of field elements $(k_1, k_2) \in \mathbb{F} \times \mathbb{F}$, and each message is a tuple of up to $L$ field elements $m = (m_1, m_2, \ldots, m_l) \in \mathbb{F}^{\leq L}$. To compute the tag:
-
-\begin{equation*}
-    \mac((k_1, k_2), m) = H_\text{xpoly}(k_1, m) + k_2
-\end{equation*}
-
-Where the $H_\text{xpoly}$ is a universal hash function:
-
-\begin{equation*}
-    H_\text{xpoly}(k_1, (m_1, m_2, \ldots, m_l)) = k_1^l \cdot m_1 + k_1^{l-1} \cdot m_2 + \ldots + k_1 \cdot m_l
-\end{equation*}
-
-\begin{lemma}
-    For all adversaries (including unbounded ones) against the MAC described above, the probability of winning the one-time EUF-CMA game is at most:
-
-    \begin{equation*}
-        \adv_\text{OT-EUF-CMA}(A) \leq \frac{L+1}{\norm{\mathbb{F}}}
-    \end{equation*}
-\end{lemma}
-\begin{proof}
-    See \cite{boneh2020graduate} lemma 7.11
-    % TODO: need more detailed citations
-\end{proof}
-
 \subsection{Related works}
 The Fujisaki-Okamoto transformation \cite{fujisaki1999secure}\cite{hofheinz2017modular} is a family of generic transformations that takes as input a PKE with weaker security, such as OW-CPA, and outputs a PKE or KEM with IND-CCA2 security. The key ingredient in achieving ciphertext non-malleability is with \emph{de-randomization} and \emph{re-encryption}, which first transform a OW-CPA PKE into a \emph{rigid} PKE, then transform the rigid PKE into a KEM. More specifically: \begin{enumerate}
     \item \emph{de-randomization} means that a randomized encryption routine $c \leftsample \encrypt(\pk, m)$ is made into a deterministic encryption routine by deriving randomization coin pseudorandomly: $c \leftarrow \encrypt(\pk, m, r = H(m))$ for some hash function $H$
@@ -409,7 +385,7 @@ For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphert
     \caption{Every decapsulation oracle can be converted into a plaintext-checking oracle}\label{fig:pco-using-decap-oracle}
 \end{figure}
 
-However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle (algorithm \ref{alg:pco-using-decap-oracle}), so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
+However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle (see figure \ref{fig:pco-using-decap-oracle}), so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
 
 On the other hand, if the underlying PKE is one-way secure against plaintext-checking attack that makes $q$ plaintext-checking queries, then ``encrypt-then-MAC'' KEM is semantically secure under chosen ciphertext attacks making the same number of decapsulation queries:
 
@@ -428,98 +404,96 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
 \end{lemma}
 
 \subsection{Proof of theorem \ref{thm:ow-pca-implies-kem-ind-cca2}}
-% TODO: write some intuition first?
+We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of game. A summary of the the sequence of games can be found in figure \ref{fig:etm-ind-cc2-sequence-of-games} and \ref{fig:ow-pca-simulates-game-3}. From a high level we made three incremental modifications to the IND-CCA2 game for $\kem_\etm$: replace true decapsulation with simulated decapsulation, replace the pseudorandom MAC key $k^\ast \leftarrow G(m^\ast)$ with a truly random MAC key $k^\ast \leftsample \mathcal{K}_\mac$, and finally replace pseudorandom shared secret $K_0 \leftarrow H(m^\ast, c^\prime)$ with a truly random shared secret $K_0 \leftsample \mathcal{K}_\kem$. A OW-PCA adversary can then simulate the modified IND-CCA2 game for the KEM adversary, and the advantage of the OW-PCA adversary is associated with the probability of certain behaviors of the KEM adversary.
+
+\begin{figure}[h]
+    \centering
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{IND-CCA2} game for $\kem_\etm$}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \kem_\etm\texttt{.}\keygen()$
+                \State $m^\ast \leftsample \mathcal{M}$
+                \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m^\ast)$
+                \State $k^\ast \leftarrow G(m^\ast)$
+                    \Comment{Game 0-1}
+                \State $k^\ast \leftsample \mathcal{K}_\mac$
+                    \Comment{Game 2-3}
+                \State $t \leftarrow \mac(k^\ast, c^\prime)$
+                \State $c^\ast \leftarrow c^\prime \Vert t$
+                \State $K_0 \leftarrow H(m^\ast, c^\prime)$
+                    \Comment{Game 0-2}
+                \State $K_0 \leftsample \mathcal{K}_\kem$
+                    \Comment{Game 3}
+                \State $K_1 \leftsample \mathcal{K}_\kem$
+                \State $b \leftsample \{0,1\}$
+                \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap}(\pk, c^\ast, K_b)$
+                    \Comment{Game 0}
+                \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap_1}(\pk, c^\ast, K_b)$
+                    \Comment{Game 1-3}
+                \State \Return $\llbrack \hat{b} = b \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+        \begin{algorithm}[H]
+            \caption*{$\mathcal{O}^G(m)$}
+            \begin{algorithmic}[1]
+                \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
+                    \State \Return $\tilde{k}$
+                \EndIf
+                \State $k \leftsample \mathcal{K}_\mac$
+                \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
+                \State \Return $k$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \begin{minipage}[t]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\mathcal{O}^\decap(c)$}
+            \begin{algorithmic}[1]
+                \State $(c^\prime, t) \leftarrow c$
+                \State $\hat{m} = \decrypt(\sk^\prime, c^\prime)$
+                \State $\hat{k} \leftarrow G(\hat{m})$
+                \If{$\mac(\hat{k}, c^\prime) = t$}
+                    \State $K \leftarrow H(\hat{m}, c^\prime)$
+                \Else 
+                    \State $K \leftarrow H(z, c^\prime)$
+                \EndIf 
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+        \vspace{-0.5cm}
+        \begin{algorithm}[H]
+            \caption*{$\mathcal{O}^\decap_1(c)$}
+            \begin{algorithmic}[1]
+                \State $(c^\prime, t) \leftarrow c$
+                \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
+                    \tilde{m} = \decrypt(\sk^\prime, c^\prime)
+                    \land \mac(\tilde{k}, c^\prime) = t
+                $}
+                    \State $K \leftarrow H(\tilde{m}, c^\prime)$
+                \Else
+                    \State $K \leftarrow H(z, c^\prime)$
+                \EndIf
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+        \vspace{-0.5cm}
+        \begin{algorithm}[H]
+            \caption*{$\mathcal{O}^H(m, c)$}
+            \begin{algorithmic}[1]
+                \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H : \tilde{m} = m \land \tilde{c} = c$}
+                    \State \Return $\tilde{K}$
+                \EndIf
+                \State $K \leftsample \mathcal{K}_\kem$
+                \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{Sequence of games}\label{fig:etm-ind-cc2-sequence-of-games}
+\end{figure}
+
 \begin{proof}
-    We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of games. The sequence of games is summarized in figure \ref{fig:etm-ind-cc2-sequence-of-games}.
-
-    \begin{figure}[h]
-        \centering
-        \begin{minipage}[t]{0.5\textwidth}
-            \begin{algorithm}[H]
-                \caption*{\texttt{IND-CCA2} game for $\kem_\etm$}
-                \begin{algorithmic}[1]
-                    \State $(\pk, \sk) \leftsample \kem_\etm\texttt{.}\keygen()$
-                    \State $m^\ast \leftsample \mathcal{M}$
-                    \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m^\ast)$
-                    \State $k^\ast \leftarrow G(m^\ast)$
-                        \Comment{Game 0-1}
-                    \State $k^\ast \leftsample \mathcal{K}_\mac$
-                        \Comment{Game 2-3}
-                    \State $t \leftarrow \mac(k^\ast, c^\prime)$
-                    \State $c^\ast \leftarrow c^\prime \Vert t$
-                    \State $K_0 \leftarrow H(m^\ast, c^\prime)$
-                        \Comment{Game 0-2}
-                    \State $K_0 \leftsample \mathcal{K}_\kem$
-                        \Comment{Game 3}
-                    \State $K_1 \leftsample \mathcal{K}_\kem$
-                    \State $b \leftsample \{0,1\}$
-                    \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap}(\pk, c^\ast, K_b)$
-                        \Comment{Game 0}
-                    \State $\hat{b} \leftarrow A^{\mathcal{O}^\decap_1}(\pk, c^\ast, K_b)$
-                        \Comment{Game 1-3}
-                    \State \Return $\llbrack \hat{b} = b \rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-            \begin{algorithm}[H]
-                \caption*{$\mathcal{O}^G(m)$}
-                \begin{algorithmic}[1]
-                    \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : \tilde{m} = m$}
-                        \State \Return $\tilde{k}$
-                    \EndIf
-                    \State $k \leftsample \mathcal{K}_\mac$
-                    \State $\mathcal{L}^G \leftarrow \mathcal{L}^G \cup \{(m, k)\}$
-                    \State \Return $k$
-                \end{algorithmic}
-            \end{algorithm}
-        \end{minipage}
-        \begin{minipage}[t]{0.49\textwidth}
-            \begin{algorithm}[H]
-                \caption*{$\mathcal{O}^\decap(c)$}
-                \begin{algorithmic}[1]
-                    \State $(c^\prime, t) \leftarrow c$
-                    \State $\hat{m} = \decrypt(\sk^\prime, c^\prime)$
-                    \State $\hat{k} \leftarrow G(\hat{m})$
-                    \If{$\mac(\hat{k}, c^\prime) = t$}
-                        \State $K \leftarrow H(\hat{m}, c^\prime)$
-                    \Else 
-                        \State $K \leftarrow H(z, c^\prime)$
-                    \EndIf 
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-            \vspace{-0.5cm}
-            \begin{algorithm}[H]
-                \caption*{$\mathcal{O}^\decap_1(c)$}
-                \begin{algorithmic}[1]
-                    \State $(c^\prime, t) \leftarrow c$
-                    \If{$\exists (\tilde{m}, \tilde{k}) \in \mathcal{L}^G : 
-                        \tilde{m} = \decrypt(\sk^\prime, c^\prime)
-                        \land \mac(\tilde{k}, c^\prime) = t
-                    $}
-                        \State $K \leftarrow H(\tilde{m}, c^\prime)$
-                    \Else
-                        \State $K \leftarrow H(z, c^\prime)$
-                    \EndIf
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-            \vspace{-0.5cm}
-            \begin{algorithm}[H]
-                \caption*{$\mathcal{O}^H(m, c)$}
-                \begin{algorithmic}[1]
-                    \If{$\exists (\tilde{m}, \tilde{c}, \tilde{K}) \in \mathcal{L}^H : \tilde{m} = m \land \tilde{c} = c$}
-                        \State \Return $\tilde{K}$
-                    \EndIf
-                    \State $K \leftsample \mathcal{K}_\kem$
-                    \State $\mathcal{L}^H \leftarrow \mathcal{L}^H \cup \{(m, c, K)\}$
-                    \State \Return $K$
-                \end{algorithmic}
-            \end{algorithm}
-        \end{minipage}
-        \caption{Sequence of games}\label{fig:etm-ind-cc2-sequence-of-games}
-    \end{figure}
-
-
     \emph{Game 0} is the standard IND-CCA2 game for KEMs. The decapsulation oracle $\mathcal{O}^\decap$ executes the decapsulation routine using the challenge keypair and return the results faithfully. The queries made to the hash oracles $\mathcal{O}^G, \mathcal{O}^H$ are recorded to their respective tapes $\mathcal{L}^G, \mathcal{L}^H$.
 
     \emph{Game 1} is identical to game 0 except that the true decapsulation oracle $\mathcal{O}^\decap$ is replaced with a simulated oracle $\mathcal{O}^\decap_1$. Instead of directly decrypting $c^\prime$ as in the decapsulation routine, the simulated oracle searches through the tape $\mathcal{L}^G$ to find a matching query $(\tilde{m}, \tilde{k})$ such that $\tilde{m}$ is the decryption of $c^\prime$. The simulated oracle then uses $\tilde{k}$ to validate the tag $t$ against $c^\prime$.
@@ -539,13 +513,13 @@ Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} naturally flows into an equivalenc
         \adv_{G_0}(A) - \adv_{G_1}(A) \leq q\cdot  \adv_\texttt{OT-MAC}(C)
     \end{equation*}
 
-    \emph{Game 2} is identical to game 1, except that on line 4 of algorithm \ref{alg:game-0}, the challenger samples a uniformly random MAC key $k^\ast \leftsample \mathcal{K}_\mac$ instead of deriving it from $m$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $G$ with the value of $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}]$, then:
+    \emph{Game 2} is identical to game 1, except that the challenger samples a uniformly random MAC key $k^\ast \leftsample \mathcal{K}_\mac$ instead of deriving it from $m^\ast$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $G$ with the value of $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}]$, then:
 
     \begin{equation*}
         \adv_{G_1}(A) - \adv_{G_2}(A) \leq P\left[\texttt{QUERY G}\right]
     \end{equation*}
 
-    \emph{Game 3} is identical to game 2, except that on line 7 of algorithm \ref{alg:game-0}, the challenger samples a uniformly random shared secret $K_0 \leftsample \mathcal{K}_\kem$ instead of deriving it from $m^\ast$ and $c^\prime$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $H$ with $(m^\ast, \cdot)$. Denote the probability that $A$ queries $H$ with $(m^\ast, \cdot)$ by $P[\texttt{QUERY H}]$, then:
+    \emph{Game 3} is identical to game 2, except that the challenger samples a uniformly random shared secret $K_0 \leftsample \mathcal{K}_\kem$ instead of deriving it from $m^\ast$ and $c^\prime$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $H$ with $(m^\ast, \cdot)$. Denote the probability that $A$ queries $H$ with $(m^\ast, \cdot)$ by $P[\texttt{QUERY H}]$, then:
 
     \begin{equation*}
         \adv_{G_2}(A) - \adv_{G_3}(A) \leq P\left[\texttt{QUERY H}\right]
@@ -702,11 +676,80 @@ Our implementation extended from the reference implementation by the PQCrystals 
 \subsection{Choosing a message authenticator}
 For the $\texttt{ML-KEM}^+$ implementation, we instantiated $\mac$ with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{kelsey2016sha}.
 
-% TODO: What is Poly1305
+Poly1305 and GMAC are both Carter-Wegman style authenticators that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC is parameterized by some finite field $\mathbb{F}$ and the maximal message length $L > 0$. Each symmetric key $k = (k_1, k_2) \leftsample \mathbb{F}^2$ is a pair of uniformly ranodm field elements, and the message is parsed into tuples of field elements up to length $L$: $m = (m_1, m_2, \ldots, m_l) \in \mathbb{F}^{\leq L}$. The tag $t$ is computed by evaluating a polynomial whose coefficients the message blocks and whose indeterminate is the key:
 
-% TODO: What is GMAC
+\begin{equation}\label{eq:carter-wegman-one-time-mac}
+    \mac((k_1, k_2), m) = H_\text{xpoly}(k_1, m) + k_2
+\end{equation}
 
-% TODO: What is CMAC
+Where $H_\text{xpoly}$ is given by:
+
+\begin{equation*}
+    H_\text{xpoly}(k_1, m) = k_1^{l+1} + k_1^l \cdot m_1 + k_1^{l-1} \cdot m_2 + \ldots + k_1 \cdot m_l
+\end{equation*}
+
+The authenticator formulated in equation \ref{eq:carter-wegman-one-time-mac} is a one-time MAC. To make the construction many-time secure, a non-repeating nonce $r$ and a PRF is needed:
+
+\begin{equation*}
+    \mac((k_1, k_2), m, r) = H_\text{xpoly}(k_1, m) \oplus \texttt{PRF}(k_2, r)
+\end{equation*}
+
+Specifically, Poly1035 operates in the prime field $\mathbb{F}_q$ where $q = 2^{130} - 5$ whereas GMAC operates in the binary field $\mathbb{F}_{2^{128}}$. In OpenSSL's implementation, standalone Poly1305 is a one-time secure MAC, whereas GMAC uses a nonce and AES as the PRF and is thus many-time secure (in OpenSSL GMAC is AES-256-GCM except all data is fed into the ``associated data'' section and thus not encrypted).
+
+The CMAC is based on the CBC-MAC, where the block chosen is chosen to be AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time. A summary of the computation can be found in figure \ref{fig:aes-256-cmac}
+
+\begin{figure}[h]
+    \centering
+    \begin{minipage}[t]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{Sub-key derivation}
+            \begin{algorithmic}[1]
+                \Require 256-bit key $k$
+                \Require $\texttt{const\_Rb = 0x87}$
+                \State $l \leftarrow \texttt{AES-256}(k, 0^{128})$
+                \If{$\texttt{MostSignificantBit}(l) = 0$}
+                    \State $k_1 \leftarrow \texttt{l {<}{<} 1}$
+                \Else 
+                    \State $k_1 \leftarrow \texttt{l {<}{<} 1} \oplus \texttt{const\_Rb}$
+                \EndIf
+                \If{$\texttt{MostSignificantBit}(k_1) = 0$}
+                    \State $k_2 \leftarrow k_1 \texttt{ {<}{<} 1}$
+                \Else 
+                    \State $k_2 \leftarrow k_1 \texttt{ {<}{<} 1} \oplus \texttt{const\_Rb}$
+                \EndIf
+                \State \Return $k_1, k_2$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.49\textwidth}
+        \begin{algorithm}[H]
+            \caption*{CMAC(k, m)}
+            \begin{algorithmic}[1]
+                \Require 256-bit symmetric key $k$
+                \State $(k_1, k_2) \leftarrow \texttt{deriveSubKey}(k)$
+                \State $n \leftarrow \left\lceil \texttt{bytesLen}(m) / 16\right\rceil$
+                \If{$n = 0$}
+                    \State $n \leftarrow 1$
+                    \State $m_\texttt{last} \leftarrow m_n \oplus k_2$
+                \ElsIf{$\texttt{bytesLen(m)} \mod 16 = 0$}
+                    \State $m_\texttt{last} \leftarrow m_n \oplus k_1$
+                \Else 
+                    \State $m_\texttt{last} \leftarrow m_n \oplus k_2$
+                \EndIf
+
+                \State $x = 0^{128}$
+                \For{$i \in \{1, 2, \ldots, n-1\}$}
+                    \State $y \leftarrow x \oplus m_i$
+                    \State $x \leftarrow \texttt{AES-256}(k, y)$
+                \EndFor
+                \State $y \leftarrow m_\texttt{last} \oplus x$
+                \State $t \leftarrow \texttt{AES-256}(k, y)$
+                \State \Return $t$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{AES-256 CMAC}\label{fig:aes-256-cmac}
+\end{figure}
 
 % TODO: What is KMAC
 
