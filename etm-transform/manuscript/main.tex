@@ -613,9 +613,9 @@ We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
 \end{proof}
 
 \section{Implementation}\label{sec:implementation}
-Originally known as Kyber \cite{bos2018crystals}\cite{avanzi2019crystals}, ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized in FIPS 203 by NIST. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}.\keygen, \texttt{K-PKE}.\encrypt, \texttt{K-PKE}.\decrypt$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine suffers from computational inefficiency.
+ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. Also worth noting is the modification to CRYSTALS-Kyber (as presented in its third round submission to NIST's PQC) before it is standardized: Kyber constructed its KEM routines using the $U^{\not\bot}$ variant of the Fujisaki-Okamoto transform, where the shared secret is derived from hashing both the plaintext and the ciphertext; on the other hand, ML-KEM used the $U^{\not\bot}_m$ variant, where the shared secret is derived from hasing the plaintext alone.
 
-We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment.
+We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment
 
 A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (TODO: citation). The ``encrypt-then-MAC'' routines are described in figure \ref{fig:ml-kem-plus-routines}.
 
@@ -696,7 +696,7 @@ The authenticator formulated in equation \ref{eq:carter-wegman-one-time-mac} is 
 
 Specifically, Poly1035 operates in the prime field $\mathbb{F}_q$ where $q = 2^{130} - 5$ whereas GMAC operates in the binary field $\mathbb{F}_{2^{128}}$. In OpenSSL's implementation, standalone Poly1305 is a one-time secure MAC, whereas GMAC uses a nonce and AES as the PRF and is thus many-time secure (in OpenSSL GMAC is AES-256-GCM except all data is fed into the ``associated data'' section and thus not encrypted).
 
-The CMAC is based on the CBC-MAC, where the block chosen is chosen to be AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time. A summary of the computation can be found in figure \ref{fig:aes-256-cmac}
+CMAC is based on the CBC-MAC with the block cipher instantiated from AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time. A summary of the computation can be found in figure \ref{fig:aes-256-cmac}
 
 \begin{figure}[h]
     \centering
@@ -751,76 +751,57 @@ The CMAC is based on the CBC-MAC, where the block chosen is chosen to be AES-256
     \caption{AES-256 CMAC}\label{fig:aes-256-cmac}
 \end{figure}
 
-% TODO: What is KMAC
+KMAC is defined in NIST SP 800-185 to be based on the family of sponge functions with Keccak permutaiton as the underlying function. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length and 128 bits for tag size for consistency with other authenticators.
 
-% TODO: We benchmarked MAC performance computing tags on various sizes of ML-KEM ciphertexts
+To isolate the performance characteristics of each authenticator in our instantiation of $\texttt{ML-KEM}^+$, we measured the CPU cycles needed for each authenticator to compute a tag on random inputs whose sizes correspond to the ciphertext sizes of \texttt{ML-KEM}. The measurements are summarized in table \ref{tbl:mac-performance}.
 
 \begin{table}[H]
     \centering
-    \caption{MAC performance}\label{tbl:mac-performance}
-    \begin{tabular}{|c|c|c|c|c|c|c|c|}
+    \footnotesize
+    \caption{CPU cycles needed to compute tag on various input sizes}\label{tbl:mac-performance}
+    \begin{tabular}{|c|c|c|}
         \hline
-        \multicolumn{8}{|c|}{ML-KEM-512} \\
+        \multicolumn{3}{|c|}{\bf Input size: 768 bytes} \\
         \hline
-        \multicolumn{4}{|c|}{Ciphertext size (bytes): }
-        & \multicolumn{4}{|c|}{768} \\
+        MAC & Median & Average \\
         \hline
-        \multicolumn{2}{|c|}{Poly1305} 
-        & \multicolumn{2}{|c|}{GMAC} 
-        & \multicolumn{2}{|c|}{CMAC} 
-        & \multicolumn{2}{|c|}{KMAC} \\
+        Poly1305 & 909 & 2823 \\
         \hline
-        Median & 909 
-        & Median & 3899 
-        & Median & 6291 
-        & Median & 6373\\
+        GMAC & 3899 & 4859 \\
         \hline
-        Average & 2823 
-        & Average & 4859 
-        & Average & 6373 
-        & Average & 7791 \\
+        CMAC & 6291 & 6373 \\
         \hline
+        KMAC & 6373 & 7791 \\
         \hline
-        \multicolumn{8}{|c|}{ML-KEM-768} \\
+    \end{tabular}
+    \begin{tabular}{|c|c|c|}
         \hline
-        \multicolumn{4}{|c|}{Ciphertext size (bytes): }
-        & \multicolumn{4}{|c|}{1088} \\
+        \multicolumn{3}{|c|}{\bf Input size: 1088 bytes} \\
         \hline
-        \multicolumn{2}{|c|}{Poly1305} 
-        & \multicolumn{2}{|c|}{GMAC} 
-        & \multicolumn{2}{|c|}{CMAC} 
-        & \multicolumn{2}{|c|}{KMAC} \\
+        MAC & Median & Average \\
         \hline
-        Median & 961 
-        & Median & 3899 
-        & Median & 7305 
-        & Median & 9697 \\
+        Poly1305 & 961 & 2704 \\
         \hline
-        Average & 2704 
-        & Average & 4827 
-        & Average & 7588 
-        & Average & 9928 \\
+        GMAC & 3899 & 4827 \\
         \hline
+        CMAC & 7305 & 7588 \\
         \hline
-        \multicolumn{8}{|c|}{ML-KEM-1024} \\
+        KMAC & 9697 & 9928 \\
         \hline
-        \multicolumn{4}{|c|}{Ciphertext size (bytes): }
-        & \multicolumn{4}{|c|}{1568} \\
+    \end{tabular}
+    \begin{tabular}{|c|c|c|}
         \hline
-        \multicolumn{2}{|c|}{Poly1305} 
-        & \multicolumn{2}{|c|}{GMAC} 
-        & \multicolumn{2}{|c|}{CMAC} 
-        & \multicolumn{2}{|c|}{KMAC} \\
+        \multicolumn{3}{|c|}{\bf Input size: 1568 bytes} \\
         \hline
-        Median & 1065 
-        & Median & 4055 
-        & Median & 8735 
-        & Median & 11647 \\
+        MAC & Median & Average \\
         \hline
-        Average & 1809 
-        & Average & 5026 
-        & Average & 8772 
-        & Average & 12186 \\
+        Poly1305 & 1065 & 1809 \\
+        \hline
+        GMAC & 4055 & 5026 \\
+        \hline
+        CMAC & 8735 & 8772 \\
+        \hline
+        KMAC & 11647 & 12186 \\
         \hline
     \end{tabular}
 \end{table}
