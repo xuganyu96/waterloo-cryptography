@@ -613,9 +613,9 @@ We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
 \end{proof}
 
 \section{Implementation}\label{sec:implementation}
-ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. Also worth noting is the modification to CRYSTALS-Kyber (as presented in its third round submission to NIST's PQC) before it is standardized: Kyber constructed its KEM routines using the $U^{\not\bot}$ variant of the Fujisaki-Okamoto transform, where the shared secret is derived from hashing both the plaintext and the ciphertext; on the other hand, ML-KEM used the $U^{\not\bot}_m$ variant, where the shared secret is derived from hasing the plaintext alone.
+ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. 
 
-We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment
+We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment. See appendix \ref{sec:ml-kem-and-kyber} for comparison with Kyber's third round submission to NIST's PQC competition.
 
 A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (TODO: citation). The ``encrypt-then-MAC'' routines are described in figure \ref{fig:ml-kem-plus-routines}.
 
@@ -641,8 +641,8 @@ A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (
                 \State $(\overline{K}, r, k) \leftarrow \texttt{XOF}(m \Vert H(\pk))$
                 \State $c^\prime \leftarrow \texttt{K-PKE}.\encrypt(\pk, m, r)$
                 \State $t \leftarrow \mac(k, c^\prime)$
-                \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert t)$
-                \State $c \leftarrow (c^\prime, c)$
+                \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert c^\prime)$
+                \State $c \leftarrow (c^\prime, t)$
                 \State \Return $(c, K)$
             \end{algorithmic}
         \end{algorithm}
@@ -825,6 +825,7 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
 
     \begin{tabular}[t]{|cc|}
         \hline
+        % TODO: this title needs to show that parameters are identical across all variants
         \multicolumn{2}{|c|}{\bf ML-KEM-512} \\
         \hline
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
@@ -849,6 +850,7 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \hline
         \texttt{Kyber512} & 97811 & 98090 & 119937 & 120299 \\
         \hline
+        % ML-KEM+-512
         $\texttt{ML-KEM-512}^+$ w/ Poly1305 & 93157 & 93626 & 33733 & 33908 \\
         \hline
         $\texttt{ML-KEM-512}^+$ w/ GMAC & 97369 & 97766 & 37725 & 37831 \\
@@ -1275,5 +1277,113 @@ In section \ref{sec:main-results}, we showed that if the input PKE is OW-PCA sec
 % - Download abbrev3.bib and crypto.bib from https://cryptobib.di.ens.fr/
 % - Use bilbio.bib for additional references not in the cryptobib database.
 %   If possible, take them from DBLP.
+
+\section{Appendix}\label{sec:appendix}
+\subsection{Performance comparison between $\texttt{ML-KEM}^+$ and Kyber}\label{sec:ml-kem-and-kyber}
+ML-KEM directly evolved from CRYSTALS-Kyber's third round submission to NIST's post quantum cryptography competition. While their IND-CPA subroutines (see figure \ref{fig:k-pke-routines}) are identical, ML-KEM deviated from Kyber by choosing a different variant of the Fujisaki-Okamoto transformation.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{minipage}[t]{0.33\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{K-PKE.KeyGen()}}
+            \begin{algorithmic}[1]
+                \State $A \leftsample R_q^{k \times k}$
+                \State $\mathbf{s} \leftsample \mathcal{X}_{\eta_1}^k$
+                \State $\mathbf{e} \leftsample \mathcal{X}_{\eta_1}^k$
+                \State $\mathbf{t} \leftarrow A\mathbf{s} + \mathbf{e}$
+                \State $\pk \leftarrow (A, \mathbf{t})$
+                \State $\sk \leftarrow \mathbf{s}$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.33\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{K-PKE.Enc(pk, m)}}
+            \begin{algorithmic}[1]
+                \Ensure $\pk = (A, \mathbf{t})$
+                \Ensure $m \in R_2$
+                \State $\mathbf{r} \leftsample \mathcal{X}_{\eta_1}^k$
+                \State $\mathbf{e}_1 \leftsample \mathcal{X}_{\eta_2}^k$
+                \State $e_2 \leftsample \mathcal{X}_{\eta_2}$
+                \State $\mathbf{c}_1 \leftarrow A\mathbf{r} + \mathbf{e}_1$
+                \State $c_2 \leftarrow \mathbf{t}^\intercal \mathbf{r} + e_2 + m \cdot \lfloor \frac{q}{2}\rceil$
+                \State \Return $(\mathbf{c}_1, c_2)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.3\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{K-PKE.Dec(sk, c)}}
+            \begin{algorithmic}[1]
+                \Ensure $c = (\mathbf{c}_1, c_2)$
+                \Ensure $\sk = \mathbf{s}$
+                \State $\hat{m} \leftarrow c_2 - \mathbf{c}_1^\intercal \cdot \mathbf{s}$
+                \State $\hat{m} \leftarrow \texttt{Round}(\hat{m})$
+                \State \Return $\hat{m}$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \caption{\texttt{K-PKE} routines are identical between Kyber and ML-KEM}\label{fig:k-pke-routines}
+\end{figure}
+
+CRYSTALS-Kyber uses the $U^{\not\bot}$ variant, where the shared secret is derived from both the plaintext and the ciphertext. On the other hand, because by using \emph{re-encryption} and \emph{de-randomization}, the PKE is already made \emph{rigid}, the CRYSTALS-Kyber team decided to use the $U^{\not\bot}_m$ variant, where the shared secret is derived from the plaintext alone.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}[t]{0.45\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{KEM.KeyGen()}}
+            \begin{algorithmic}[1]
+                \State $z \leftsample \{0,1\}^{256}$
+                \State $(\pk, \sk^\prime) \leftsample \texttt{PKE.KeyGen}()$
+                \State $\sk \leftarrow (\sk^\prime \Vert \pk \Vert H(\pk) \Vert z)$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+        \begin{algorithm}[H]
+            \caption*{\texttt{KEM.Encap(pk)}}
+            \begin{algorithmic}[1]
+                \State $m \leftsample \{0,1\}^{256}$
+                \State $(\overline{K}, r) \leftarrow G(m \Vert H(\pk))$
+                \State $c \leftarrow \texttt{PKE.Enc}(\pk, m, r)$
+                \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert H(c))$
+                    \Comment{$U^{\not\bot}$}
+                \State $K \leftarrow \overline{K}$
+                    \Comment{$U^{\not\bot}_m$}
+                \State \Return $(c, K)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    \begin{minipage}[t]{0.5\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{KEM.Decap(sk, c)}}
+            \begin{algorithmic}[1]
+                \Ensure $\sk = (\sk^\prime \Vert \pk \Vert H(\pk) \Vert z)$
+                \State $\hat{m} \leftarrow \texttt{PKE.Dec}(\sk^\prime, c)$
+                \State $(\overline{K}, \hat{r}) \leftarrow G(\hat{m} \Vert H(\pk))$
+                \If{$\texttt{PKE.Enc}(\pk, \hat{m}, \hat{r}) = c$}
+                    \State $K \leftarrow \texttt{KDF}(\overline{K}, H(c))$
+                        \Comment{$U^{\not\bot}$}
+                    \State $K \leftarrow \overline{K}$
+                        \Comment{$U^{\not\bot}_m$}
+                \Else 
+                    \State $K \leftarrow \texttt{KDF}(z \Vert H(c))$
+                \EndIf
+                \State \Return $K$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{
+        Kyber uses $U^{\not\bot}$ variant. ML-KEM uses $U^{\not\bot}_m$ variant.
+    }\label{fig:kyber-ml-kem-compare}
+\end{figure}
+
+The reason for ML-KEM to use a different variant of the Fujisaki-Okamoto transformation is two-fold. The first reason is performance: using the $U^{\not\bot}_m$ transformation saves the need to hash the ciphertext, and since Kyber/ML-KEM's performance is mainly bottlenecked by the symmetric components, omitting the hash leads to significant runtime savings (up to 17\% in AVX-2 optimized implementations). The second reason is the simplified security proof and tighter security bounds of the $U^{\not\bot}_m$ variant compared to the $U^{\not\bot}$ variant. We will omit the details of the security proof and refer readers to \cite{hofheinz2017modular}.
+
+In section \ref{sec:implementation}, we mainly compared $\texttt{ML-KEM}^+$ with \texttt{ML-KEM}, but the we would like to point out that, because Kyber uses the $U^{\not\bot}$ variant and needs to hash the ciphertext for deriving the shared secret, the performance advantage of $\texttt{ML-KEM}^+$ over Kyber will be even greater.
 
 \end{document}
