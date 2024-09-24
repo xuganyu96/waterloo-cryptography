@@ -1,7 +1,7 @@
 %%%% 1. DOCUMENTCLASS %%%%
 %
 % TODO: need more thorough references
-% TODO: need better intro and conclusion (but later)
+% TODO: need better conclusion
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
 \documentclass[journal=tches,submission]{iacrtrans}
 %%%% NOTES:
@@ -89,25 +89,38 @@ Faster generic IND-CCA2 secure KEM using ``encrypt-then-MAC''}
 
 %%%% 7. PAPER CONTENT %%%%
 \section{Introduction}
-The Fujisaki-Okamoto transformation \cite{fujisaki1999secure} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works \cite{hofheinz2017modular} extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals}, FrodoKEM \cite{bos2016frodo}, and SABER \cite{d2018saber}.
-% TODO: Mention and cite ML-KEM
+The Fujisaki-Okamoto transformation \cite{DBLP:conf/crypto/FujisakiO99} is a generic construction that takes cryptographic primitives of lesser security and constructs a public-key encryption scheme with indistinguishability under adaptive chosen ciphertext attacks. Later works \cite{hofheinz2017modular}\cite{DBLP:conf/asiacrypt/HovelmannsHM22} extended the original transformation to the construction of key encapsulation mechanism, which has been adopted by many post-quantum schemes such as Kyber \cite{bos2018crystals} (later standardized into ML-KEM \cite{nist2024module}), FrodoKEM \cite{bos2016frodo}, and SABER \cite{d2018saber}.
 
-The current state of the FO transformation enjoys proven tight security bound and quantum resistance \cite{hofheinz2017modular}, but also leaves many open problems. One such problem is the substantial computational cost of using \emph{de-randomization} and \emph{re-encryption} \cite{bernstein2018towards} for providing ciphertext integrity. In many post-quantum schemes, including ML-KEM, the input encryption routine is substantially more expensive than the input decryption routine, so running the encryption as a subroutine dominates the runtime cost of the decapsulation routine. While not the focus of this project, \emph{re-encryption} also introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key, as demonstrated in \cite{ravi2019generic} and \cite{ueno2022curse}.
+The current state of the FO transformation enjoys proven tight security bound and quantum resistance, but also leaves many open problems. One such problem is the substantial computational cost of using \emph{de-randomization} and \emph{re-encryption} \cite{bernstein2018towards} for providing ciphertext integrity. In many post-quantum schemes, including ML-KEM, the input encryption routine is substantially more expensive than the input decryption routine, so running the encryption as a subroutine substantially increases the runtime cost of the decapsulation routine. While not the focus of this project, \emph{re-encryption} also introduces risks of side-channel vulnerabilities that may expose the plaintext or the secret key, as demonstrated in \cite{ravi2019generic} and \cite{ueno2022curse}.
 
 We are inspired by how ciphertext integrity is achieved in symmetric cryptography: given a semantically secure symmetric cipher and an existentially unforgeable message authentication code, combining them using in a pattern called ``encrypt-then-MAC'' provides proven authenticated encryption \cite{bellare2000authenticated}. ``encrypt-then-MAC'' is now the most widely accepted method for doing symmetric encryption as AES-GCM \cite{mcgrew2004galois} and ChaCha20-Poly1305 \cite{nir2018chacha20}.
 
-The main challenge in applying ``encrypt-then-MAC'' to public-key cryptography is the lack of a pre-shared symmetric key. We took inspiration from hybrid public-key encryption schemes (HPKE) such as .We proposed to derive the symmetric key by hashing the plaintext message. In section \ref{sec:main-results}, we prove that under the random oracle model, if the input public-key encryption scheme is one-way secure against plaintext-checking attack and the input message authentication code is one-time existentially unforgeable, then the transformed key encapsulation mechanism is IND-CCA2 secure.
+The main challenge in applying ``encrypt-then-MAC'' to public-key cryptography is the lack of a pre-shared symmetric key. Inspired by hybrid public-key encryption schemes such as \cite{DBLP:conf/crypto/FujisakiO99} and \cite{DBLP:conf/crypto/CramerS98}, we proposed to derive the symmetric key by hashing the plaintext message. In section \ref{sec:main-results}, we prove that under the random oracle model, if the input public-key encryption scheme is one-way secure against plaintext-checking attack and the input message authentication code is one-time existentially unforgeable, then the transformed key encapsulation mechanism is IND-CCA2 secure.
 
-In section \ref{sec:implementation}, we instantiate concrete instances of our constructions by combining Kyber with GMAC and Poly1305. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal runtime overhead in the encapsulation routine and a small increase in ciphertext size.
+In section \ref{sec:implementation}, we instantiate concrete instances of our constructions using ML-KEM. Our experimental results showed that replacing re-encryption with computing authenticator leads to significant performance improvements in the decapsulation routine while incurring only minimal runtime overhead in the encapsulation routine and a small increase in ciphertext size.
 
 \section{Preliminaries and previous results}
 
 \subsection{Public-key encryption scheme}
-A public key encryption scheme $\pke$ is a collection of three routines $(\keygen, \encrypt, \decrypt)$ defined over some message space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Where the encryption routine is probabilistic, the source of randomness is denoted by the coin space $\mathcal{R}$.
+\emph{Syntax.} A public-key encryption scheme $\pke(\keygen, \encrypt, \decrypt)$ is a collection of three routines defined over some plaintext space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. $(\pk, \sk) \leftsample \keygen()$ is a randomized routine that returns a keypair. The encryption routine $\encrypt: (\pk, m) \mapsto c$ encrypts the input plaintext under the input public key. The decryption routine $\decrypt: (\sk, c) \mapsto m$ decrypts the input ciphertext under the input secret key. Where the encryption routine is randomized, we denote the randomness by $r \in \mathcal{R}$, where $\mathcal{R}$ is called the coin space. The decryption routine is assumed to always be deterministic. Some decryption routines can detect malformed ciphertext and output the rejection symbol $\bot$ accordingly.
 
-The encryption routine $\encrypt(\pk, m)$ takes a public key, a plaintext message, and outputs a ciphertext $c \in \mathcal{C}$. Where the encryption routine is probabilistic, specifying a pseudorandom seed $r \in \mathcal{R}$ will make the encryption routine behave deterministically. The decryption routine $\decrypt(\sk, c)$ takes a secret key, a ciphertext, and outputs the decryption $\hat{m}$ if the ciphertext is valid. Some PKE will explicitly reject invalid ciphertext, in which case the decryption routine will output the rejection symbol $\bot$
 
-We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
+\emph{Correctness.} We usually demand that the decryption routine always correctly recovers the plaintext from an honest encryption, meaning that for all possible keypairs $(\pk, \sk)$ and plaintext $m \in \mathcal{M}$.
+
+\begin{equation*}
+    P\left\lbrack \decrypt(\sk, c) = m \mid c \leftsample \encrypt(\pk, m)\right\rbrack = 1
+\end{equation*}
+
+However, many lattice cryptosystems do not achieve perfect correctness. \cite{hofheinz2017modular} defines $\delta$-correctness to mean:
+
+\begin{equation*}
+    E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta
+\end{equation*}
+
+Where the expectation is taken over the probability distribution of possible keypairs. Decryption failures can leak information about the secret key and need to be delicately handled, though the concrete probability is small enough that we will ignore them in this paper (ML-KEM-512's probability of decryption failure is estimated to be $2^{-80}$)
+
+
+\emph{Security.} We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
 
 \def\algowatkgame{
     \begin{algorithm}[H]
@@ -227,10 +240,10 @@ The security of a MAC is defined in an adversarial game in which an adversary, w
 The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
 
 \subsection{Related works}
-The Fujisaki-Okamoto transformation \cite{fujisaki1999secure}\cite{hofheinz2017modular} is a family of generic transformations that takes as input a PKE with weaker security, such as OW-CPA, and outputs a PKE or KEM with IND-CCA2 security. The key ingredient in achieving ciphertext non-malleability is with \emph{de-randomization} and \emph{re-encryption}, which first transform a OW-CPA PKE into a \emph{rigid} PKE, then transform the rigid PKE into a KEM. More specifically: \begin{enumerate}
+The modular Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is a family of generic transformations that takes as input a PKE with weaker security, such as OW-CPA, and outputs a PKE or KEM with IND-CCA2 security. The key ingredient in achieving ciphertext non-malleability is with \emph{de-randomization} and \emph{re-encryption}, which first transform a OW-CPA PKE into a \emph{rigid} PKE, then transform the rigid PKE into a KEM. More specifically: \begin{enumerate}
     \item \emph{de-randomization} means that a randomized encryption routine $c \leftsample \encrypt(\pk, m)$ is made into a deterministic encryption routine by deriving randomization coin pseudorandomly: $c \leftarrow \encrypt(\pk, m, r = H(m))$ for some hash function $H$
     \item \emph{re-encryption} means that the transformed decryption routine will run the transformed encryption routine to verify the integrity of the ciphertext. Because after \emph{de-randomization}, each plaintext strictly corresponds exacty one ciphertext, tempering with a ciphertext means that even if the ciphertext decrypts back to the same plaintext, the re-encryption will detect that the ciphertext has been tempered with.
-    \item \emph{rigidity} means that the decryption routine is a perfect inverse of the encryption routine: $c = \encrypt(\pk, m) \Leftrightarrow m = \decrypt(\sk, c)$. Converting a one-way secure rigid PKE (which is essentially a trapdoor function) into a IND-CCA2 KEM is well solved problem. We refer readers to \cite{boneh2020graduate} for details on such constructions.
+    \item \emph{rigidity} means that the decryption routine is a perfect inverse of the encryption routine: $c = \encrypt(\pk, m) \Leftrightarrow m = \decrypt(\sk, c)$. Converting a one-way secure rigid PKE (which is essentially a trapdoor function) into a IND-CCA2 KEM is well solved problem. %TODO: (cite: trapdoor permutation can make KEM)
 \end{enumerate}
 
 let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $G: \mathcal{M} \rightarrow \mathcal{R}$ hash plaintexts into coincs, and let $H: \{0,1\}^\ast \rightarrow \{0,1\}^\ast$ hash byte stream into session keys. Depending on whether the constructed KEM uses implicit or explicit rejection, and the security property of the $\pke$, \cite{hofheinz2017modular} described four variations. They are summarized in table \ref{tbl:fo-variations} and figure \ref{fig:fo-routines}.
@@ -826,12 +839,12 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
     \begin{tabular}[t]{|cc|}
         \hline
         % TODO: this title needs to show that parameters are identical across all variants
-        \multicolumn{2}{|c|}{\bf ML-KEM-512} \\
+        \multicolumn{2}{|c|}{\bf 128-bit security} \\
         \hline
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
-        pubkey size & 800 \\
-        seckey size & 1632 \\
-        ciphertext size & 768 \\
+        $\pk$ size & 800 \\
+        $\sk$ size & 1632 \\
+        \texttt{ct} size & 768 \\
         \hline
         \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
         Median & 75945 \\
@@ -863,12 +876,12 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
 
     \begin{tabular}[t]{|cc|}
         \hline
-        \multicolumn{2}{|c|}{\bf ML-KEM-768} \\
+        \multicolumn{2}{|c|}{\bf 192-bit security} \\
         \hline
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
-        pubkey size & 1184 \\
-        seckey size & 2400 \\
-        ciphertext size & 1088 \\
+        $\pk$ size & 1184 \\
+        $\sk$ size & 2400 \\
+        \texttt{ct} size & 1088 \\
         \hline
         \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
         Median & 129895 \\
@@ -899,12 +912,12 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
 
     \begin{tabular}[t]{|cc|}
         \hline
-        \multicolumn{2}{|c|}{\bf ML-KEM-1024} \\
+        \multicolumn{2}{|c|}{\bf 256-bit security} \\
         \hline
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
-        pubkey size & 1568 \\
-        seckey size & 3168 \\
-        ciphertext size & 1568 \\
+        $\pk$ size & 1568 \\
+        $\sk$ size & 3168 \\
+        \texttt{ct} size & 1568 \\
         \hline
         \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
         Median & 194921 \\
