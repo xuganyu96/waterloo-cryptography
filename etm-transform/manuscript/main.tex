@@ -102,23 +102,30 @@ In section \ref{sec:implementation}, we instantiate concrete instances of our co
 \section{Preliminaries and previous results}
 
 \subsection{Public-key encryption scheme}
-\emph{Syntax.} A public-key encryption scheme $\pke(\keygen, \encrypt, \decrypt)$ is a collection of three routines defined over some plaintext space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. $(\pk, \sk) \leftsample \keygen()$ is a randomized routine that returns a keypair. The encryption routine $\encrypt: (\pk, m) \mapsto c$ encrypts the input plaintext under the input public key. The decryption routine $\decrypt: (\sk, c) \mapsto m$ decrypts the input ciphertext under the input secret key. Where the encryption routine is randomized, we denote the randomness by $r \in \mathcal{R}$, where $\mathcal{R}$ is called the coin space. The decryption routine is assumed to always be deterministic. Some decryption routines can detect malformed ciphertext and output the rejection symbol $\bot$ accordingly.
+\textbf{\textit{Syntax.}} A public-key encryption scheme $\pke(\keygen, \encrypt, \decrypt)$ is a collection of three routines defined over some plaintext space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. $(\pk, \sk) \leftsample \keygen()$ is a randomized routine that returns a keypair. The encryption routine $\encrypt: (\pk, m) \mapsto c$ encrypts the input plaintext under the input public key. The decryption routine $\decrypt: (\sk, c) \mapsto m$ decrypts the input ciphertext under the input secret key. Where the encryption routine is randomized, we denote the randomness by $r \in \mathcal{R}$, where $\mathcal{R}$ is called the coin space. The decryption routine is assumed to always be deterministic. Some decryption routines can detect malformed ciphertext and output the rejection symbol $\bot$ accordingly.
 
-
-\emph{Correctness.} We usually demand that the decryption routine always correctly recovers the plaintext from an honest encryption, meaning that for all possible keypairs $(\pk, \sk)$ and plaintext $m \in \mathcal{M}$.
-
-\begin{equation*}
-    P\left\lbrack \decrypt(\sk, c) = m \mid c \leftsample \encrypt(\pk, m)\right\rbrack = 1
-\end{equation*}
-
-However, many lattice cryptosystems do not achieve perfect correctness. \cite{hofheinz2017modular} defines $\delta$-correctness to mean:
+\textbf{\textit{Correctness.}} Following the definition in \cite{DBLP:conf/eurocrypt/DworkNR04} and \cite{hofheinz2017modular}, a $\pke$ is $\delta$-correct if:
 
 \begin{equation*}
     E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta
 \end{equation*}
 
-Where the expectation is taken over the probability distribution of possible keypairs. Decryption failures can leak information about the secret key and need to be delicately handled, though the concrete probability is small enough that we will ignore them in this paper (ML-KEM-512's probability of decryption failure is estimated to be $2^{-80}$)
+Where the expectation is taken with respect to the probability distribution of all possible keypairs $(\pk, \sk) \leftsample \texttt{PKE.KeyGen()}$. For many lattice-based cryptosystems, including ML-KEM, decryption failures could leak information about the secret key, although the probability of a decryption failure is low enough that classical adversaries cannot exploit decryption failure more than they can defeat the underlying lattice problem (see table \ref{tbl:ml-kem-dec-failure-probs}).
 
+\begin{table}[H]
+    \centering
+
+    \begin{tabular}{|c|c|c|c|}
+        \hline
+        & ML-KEM-512 & ML-KEM-768 & ML-KEM-1024 \\
+        \hline
+        $\delta$ & ??? & ??? & ??? \\
+        \hline
+    \end{tabular}
+    \caption{Estimated probability of decryption failure in ML-KEM}\label{tbl:ml-kem-dec-failure-probs}
+\end{table}
+
+On the other hand, a quantum adversary may be able to exploit decryption failure in reasonable runtime by efficiently searching through all possible inputs using Grover's search algorithm. For that, ML-KEM made slight modifications in its KEM construction to prevent quantum adversary from precomputing large lookup table. We refer readers to \cite{avanzi2019crystals} and \cite{bos2018crystals} for the details.
 
 \emph{Security.} We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
 
