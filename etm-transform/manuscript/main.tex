@@ -632,6 +632,152 @@ We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
     Combining all equations above produce the desired security bound.
 \end{proof}
 
+\subsection{Instantiation with ElGamal cryptosystem}\label{sec:etm-with-elgamal}
+In this section we instantiate our ``encrypt-then-MAC'' construction with the ElGamal cryptosystem, then prove that the output KEM is IND-CCA2 secure.
+
+The ElGamal cryptosystem \cite{DBLP:journals/tit/Elgamal85} (see figure \ref{fig:elgamal-cryptosystem}) bases its security on the conjectured intractability of the computational Diffie-Hellman problem and the decisional Diffie-Hellman problem.
+
+\begin{figure}[H]
+    \centering
+
+    \begin{minipage}[t]{0.32\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{KeyGen()}}
+            \begin{algorithmic}[1]
+                \State $x \leftsample \mathbb{Z}_q$
+                \State $\sk \leftarrow x$
+                \State $\pk \leftarrow g^x$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.33\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\encrypt(\pk, m)$}
+            \begin{algorithmic}[1]
+                \Require $\pk, m \in \mathbb{Z}_q$
+                \State $y \leftsample \mathbb{Z}_q$
+                \State $u \leftarrow g^y$
+                \State $v \leftarrow m \cdot (\pk)^y$
+                \State \Return $(u, v)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.33\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\decrypt(\sk, c)$}
+            \begin{algorithmic}[1]
+                \Require $\sk \in \mathbb{Z}_q$
+                \Require $c = (u, v) \in \mathbb{Z}_q^2$
+                \State \Return $(u^{\sk})^{-1} \cdot v$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+
+    \caption{The ElGamal cryptosystem}\label{fig:elgamal-cryptosystem}
+\end{figure}
+
+\begin{definition}[Computational Diffie-Hellman (CDH) problem]
+    Let $G = \langle g \rangle$ be a cyclic group with prime order $g$, let $x, y \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $G, g, g^x, g^y$, compute $g^{xy}$
+\end{definition}
+
+\begin{definition}[Decisional Diffie-Hellman (DDH) problem]
+    Let $G = \langle g \rangle$ be a cyclic group with prime order $g$, let $x, y, z \leftsample \mathbb{Z}_q$ be uniformly random samples, let $h$ be a random variable with probability distribution:
+
+    \begin{equation*}
+        P[h = g^{xy}] = P[h = g^z] = \frac{1}{2}
+    \end{equation*}
+
+    Given $G, g, g^x, g^y, h$, distinguish whether $h = g^{xy}$ or $h = g^{z}$
+\end{definition}
+
+It is well known that if the CDH problem is intractable, then the ElGamal cryptosystem is OW-CPA secure, and if the DDH problem is intractable, then the ElGamal cryptosystem is IND-CPA secure. It is easy to show that the DDH problem reduces to the CDH problem. However, it is conjectured that the CDH problem remains intractable even if the DDH problem can be solved efficiently.
+
+% TODO: citation needed
+
+\begin{definition}[Interactive computational Diffie-Hellman (ICDH) problem]
+    Let $G = \langle g \rangle$ be a cyclic group with prime order $q$. Let $x, y \leftsample \mathbb{Z}_q$ be uniformly random sample. Let $\mathcal{O}^\text{DDH}$ be a DDH oracle such that:
+
+    \begin{equation*}
+        \mathcal{O}^\text{DDH}: (u, v) \in \mathbb{Z}_q^2 \mapsto \llbrack u^x = v \rrbrack
+    \end{equation*}
+
+    Given $G, g, g^x, g^y$ and access to $\mathcal{O}^\text{DDH}$, compute $g^{xy}$
+\end{definition}
+
+\begin{theorem}\label{thm:elgamal-is-owpca}
+    For every OW-PCA adversary $A$ against the ElGamal cryptosystem, there exists an ICDH adversary $B$ such that:
+
+    \begin{equation*}
+        \texttt{Adv}(A) \leq \texttt{Adv}(B)
+    \end{equation*}
+\end{theorem}
+
+In other words, for cyclic group $G$ where the ICDH assumption holds, the ElGamal cryptosystem is OW-PCA secure. From theorem \ref{thm:ow-pca-implies-kem-ind-cca2}, we naturally conclude that combining ``encrypt-then-MAC'' with the ElGamal cryptosystem gives us an IND-CCA2 secure KEM. It remains to prove theorem \ref{thm:elgamal-is-owpca}:
+
+\begin{proof}
+    For a sketch of proof, we will construct an ICDH adversary $B$ that uses the OW-PCA adversary $A$ as a sub-routine. The main challenge is simulating the plaintext-checking oracle, which can be overcome because $B$ has access to a DDH oracle $\mathcal{O}^\text{DDH}$. See figure \ref{fig:icdh-adv} for how $B$ simulates OW-PCA game for $A$:
+
+    \begin{figure}[H]
+        \centering
+
+        \begin{minipage}[t]{0.5\textwidth}
+            \begin{algorithm}[H]
+                \caption*{OW-PCA game for ElGamal cryptosystem}
+                \begin{algorithmic}[1]
+                    \State $x \leftsample \mathbb{Z}_q$
+                    \State $(\pk, \sk) \leftarrow (g^x, x)$
+                    \State $m^\ast \leftsample \mathbb{Z}_q$
+                    \State $y \leftsample \mathbb{Z}_q$
+                    \State $(u, v) \leftarrow (g^y, m \cdot (g^x)^y)$
+                    \State $c^\ast \leftarrow (u, v)$
+                    \State $\hat{m} \leftarrow A^{\pco}(\pk, c^\ast)$
+                    \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \begin{minipage}[t]{0.49\textwidth}
+            \begin{algorithm}[H]
+                \caption*{ICDH adversary $B^{\mathcal{O}^\text{DDH}}(g^x, g^y)$}
+                \begin{algorithmic}[1]
+                    \State $\pk \leftarrow g^x$
+                    \State $u \leftarrow g^y$
+                    \State $v \leftsample \mathbb{Z}_q$
+                    \State $c^\ast = (u, v)$
+                    \State $\hat{m} \leftarrow A^{\mathcal{O}^\pco_1}(\pk, c^\ast)$
+                    \State \Return $\hat{m}^{-1} \cdot v^\ast$
+                \end{algorithmic}
+            \end{algorithm}\vspace{-0.3cm}
+            \begin{algorithm}[H]
+                \caption*{Simulated PCO: $\mathcal{O}^\pco_1(m, c)$}
+                \begin{algorithmic}[1]
+                    \Require $c = (u, v) \in \mathbb{Z}_q^2$
+                    \Require $m \in \mathbb{Z}_q$ \vspace{0.1cm}
+                    \State \Return $\mathcal{O}^\text{DDH}(u, m^{-1}v)$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+
+        \caption{ICDH adversary $B$ can perfectly simulate the OW-PCA game for $A$}\label{fig:icdh-adv}
+    \end{figure}
+
+    First observe that the simulated PCO is exactly the same as a true PCO:
+
+    \begin{equation*}
+        \begin{aligned}
+            & \pco(m, c=(u,v)) = 1 \\
+            & \leftrightarrow m = \decrypt(\sk, c=(u,v)) \\
+            & \leftrightarrow m = u^{-x}v \\
+            & \leftrightarrow u^x = m^{-1}v \\
+            & \leftarrow \mathcal{O}^\texttt{DDH}(u, m^{-1}v) = 1
+        \end{aligned}
+    \end{equation*}
+
+    Second notice that in the OW-PCA game, $m^\ast \leftsample \mathbb{Z}_q$ is a uniformly random element in $\mathbb{Z}_q$, which means that $v \leftarrow m \cdot (g^x)^y$ is a uniformly random element in $\mathbb{Z}_q$. When $B$ simulates the OW-PCA game for $A$, it can simply sample a random value for $v$ in the challenge ciphertext, and $A$ will have retained its advantage in recovering the correct decryption without the secret key.
+
+    If $A$ succeeds in recovering the correct decryption while being run by $B$, then $\hat{m} = u^{-x}v$, which means that $\hat{m}^{-1}v = u^x \cdot v^{-1} \cdot v = u^x = (g^y)x = g^{xy}$. In this case, $B$ successfully computes $g^{xy}$ and wins the ICDH game. Therefore, the advantage of $A$ is at most the advantage of $B$.
+\end{proof}
+
 \section{Implementation}\label{sec:implementation}
 ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. 
 
@@ -1285,11 +1431,9 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
 %TODO: Look at OpenSSL for GMAC with no AES-256. 
 
 \section{Conclusions and future works}\label{sec:future-works}
-\emph{Comparison with Fujisaki-Okamoto transformation:} We applied the ``encrypt-then-MAC'' transformation to Kyber and saw meaningful performance improvements over using de-randomization and re-encryption. Unfortunately the resulting KEM does not achieve the desired full IND-CCA2 security, because Kyber is known to be vulnerable to key-recovery plaintext-checking attack (KR-PCA) \cite{ravi2019generic}\cite{ueno2022curse}. We speculate that while Kyber with ``encrypt-then-MAC'' could not achieve the full IND-CCA2 security, it can still be safe for use in ephemeral key exchange, where each secret key is used to decrypt at most one ciphertext (the KR-PCA requires a few hundred decryption queries to recover the secret key).
+The ``encrypt-then-MAC'' transformation is a generic KEM construction that achieves IND-CCA2 security under the random oracle model if the input PKE is OW-PCA secure. Compared to the Fujisaki-Okamoto transformation, our construction replaced \emph{de-randomization} and \emph{re-encryption} with a message authenticator. At the cost of some minimal increase in communication size and encapsulation runtime, our construction achieves significant efficiency gains in the decapsulation routine. In practical key exchange protocols, our construction saves between 35-45\% in round trip time.
 
-In section \ref{sec:main-results}, we showed that if the input PKE is OW-PCA secure, then the resulting KEM is IND-CCA2 secure. One sufficient condition for OW-PCA security is one-way security plus rigidity. If the input PKE is rigid, then $m = \decrypt(\sk, c)$ is equivalent to $c = \encrypt(\pk, m)$, so a plaintext-checking oracle can be simulated without any secret information. However, the $U_m^{\not\bot}$ transformation in \cite{hofheinz2017modular} can already transform an OW-CPA secure and rigid PKE into an IND-CCA2 secure KEM with minimal overhead: the encapsulation and decapsulation routines each adds a hash of the plaintext to the encryption and decryption routine. In other words, where the input PKE is rigid, ``encrypt-then-MAC'' doesn't offer any performance advantage. It remains an open problem whether there exists a PKE that is OW-PCA secure but not rigid. If such a PKE exists, then ``encrypt-then-MAC'' would be a preferable strategy for constructing an IND-CCA2 KEM.
-
-
+% TODO: write about open problems
 
 %%%% 8. BILBIOGRAPHY %%%%
 \bibliographystyle{alpha}
@@ -1299,6 +1443,8 @@ In section \ref{sec:main-results}, we showed that if the input PKE is OW-PCA sec
 %   If possible, take them from DBLP.
 
 \section{Appendix}\label{sec:appendix}
+% TODO: brief introduction to the various authenticators should be in the appendix
+
 \subsection{Performance comparison between $\texttt{ML-KEM}^+$ and Kyber}\label{sec:ml-kem-and-kyber}
 ML-KEM directly evolved from CRYSTALS-Kyber's third round submission to NIST's post quantum cryptography competition. While their IND-CPA subroutines (see figure \ref{fig:k-pke-routines}) are identical, ML-KEM deviated from Kyber by choosing a different variant of the Fujisaki-Okamoto transformation.
 
