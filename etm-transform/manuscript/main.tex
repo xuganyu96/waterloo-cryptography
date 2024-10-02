@@ -21,8 +21,8 @@
 %%%% 3. AUTHOR, INSTITUTE %%%%
 \author{
     Ganyu Xu\inst{1}
-    \and Guang Gong\inst{1}
     \and Kalikinkar Mandal\inst{2}
+    \and Guang Gong\inst{1}
 }
 \institute{
   University of Waterloo, Waterloo, Canada, \email{{g66xu,ggong}@uwaterloo.ca}
@@ -89,15 +89,29 @@ Faster generic IND-CCA2 secure KEM using ``encrypt-then-MAC''}
 
 %%%% 7. PAPER CONTENT %%%%
 \section{Introduction}
-Key encapsulation mechanism (KEM) is a cryptographic primitive that allows two parties to establish a shared secret over an insecure channel. The most widely accepted security standard for a KEM is \emph{indistinguishability under adaptive chosen-ciphertext attack (IND-CCA2)}: no efficient adversary can distinguish a shared secret obtained by running encapsulation from random noise even with access to a decapsulation oracle throughout the attack. KEM is usually paired with a data encapsulation mechanism (DEM), such as AES-GCM or ChaCha20-Poly1305 when constructing secure communication protocol.
+Key encapsulation mechanism (KEM) is a cryptographic primitive that allows two parties to establish a shared secret over an insecure channel. The combination of KEM and some data encapsulation mechanism (DEM), such as AES-GCM and ChaCha20-Poly1305, is the foundation of many of today's most popular secure communication protocols such as Transport Layer Security (TLS) and Secure Shell (SSH). The commonly accepted security standard of a KEM is \emph{Indistinguishability under adaptive chosen-ciphertext attack (IND-CCA2)}: no efficient adversary can distinguish a shared secret obtained by running the encapsulation routine from random noise, even with access to a decapsulation oracle throughout the attack. KEM is related to another important cryptographic primitive called public-key encryption (PKE), and their security standards are similar. The desired security standard for PKE, also called IND-CCA2, requires that no efficient adversary can distinguish the encryption of two adversarially chosen messages even with access to decryption oracle.
 
-Provable IND-CCA2 security is difficult to achieve from scratch. One popular approach to constructing secure KEM is by starting with a public-key encryption (PKE) scheme with weaker security properties, then adding additional mechanisms for ensuring ciphertext integrity. One particularly successful example is the Fujisaki-Okamoto transformation, originally proposed in 1999 by Fujisaki Eiichiro and Okamoto Tatsuyaki in their seminal paper \cite{DBLP:conf/crypto/FujisakiO99}. The original Fujisaki-Okamoto transformation combines an OW-CPA secure PKE with an IND-CPA secure symmetric cipher into a hybrid PKE that achieves the full IND-CCA2 security in the random oracle model. Subsequent works improved on the original construction, culminating in the 2017 paper \cite{hofheinz2017modular} by Hofheinz, Hovelmann, and Kiltz, which provided a modular KEM construction with tight IND-CCA2 security reduction against classical adversary and proven (though non-tight) IND-CCA2 security reduction against quantum adversaries.
+It is difficult to build a provably IND-CCA2 secure KEM from scratch. Instead, secure KEMs are usually built on top of a PKE with weaker security property (e.g. being only OW-CPA or IND-CPA secure, not IND-CCA2). One such construction is the Fujisaki-Okamoto transformation, proposed in 1999 by Fujisaki Eiichiro and Okamoto Tetsuyaki in their seminal paper \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13}. The first Fujisaki-Okamoto transformation combines an OW-CPA secure PKE with an IND-CPA secure symmetric cipher into a hybrid PKE (HPKE) with proven IND-CCA2 security under the random oracle model. Subsequent proposals such as \cite{DBLP:conf/ctrsa/OkamotoP01}, \cite{DBLP:conf/ctrsa/CoronHJPPT02}, and \cite{DBLP:conf/ima/Dent03} improved on the original proposal and adapted it to build KEM instead of HPKE. This line of work culminated in a landmark publication in 2017 by Hofhein, Hovelmann, and Kiltz \cite{DBLP:conf/tcc/HofheinzHK17}\cite{DBLP:conf/asiacrypt/HovelmannsHM22}, where the authors provided a versatile variety of modular KEM constructions with tight security reduction in the random oracle model and non-tight security reduction in the quantum random oracle model.
 
-The modular Fujisaki-Okamoto KEM transformation is remarkably successful. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{bos2018crystals}\cite{avanzi2019crystals}, Saber \cite{d2018saber}, FrodoKEM \cite{bos2016frodo}, and classic McEliece \cite{} among others. When Kyber was standardized by NIST in FIPS 203 ``Module-lattice key-encapsulation mechanism'' (ML-KEM) \cite{FIPS203}, it kept the Fujisaki-Okamoto transformation in its KEM construction. However, the Fujisaki-Okamoto transformation is not perfect. Among its shortcomings is the use of \emph{de-randomization} and \emph{re-encryption} for ensuring ciphertext integrity: \begin{itemize}
-    \item \emph{Computational inefficiency.}
-    \item \emph{Side-channel vulnerability}
+The modular Fujisaki-Okamoto KEM transformation is remarkably successful. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{DBLP:conf/eurosp/BosDKLLSSSS18}, Saber \cite{DBLP:conf/africacrypt/DAnversKRV18}, FrodoKEM \cite{DBLP:conf/ccs/BosCDMNNRS16}, and classic McEliece \cite{classicmceliecespec} among others. When Kyber was standardized by NIST in FIPS 203 ``Module-lattice key-encapsulation mechanism'' (ML-KEM) \cite{FIPS203}, it kept the Fujisaki-Okamoto transformation in its KEM construction. However, the Fujisaki-Okamoto transformation is not perfect. Among its shortcomings is the use of \emph{de-randomization} (transform a randomized encryption routine into a deterministic routine by using a pseudorandom coin derived from the input message) and \emph{re-encryption} (the decapsulation routine of the output KEM runs the encryption routine of the input PKE to ensure ciphertext integrity), which causes two problems: \begin{itemize}
+    \item \textbf{computational inefficiency:} where the PKE's encryption routine is substantially more expensive than the decryption routine, using re-encryption causes the decapsulation routine in the output KEM to become computationally expensive
+    \item \textbf{side-channel vulnerability:} running the input PKE's encryption routine in the output KEM's decapsulation routine introduces risk of side-channel vulnerabilities not found in the input PKE's decryption routine alone. In fact, many practical attacks \cite{ueno2022curse}\cite{ravi2019generic} exploit re-encryption to decrypt ciphertext or recover secret keys. Countermeasures such as masking have been proposed to address these side channels, but they inevitably carry substantial performance penalty.
 \end{itemize}
 
+\subsection{Our contributions}
+Our main contribution is a novel generic construction that combines a PKE with weaker security property and a one-time secure message authentication code (MAC) into an IND-CCA2 secure KEM in the random oracle model. Specifically, we require the input PKE to be one-way secure against plaintext-checking attacks (OW-PCA): no efficient adversary can recover the decryption of a random encryption with access to a plaintext-checking oracle (PCO) that, when queried on a plaintext-ciphertext pair $(m, c)$, answers $m$ is the decryption of $c$. While OW-PCA is not a standard security definition, it has appeared useful in past IND-CCA2 KEM constructions \cite{DBLP:conf/ctrsa/OkamotoP01}\cite{DBLP:conf/ctrsa/CoronHJPPT02}, and plays an important role in the modularity of the Fujisaki-Okamoto KEM transformation.
+
+Our KEM construction is inspired by how symmetric cryptography achieves IND-CCA2 security (or equivalently, authenticated encryption \cite{DBLP:conf/crypto/Krawczyk01}) using the ``encrypt-then-MAC'' pattern. We applied ``encrypt-then-MAC'' to the construction of the KEM: at encapsulation, a symmetric key is derived from hashing a random PKE plaintext, then used to compute an authenticator against the PKE ciphertext; at decapsulation, the same symmetric key is derived from hashing the decryption of the PKE ciphertext, then used to verify the authenticator. Intuitively, for an adversary to be able to produce a valid authenticator, it must know the correct symmetric key and thus the corresponding PKE plaintext. In other words, the adversary either produced the ciphertext honestly, or have broken the one-wayness of the input PKE. 
+
+\subsubsection{Performance improvements}
+The main advantage of our KEM construction over the Fujisaki-Okamoto transformation is the performance gains: our construction replaces re-encryption with computing a symmetric message authenticator, which is significantly faster, especially for one-time MAC. At the cost of computing an authenticator in encapsulation and increasing the ciphertext size by a message authenticator, our construction speeds up decapsulation by 10x. 
+
+When instantiated with the underlying PKE routines of ML-KEM and the Poly1305 message authenticator, our construction $\text{ML-KEM}^+$ achieves on average 72\%-80\% reduction of CPU cycles needed for decapsulation while only incurring 2\%-7\% increase of CPU cycles for encapsulation when compared to ML-KEM.
+
+We also implemented and measured the round trip time of key exchange protocols with various modes of authentication. When compared to ML-KEM, $\text{ML-KEM}^+$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange, 29\%-35\% reduction in unilaterally authenticated key exchange, and 35\%-48\% reduction in mutually authenticated key exchange.
+
+\subsection{Related works}
+A similar construction was proposed by Abdulla et al \cite{DBLP:conf/ctrsa/AbdallaBR01}, though our construction builds a KEM instead of a HPKE, and our construction is generic over all OW-PCA secure PKE.
 
 \section{Preliminaries and previous results}
 
@@ -245,92 +259,6 @@ The security of a MAC is defined in an adversarial game in which an adversary, w
 \end{figure}
 
 The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game.
-
-\subsection{Related works}
-The modular Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is a family of generic transformations that takes as input a PKE with weaker security, such as OW-CPA, and outputs a PKE or KEM with IND-CCA2 security. The key ingredient in achieving ciphertext non-malleability is with \emph{de-randomization} and \emph{re-encryption}, which first transform a OW-CPA PKE into a \emph{rigid} PKE, then transform the rigid PKE into a KEM. More specifically: \begin{enumerate}
-    \item \emph{de-randomization} means that a randomized encryption routine $c \leftsample \encrypt(\pk, m)$ is made into a deterministic encryption routine by deriving randomization coin pseudorandomly: $c \leftarrow \encrypt(\pk, m, r = H(m))$ for some hash function $H$
-    \item \emph{re-encryption} means that the transformed decryption routine will run the transformed encryption routine to verify the integrity of the ciphertext. Because after \emph{de-randomization}, each plaintext strictly corresponds exacty one ciphertext, tempering with a ciphertext means that even if the ciphertext decrypts back to the same plaintext, the re-encryption will detect that the ciphertext has been tempered with.
-    \item \emph{rigidity} means that the decryption routine is a perfect inverse of the encryption routine: $c = \encrypt(\pk, m) \Leftrightarrow m = \decrypt(\sk, c)$. Converting a one-way secure rigid PKE (which is essentially a trapdoor function) into a IND-CCA2 KEM is well solved problem. %TODO: (cite: trapdoor permutation can make KEM)
-\end{enumerate}
-
-let $\pke = (\keygen_\pke, \encrypt, \decrypt)$ be defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $G: \mathcal{M} \rightarrow \mathcal{R}$ hash plaintexts into coincs, and let $H: \{0,1\}^\ast \rightarrow \{0,1\}^\ast$ hash byte stream into session keys. Depending on whether the constructed KEM uses implicit or explicit rejection, and the security property of the $\pke$, \cite{hofheinz2017modular} described four variations. They are summarized in table \ref{tbl:fo-variations} and figure \ref{fig:fo-routines}.
-
-\begin{table}[H]
-    \centering
-    \begin{tabular}{|c|c|c|}
-        \hline
-        name & rejection & PKE security \\
-        \hline
-        $U^\bot$ & explicit & OW-PCVA \\
-        \hline
-        $U^{\not\bot}$ & implicit & OW-PCA \\
-        \hline
-        $U^\bot_m$ & explicit & OW-VA + rigid \\
-        \hline
-        $U^{\not\bot}_m$ & implicit & OW-CPA + rigid \\
-        \hline
-    \end{tabular}
-    \caption{Variants of modular FO transforms}\label{tbl:fo-variations}
-\end{table}
-
-\begin{figure}[H]
-    \centering
-    \begin{minipage}[t]{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption*{$\kem\texttt{.}\keygen()$}
-            \begin{algorithmic}[1]
-                \State $(\pk, \sk^\prime) \leftsample \pke\texttt{.}\keygen()$
-                \State $z \leftsample \mathcal{M}$
-                \State $\sk \leftarrow (\sk^\prime, z)$
-                    \Comment{$U^{\not\bot}, U^{\not\bot}_m$}
-                \State $\sk \leftarrow \sk^\prime$
-                    \Comment{$U^{\bot}, U^{\bot}_m$}
-                \State \Return $(\pk, \sk)$
-            \end{algorithmic}
-        \end{algorithm}
-        \begin{algorithm}[H]
-            \caption*{$\kem\texttt{.}\encap(\pk)$}
-            \begin{algorithmic}[1]
-                \State $m \leftsample \mathcal{M}$
-                \State $r \leftarrow G(m)$
-                \State $c \leftarrow \pke\texttt{.}\encrypt(\pk, m, r)$
-                \State $K \leftarrow H(m, c)$
-                    \Comment{$U^\bot, U^{\not\bot}$}
-                \State $K \leftarrow H(m)$
-                    \Comment{$U_m^\bot, U_m^{\not\bot}$}
-                \State \Return $(c, K)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \begin{minipage}[t]{0.5\textwidth}
-        \begin{algorithm}[H]
-            \caption*{$\kem\texttt{.}\decap(\sk, c)$}
-            \begin{algorithmic}[1]
-                \Ensure $\sk = (\sk^\prime, z)$
-                \Ensure $\sk^\prime$ is valid PKE secret key
-                \Ensure $z$ is valid PKE plaintext
-                \State $\hat{m} \leftarrow \pke\texttt{.}\decrypt(\sk^\prime, c)$
-                \State $\hat{r} \leftarrow G(\hat{m})$
-                \State $\hat{c} \leftarrow \pke\texttt{.}\encrypt(\pk, \hat{m}, \hat{r})$
-                \If{$\hat{c} = c$}
-                    \State $K \leftarrow H(\hat{m})$
-                        \Comment{$U_m^\bot, U_m^{\not\bot}$}
-                    \State $K \leftarrow H(\hat{m}, c)$
-                        \Comment{$U^\bot, U^{\not\bot}$}
-                \Else
-                    \State $K \leftarrow H(z, c)$
-                        \Comment{$U^{\not\bot}, U^{\not\bot}_m$}
-                    \State $K \leftarrow \bot$
-                        \Comment{$U^{\bot}, U^{\bot}_m$}
-                \EndIf 
-                \State \Return $K$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \caption{Summary of the modular Fujisaki-Okamoto transformation variations}\label{fig:fo-routines}
-\end{figure}
-
-The modular FO transformations enjoy tight security bounds and proven quantum resistance. Variations have been deployed to many post-quantum KEMs submitted to NIST's post-quantum cryptography competition. Kyber, one of the round 3 finalists, uses the $U^{\not\bot}$ transformation. When it was later standardized into FIPS-203, it changed to use the $U^{\not\bot}_m$ transformation for computational efficiencies.
 
 \section{The ``encrypt-then-MAC'' transformation}\label{sec:main-results}
 Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $\mac: \mathcal{K}_\mac \times \mathcal{B}^\ast \rightarrow \mathcal{T}$ be a deterministic message authentication code that takes a key $k \in \mathcal{K}_\mac$, some message $m \in \mathcal{B}^\ast$, and outputs a digest $t \in \mathcal{T}$. Let $G: \mathcal{M} \rightarrow \mathcal{K}_\mac$ be a hash function that maps from $\pke$'s plaintext space to $\mac$'s key space. Let $H: \mathcal{B}^\ast \rightarrow \mathcal{K}_\kem$ be a hash function that maps bit strings into the set of possible shared secrets. The ``encrypt-then-MAC'' transformation $\etm[\pke, \mac, G, H]$ constructs a key encapsulation mechanism $\kem_\etm(\keygen_\kem, \encap, \decap)$, whose routines are described in figure \ref{fig:etm-routines}.
@@ -630,152 +558,6 @@ We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
     \end{equation*}
 
     Combining all equations above produce the desired security bound.
-\end{proof}
-
-\subsection{Instantiation with ElGamal cryptosystem}\label{sec:etm-with-elgamal}
-In this section we instantiate our ``encrypt-then-MAC'' construction with the ElGamal cryptosystem, then prove that the output KEM is IND-CCA2 secure.
-
-The ElGamal cryptosystem \cite{DBLP:journals/tit/Elgamal85} (see figure \ref{fig:elgamal-cryptosystem}) bases its security on the conjectured intractability of the computational Diffie-Hellman problem and the decisional Diffie-Hellman problem.
-
-\begin{figure}[H]
-    \centering
-
-    \begin{minipage}[t]{0.32\textwidth}
-        \begin{algorithm}[H]
-            \caption*{\texttt{KeyGen()}}
-            \begin{algorithmic}[1]
-                \State $x \leftsample \mathbb{Z}_q$
-                \State $\sk \leftarrow x$
-                \State $\pk \leftarrow g^x$
-                \State \Return $(\pk, \sk)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.33\textwidth}
-        \begin{algorithm}[H]
-            \caption*{$\encrypt(\pk, m)$}
-            \begin{algorithmic}[1]
-                \Require $\pk, m \in \mathbb{Z}_q$
-                \State $y \leftsample \mathbb{Z}_q$
-                \State $u \leftarrow g^y$
-                \State $v \leftarrow m \cdot (\pk)^y$
-                \State \Return $(u, v)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.33\textwidth}
-        \begin{algorithm}[H]
-            \caption*{$\decrypt(\sk, c)$}
-            \begin{algorithmic}[1]
-                \Require $\sk \in \mathbb{Z}_q$
-                \Require $c = (u, v) \in \mathbb{Z}_q^2$
-                \State \Return $(u^{\sk})^{-1} \cdot v$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-
-    \caption{The ElGamal cryptosystem}\label{fig:elgamal-cryptosystem}
-\end{figure}
-
-\begin{definition}[Computational Diffie-Hellman (CDH) problem]
-    Let $G = \langle g \rangle$ be a cyclic group with prime order $g$, let $x, y \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $G, g, g^x, g^y$, compute $g^{xy}$
-\end{definition}
-
-\begin{definition}[Decisional Diffie-Hellman (DDH) problem]
-    Let $G = \langle g \rangle$ be a cyclic group with prime order $g$, let $x, y, z \leftsample \mathbb{Z}_q$ be uniformly random samples, let $h$ be a random variable with probability distribution:
-
-    \begin{equation*}
-        P[h = g^{xy}] = P[h = g^z] = \frac{1}{2}
-    \end{equation*}
-
-    Given $G, g, g^x, g^y, h$, distinguish whether $h = g^{xy}$ or $h = g^{z}$
-\end{definition}
-
-It is well known that if the CDH problem is intractable, then the ElGamal cryptosystem is OW-CPA secure, and if the DDH problem is intractable, then the ElGamal cryptosystem is IND-CPA secure. It is easy to show that the DDH problem reduces to the CDH problem. However, it is conjectured that the CDH problem remains intractable even if the DDH problem can be solved efficiently.
-
-% TODO: citation needed
-
-\begin{definition}[Interactive computational Diffie-Hellman (ICDH) problem]
-    Let $G = \langle g \rangle$ be a cyclic group with prime order $q$. Let $x, y \leftsample \mathbb{Z}_q$ be uniformly random sample. Let $\mathcal{O}^\text{DDH}$ be a DDH oracle such that:
-
-    \begin{equation*}
-        \mathcal{O}^\text{DDH}: (u, v) \in \mathbb{Z}_q^2 \mapsto \llbrack u^x = v \rrbrack
-    \end{equation*}
-
-    Given $G, g, g^x, g^y$ and access to $\mathcal{O}^\text{DDH}$, compute $g^{xy}$
-\end{definition}
-
-\begin{theorem}\label{thm:elgamal-is-owpca}
-    For every OW-PCA adversary $A$ against the ElGamal cryptosystem, there exists an ICDH adversary $B$ such that:
-
-    \begin{equation*}
-        \texttt{Adv}(A) \leq \texttt{Adv}(B)
-    \end{equation*}
-\end{theorem}
-
-In other words, for cyclic group $G$ where the ICDH assumption holds, the ElGamal cryptosystem is OW-PCA secure. From theorem \ref{thm:ow-pca-implies-kem-ind-cca2}, we naturally conclude that combining ``encrypt-then-MAC'' with the ElGamal cryptosystem gives us an IND-CCA2 secure KEM. It remains to prove theorem \ref{thm:elgamal-is-owpca}:
-
-\begin{proof}
-    For a sketch of proof, we will construct an ICDH adversary $B$ that uses the OW-PCA adversary $A$ as a sub-routine. The main challenge is simulating the plaintext-checking oracle, which can be overcome because $B$ has access to a DDH oracle $\mathcal{O}^\text{DDH}$. See figure \ref{fig:icdh-adv} for how $B$ simulates OW-PCA game for $A$:
-
-    \begin{figure}[H]
-        \centering
-
-        \begin{minipage}[t]{0.5\textwidth}
-            \begin{algorithm}[H]
-                \caption*{OW-PCA game for ElGamal cryptosystem}
-                \begin{algorithmic}[1]
-                    \State $x \leftsample \mathbb{Z}_q$
-                    \State $(\pk, \sk) \leftarrow (g^x, x)$
-                    \State $m^\ast \leftsample \mathbb{Z}_q$
-                    \State $y \leftsample \mathbb{Z}_q$
-                    \State $(u, v) \leftarrow (g^y, m \cdot (g^x)^y)$
-                    \State $c^\ast \leftarrow (u, v)$
-                    \State $\hat{m} \leftarrow A^{\pco}(\pk, c^\ast)$
-                    \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
-                \end{algorithmic}
-            \end{algorithm}
-        \end{minipage}
-        \begin{minipage}[t]{0.49\textwidth}
-            \begin{algorithm}[H]
-                \caption*{ICDH adversary $B^{\mathcal{O}^\text{DDH}}(g^x, g^y)$}
-                \begin{algorithmic}[1]
-                    \State $\pk \leftarrow g^x$
-                    \State $u \leftarrow g^y$
-                    \State $v \leftsample \mathbb{Z}_q$
-                    \State $c^\ast = (u, v)$
-                    \State $\hat{m} \leftarrow A^{\mathcal{O}^\pco_1}(\pk, c^\ast)$
-                    \State \Return $\hat{m}^{-1} \cdot v^\ast$
-                \end{algorithmic}
-            \end{algorithm}\vspace{-0.3cm}
-            \begin{algorithm}[H]
-                \caption*{Simulated PCO: $\mathcal{O}^\pco_1(m, c)$}
-                \begin{algorithmic}[1]
-                    \Require $c = (u, v) \in \mathbb{Z}_q^2$
-                    \Require $m \in \mathbb{Z}_q$ \vspace{0.1cm}
-                    \State \Return $\mathcal{O}^\text{DDH}(u, m^{-1}v)$
-                \end{algorithmic}
-            \end{algorithm}
-        \end{minipage}
-
-        \caption{ICDH adversary $B$ can perfectly simulate the OW-PCA game for $A$}\label{fig:icdh-adv}
-    \end{figure}
-
-    First observe that the simulated PCO is exactly the same as a true PCO:
-
-    \begin{equation*}
-        \begin{aligned}
-            & \pco(m, c=(u,v)) = 1 \\
-            & \leftrightarrow m = \decrypt(\sk, c=(u,v)) \\
-            & \leftrightarrow m = u^{-x}v \\
-            & \leftrightarrow u^x = m^{-1}v \\
-            & \leftarrow \mathcal{O}^\texttt{DDH}(u, m^{-1}v) = 1
-        \end{aligned}
-    \end{equation*}
-
-    Second notice that in the OW-PCA game, $m^\ast \leftsample \mathbb{Z}_q$ is a uniformly random element in $\mathbb{Z}_q$, which means that $v \leftarrow m \cdot (g^x)^y$ is a uniformly random element in $\mathbb{Z}_q$. When $B$ simulates the OW-PCA game for $A$, it can simply sample a random value for $v$ in the challenge ciphertext, and $A$ will have retained its advantage in recovering the correct decryption without the secret key.
-
-    If $A$ succeeds in recovering the correct decryption while being run by $B$, then $\hat{m} = u^{-x}v$, which means that $\hat{m}^{-1}v = u^x \cdot v^{-1} \cdot v = u^x = (g^y)x = g^{xy}$. In this case, $B$ successfully computes $g^{xy}$ and wins the ICDH game. Therefore, the advantage of $A$ is at most the advantage of $B$.
 \end{proof}
 
 \section{Implementation}\label{sec:implementation}
