@@ -62,8 +62,7 @@
 \newcommand{\us}{\mu s}
 
 %%%% 4. TITLE %%%%
-\title{
-Faster generic IND-CCA2 secure KEM using ``encrypt-then-MAC''}
+\title{Faster generic IND-CCA2 secure KEM using ``encrypt-then-MAC''}
 %%%% NOTES:
 % - If the title is too long, or includes special macro, please
 %   provide a "running title" as optional argument: \title[Short]{Long}
@@ -95,7 +94,7 @@ Key encapsulation mechanism (KEM) is a cryptographic primitive that allows two p
 
 It is difficult to build a provably IND-CCA2 secure KEM from scratch. Instead, secure KEMs are usually built on top of a PKE with weaker security property (e.g. being only OW-CPA or IND-CPA secure, not IND-CCA2). One such construction is the Fujisaki-Okamoto transformation, proposed in 1999 by Fujisaki Eiichiro and Okamoto Tetsuyaki in their seminal paper \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13}. The first Fujisaki-Okamoto transformation combines an OW-CPA secure PKE with an IND-CPA secure symmetric cipher into a hybrid PKE (HPKE) with proven IND-CCA2 security under the random oracle model. Subsequent works \cite{DBLP:conf/ctrsa/OkamotoP01}\cite{DBLP:conf/ctrsa/CoronHJPPT02}\cite{DBLP:conf/ima/Dent03} improved on the original proposal and adapted it to build KEM instead of HPKE. This line of work culminated in a landmark publication in 2017 by Hofhein, Hovelmann, and Kiltz \cite{DBLP:conf/tcc/HofheinzHK17}\cite{DBLP:conf/asiacrypt/HovelmannsHM22}, where the authors provided a versatile variety of modular KEM constructions with tight security reduction in the random oracle model and non-tight security reduction in the quantum random oracle model.
 
-The modular Fujisaki-Okamoto KEM transformation is remarkably successful. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{DBLP:conf/eurosp/BosDKLLSSSS18}, Saber \cite{DBLP:conf/africacrypt/DAnversKRV18}, FrodoKEM \cite{DBLP:conf/ccs/BosCDMNNRS16}, and classic McEliece \cite{classicmceliecespec} among others. When Kyber was standardized by NIST in FIPS 203 ``Module-lattice key-encapsulation mechanism'' (ML-KEM) \cite{FIPS203}, it kept the Fujisaki-Okamoto transformation in its KEM construction. However, the Fujisaki-Okamoto transformation is not perfect. As pointed out by the authors of \cite{hofheinz2017modular}, the Fujisaki-Okamoto transformation uses \emph{de-randomization} and \emph{re-encryption} to ensure ciphertext integrity, which brings two problems: \begin{itemize}
+The modular Fujisaki-Okamoto KEM transformation is remarkably successful. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{DBLP:conf/eurosp/BosDKLLSSSS18}, Saber \cite{DBLP:conf/africacrypt/DAnversKRV18}, FrodoKEM \cite{DBLP:conf/ccs/BosCDMNNRS16}, and classic McEliece \cite{classicmceliecespec} among others. When Kyber was standardized by NIST in FIPS 203 ``Module-lattice key-encapsulation mechanism'' (ML-KEM) \cite{FIPS203}, it kept the Fujisaki-Okamoto transformation in its KEM construction. However, the Fujisaki-Okamoto transformation is not perfect. It uses \emph{de-randomization} and \emph{re-encryption} to achieve \emph{rigidity} \cite{bernstein2018towards} which then ensures ciphertext integrity. This brings two problems: \begin{itemize}
     \item \textbf{computational inefficiency:} where the PKE's encryption routine is substantially more expensive than the decryption routine, using re-encryption causes the decapsulation routine in the output KEM to become computationally expensive
     \item \textbf{side-channel vulnerability:} running the input PKE's encryption routine in the output KEM's decapsulation routine introduces risk of side-channel vulnerabilities not found in the input PKE's decryption routine alone. In fact, many practical attacks \cite{ueno2022curse}\cite{ravi2019generic} exploit re-encryption to decrypt ciphertext or recover secret keys. Countermeasures such as masking have been proposed to address these side channels, but they inevitably carry substantial performance penalty.
 \end{itemize}
@@ -707,9 +706,9 @@ We refer readers to \cite{FIPS203} for the details of the \texttt{K-PKE} routine
 Our implementation extended from the reference implementation by the PQCrystals team (https://github.com/pq-crystals/kyber). All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance with an AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM.
 
 \subsection{Choosing a message authenticator}
-For the $\texttt{ML-KEM}^+$ implementation, we instantiated $\mac$ with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{kelsey2016sha}.
+For the $\texttt{ML-KEM}^+$ implementation, we instantiated $\mac$ with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}.
 
-Poly1305 and GMAC are both Carter-Wegman style authenticators that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC is parameterized by some finite field $\mathbb{F}$ and the maximal message length $L > 0$. Each symmetric key $k = (k_1, k_2) \leftsample \mathbb{F}^2$ is a pair of uniformly ranodm field elements, and the message is parsed into tuples of field elements up to length $L$: $m = (m_1, m_2, \ldots, m_l) \in \mathbb{F}^{\leq L}$. The tag $t$ is computed by evaluating a polynomial whose coefficients the message blocks and whose indeterminate is the key:
+Poly1305 and GMAC are both Carter-Wegman style authenticators \cite{wegman1981new} that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC is parameterized by some finite field $\mathbb{F}$ and the maximal message length $L > 0$. Each symmetric key $k = (k_1, k_2) \leftsample \mathbb{F}^2$ is a pair of uniformly ranodm field elements, and the message is parsed into tuples of field elements up to length $L$: $m = (m_1, m_2, \ldots, m_l) \in \mathbb{F}^{\leq L}$. The tag $t$ is computed by evaluating a polynomial whose coefficients the message blocks and whose indeterminate is the key:
 
 \begin{equation}\label{eq:carter-wegman-one-time-mac}
     \mac((k_1, k_2), m) = H_\text{xpoly}(k_1, m) + k_2
@@ -784,7 +783,7 @@ CMAC is based on the CBC-MAC with the block cipher instantiated from AES-256. To
 %     \caption{AES-256 CMAC}\label{fig:aes-256-cmac}
 % \end{figure}
 
-KMAC is defined in NIST SP 800-185 to be based on the family of sponge functions with Keccak permutaiton as the underlying function. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length and 128 bits for tag size for consistency with other authenticators.
+KMAC is defined in \cite{SP80053r4} to be based on the family of sponge functions with Keccak permutaiton as the underlying function. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length and 128 bits for tag size for consistency with other authenticators.
 
 To isolate the performance characteristics of each authenticator in our instantiation of $\texttt{ML-KEM}^+$, we measured the CPU cycles needed for each authenticator to compute a tag on random inputs whose sizes correspond to the ciphertext sizes of \texttt{ML-KEM}. The measurements are summarized in table \ref{tbl:mac-performance}.
 
@@ -1295,14 +1294,10 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
     \end{tabular}
 \end{table}
 
-
-%TODO: Two tables, one-time MAC and many-time MAC, separate encap and decap in 2 tables
-%TODO: Look at OpenSSL for GMAC with no AES-256. 
-
 \section{Conclusions and future works}\label{sec:future-works}
 The ``encrypt-then-MAC'' transformation is a generic KEM construction that achieves IND-CCA2 security under the random oracle model if the input PKE is OW-PCA secure. Compared to the Fujisaki-Okamoto transformation, our construction replaced \emph{de-randomization} and \emph{re-encryption} with a message authenticator. At the cost of some minimal increase in communication size and encapsulation runtime, our construction achieves significant efficiency gains in the decapsulation routine. In practical key exchange protocols, our construction saves between 35-45\% in round trip time.
 
-% TODO: write about open problems
+\textbf{Other suitable post-quantum instantiation.} In section \ref{sec:implementation}, we instantiated the ``encrypt-then-MAC'' KEM transformation with the PKE subroutines of ML-KEM. Unfortunately, ML-KEM is vulnerable to plaintext checking attacks that can recover complete secret key if the keypair is reused \cite{DBLP:conf/eurocrypt/BaetuDHTV19}. In fact, as Chris Peikert pointed out, because of the search-decision equivalence of LWE problems, almost all LWE-based cryptosystems will be vulerable to plaintext-checking attacks \cite{DBLP:conf/pqcrypto/Peikert14}. This naturally raises the question of finding other post-quantum primitives to instantiate ``encrypt-then-MAC'' with, such as other lattice-based cryptosystems not based on LWE, code-based cryptosystems and isogeny-based cryptosystems.
 
 %%%% 8. BILBIOGRAPHY %%%%
 \bibliographystyle{alpha}
