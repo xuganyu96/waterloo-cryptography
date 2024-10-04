@@ -230,22 +230,7 @@ The idea of using a message authenticator to ensure ciphertext integrity was ins
     E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta
 \end{equation*}
 
-Where the expectation is taken with respect to the probability distribution of all possible keypairs $(\pk, \sk) \leftsample \texttt{PKE.KeyGen()}$. For many lattice-based cryptosystems, including ML-KEM, decryption failures could leak information about the secret key, although the probability of a decryption failure is low enough that classical adversaries cannot exploit decryption failure more than they can defeat the underlying lattice problem (see table \ref{tbl:ml-kem-dec-failure-probs}).
-
-\begin{table}[H]
-    \centering
-
-    \begin{tabular}{|c|c|c|c|}
-        \hline
-        & ML-KEM-512 & ML-KEM-768 & ML-KEM-1024 \\
-        \hline
-        $\delta$ & ??? & ??? & ??? \\
-        \hline
-    \end{tabular}
-    \caption{Estimated probability of decryption failure in ML-KEM}\label{tbl:ml-kem-dec-failure-probs}
-\end{table}
-
-On the other hand, a quantum adversary may be able to exploit decryption failure in reasonable runtime by efficiently searching through all possible inputs using Grover's search algorithm. For that, ML-KEM made slight modifications in its KEM construction to prevent quantum adversary from precomputing large lookup table. We refer readers to \cite{avanzi2019crystals} and \cite{bos2018crystals} for the details.
+Where the expectation is taken with respect to the probability distribution of all possible keypairs $(\pk, \sk) \leftsample \texttt{PKE.KeyGen()}$. For many lattice-based cryptosystems, including ML-KEM, decryption failures could leak information about the secret key, although the probability of a decryption failure is low enough that classical adversaries cannot exploit decryption failure more than they can defeat the underlying lattice problem. On the other hand, a quantum adversary may be able to exploit decryption failure in reasonable runtime by efficiently searching through all possible inputs using Grover's search algorithm. For that, ML-KEM made slight modifications in its KEM construction to prevent quantum adversary from precomputing large lookup table. We refer readers to \cite{avanzi2019crystals} and \cite{bos2018crystals} for the details.
 
 \textbf{Security.} We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
 
@@ -384,7 +369,6 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
         \begin{algorithm}[H]
             \caption*{$\kem_\etm.\encap(\pk)$}
             \begin{algorithmic}[1]
-                \Ensure $\pk$ is some $\pke$ public key
                 \State $m \leftsample \mathcal{M}$
                 \State $k \leftarrow G(m)$
                 \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m)$
@@ -399,11 +383,6 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
         \begin{algorithm}[H]
             \caption*{$\kem_\etm.\decap(\sk, c)$}
             \begin{algorithmic}[1]
-                \Require $c = c^\prime \Vert t, \sk = sk^\prime \Vert z$
-                \Ensure $c^\prime$ is some $\pke$ ciphertext
-                \Ensure $t$ is some $\mac$ tag
-                \Ensure $\sk^\prime$ is some $\pke$ secret key
-                \Ensure $z$ is some $\pke$ plaintext
                 \State $(c^\prime, t) \leftarrow c$
                 \State $(\sk^\prime, z) \leftarrow \sk$
                 \State $\hat{m} \leftarrow \pke\texttt{.}\decrypt(\sk^\prime, c^\prime)$
@@ -671,7 +650,7 @@ ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized b
 
 We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment. See appendix \ref{sec:ml-kem-and-kyber} for comparison with Kyber's third round submission to NIST's PQC competition.
 
-A detailed description of $\texttt{K-PKE}$'s routines can be found in FIPS 203 (TODO: citation). The ``encrypt-then-MAC'' routines are described in figure \ref{fig:ml-kem-plus-routines}.
+We refer readers to \cite{FIPS203} for the details of the \texttt{K-PKE} routines. The ``encrypt-then-MAC'' KEM routines are described in figure \ref{fig:ml-kem-plus-routines} below.
 
 \begin{figure}[H]
     \centering
@@ -750,64 +729,66 @@ The authenticator formulated in equation \ref{eq:carter-wegman-one-time-mac} is 
 
 Specifically, Poly1035 operates in the prime field $\mathbb{F}_q$ where $q = 2^{130} - 5$ whereas GMAC operates in the binary field $\mathbb{F}_{2^{128}}$. In OpenSSL's implementation, standalone Poly1305 is a one-time secure MAC, whereas GMAC uses a nonce and AES as the PRF and is thus many-time secure (in OpenSSL GMAC is AES-256-GCM except all data is fed into the ``associated data'' section and thus not encrypted).
 
-CMAC is based on the CBC-MAC with the block cipher instantiated from AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time. A summary of the computation can be found in figure \ref{fig:aes-256-cmac}
+CMAC is based on the CBC-MAC with the block cipher instantiated from AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time. %A summary of the computation can be found in figure \ref{fig:aes-256-cmac}
 
-\begin{figure}[h]
-    \centering
-    \begin{minipage}[t]{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption*{Sub-key derivation}
-            \begin{algorithmic}[1]
-                \Require 256-bit key $k$
-                \Require $\texttt{const\_Rb = 0x87}$
-                \State $l \leftarrow \texttt{AES-256}(k, 0^{128})$
-                \If{$\texttt{MostSignificantBit}(l) = 0$}
-                    \State $k_1 \leftarrow \texttt{l {<}{<} 1}$
-                \Else 
-                    \State $k_1 \leftarrow \texttt{l {<}{<} 1} \oplus \texttt{const\_Rb}$
-                \EndIf
-                \If{$\texttt{MostSignificantBit}(k_1) = 0$}
-                    \State $k_2 \leftarrow k_1 \texttt{ {<}{<} 1}$
-                \Else 
-                    \State $k_2 \leftarrow k_1 \texttt{ {<}{<} 1} \oplus \texttt{const\_Rb}$
-                \EndIf
-                \State \Return $k_1, k_2$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.49\textwidth}
-        \begin{algorithm}[H]
-            \caption*{CMAC(k, m)}
-            \begin{algorithmic}[1]
-                \Require 256-bit symmetric key $k$
-                \State $(k_1, k_2) \leftarrow \texttt{deriveSubKey}(k)$
-                \State $n \leftarrow \left\lceil \texttt{bytesLen}(m) / 16\right\rceil$
-                \If{$n = 0$}
-                    \State $n \leftarrow 1$
-                    \State $m_\texttt{last} \leftarrow m_n \oplus k_2$
-                \ElsIf{$\texttt{bytesLen(m)} \mod 16 = 0$}
-                    \State $m_\texttt{last} \leftarrow m_n \oplus k_1$
-                \Else 
-                    \State $m_\texttt{last} \leftarrow m_n \oplus k_2$
-                \EndIf
+% \begin{figure}[h]
+%     \centering
+%     \begin{minipage}[t]{0.49\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{Sub-key derivation}
+%             \begin{algorithmic}[1]
+%                 \Require 256-bit key $k$
+%                 \Require $\texttt{const\_Rb = 0x87}$
+%                 \State $l \leftarrow \texttt{AES-256}(k, 0^{128})$
+%                 \If{$\texttt{MostSignificantBit}(l) = 0$}
+%                     \State $k_1 \leftarrow \texttt{l {<}{<} 1}$
+%                 \Else 
+%                     \State $k_1 \leftarrow \texttt{l {<}{<} 1} \oplus \texttt{const\_Rb}$
+%                 \EndIf
+%                 \If{$\texttt{MostSignificantBit}(k_1) = 0$}
+%                     \State $k_2 \leftarrow k_1 \texttt{ {<}{<} 1}$
+%                 \Else 
+%                     \State $k_2 \leftarrow k_1 \texttt{ {<}{<} 1} \oplus \texttt{const\_Rb}$
+%                 \EndIf
+%                 \State \Return $k_1, k_2$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}\hfill
+%     \begin{minipage}[t]{0.49\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{CMAC(k, m)}
+%             \begin{algorithmic}[1]
+%                 \Require 256-bit symmetric key $k$
+%                 \State $(k_1, k_2) \leftarrow \texttt{deriveSubKey}(k)$
+%                 \State $n \leftarrow \left\lceil \texttt{bytesLen}(m) / 16\right\rceil$
+%                 \If{$n = 0$}
+%                     \State $n \leftarrow 1$
+%                     \State $m_\texttt{last} \leftarrow m_n \oplus k_2$
+%                 \ElsIf{$\texttt{bytesLen(m)} \mod 16 = 0$}
+%                     \State $m_\texttt{last} \leftarrow m_n \oplus k_1$
+%                 \Else 
+%                     \State $m_\texttt{last} \leftarrow m_n \oplus k_2$
+%                 \EndIf
 
-                \State $x = 0^{128}$
-                \For{$i \in \{1, 2, \ldots, n-1\}$}
-                    \State $y \leftarrow x \oplus m_i$
-                    \State $x \leftarrow \texttt{AES-256}(k, y)$
-                \EndFor
-                \State $y \leftarrow m_\texttt{last} \oplus x$
-                \State $t \leftarrow \texttt{AES-256}(k, y)$
-                \State \Return $t$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \caption{AES-256 CMAC}\label{fig:aes-256-cmac}
-\end{figure}
+%                 \State $x = 0^{128}$
+%                 \For{$i \in \{1, 2, \ldots, n-1\}$}
+%                     \State $y \leftarrow x \oplus m_i$
+%                     \State $x \leftarrow \texttt{AES-256}(k, y)$
+%                 \EndFor
+%                 \State $y \leftarrow m_\texttt{last} \oplus x$
+%                 \State $t \leftarrow \texttt{AES-256}(k, y)$
+%                 \State \Return $t$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}
+%     \caption{AES-256 CMAC}\label{fig:aes-256-cmac}
+% \end{figure}
 
 KMAC is defined in NIST SP 800-185 to be based on the family of sponge functions with Keccak permutaiton as the underlying function. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length and 128 bits for tag size for consistency with other authenticators.
 
 To isolate the performance characteristics of each authenticator in our instantiation of $\texttt{ML-KEM}^+$, we measured the CPU cycles needed for each authenticator to compute a tag on random inputs whose sizes correspond to the ciphertext sizes of \texttt{ML-KEM}. The measurements are summarized in table \ref{tbl:mac-performance}.
+
+From our testing, we found Poly1305 to exhibit the best performance characteristics. However, there are additional security considerations that may require the use of other less efficient MAC instances. For example, it is possible for an adversary with large computing infrastructure or quantum computers to pre-compute a large lookup table mapping symmetric key to the source plaintext. Upon receiving a ciphertext, the adversary can then search through the lookup table for a matching key, which would've revealed the corresponding decryption. We partially mitigated such attack by deriving the symmetric key from both the public key and the plaintext, but in case of a long-term keypair, the adversary might still be able to compute a large lookup table AFTER obtaining the long-term public key. Further mitigation could include using larger-size keys, which can be accomplished either by using a Carter-Wegman MAC that operates on a larger finite field or using a MAC with a variable key-length such as KMAC.
 
 \begin{table}[H]
     \centering
@@ -868,7 +849,7 @@ Compared to the $U^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in
     \item Ciphertext size increases by the size of an authenticator
 \end{enumerate}
 
-Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the ``encrypt-then-MAC'' transformation over the $U^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the ML-KEM-ETM can be found in table \ref{tbl:kem-performance}
+Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the ``encrypt-then-MAC'' transformation over the $U^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the $\text{ML-KEM}^+$ can be found in table \ref{tbl:kem-performance}
 
 % TODO: How is ML-KEM different from Kyber round 3?
 
@@ -885,7 +866,7 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
         $\pk$ size & 800 \\
         $\sk$ size & 1632 \\
-        \texttt{ct} size & 768 \\
+        \text{ct} size & 768 \\
         \hline
         \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
         Median & 75945 \\
@@ -900,18 +881,18 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \cline{2-5}
         & Median & Average & Median & Average \\
         \hline
-        \texttt{ML-KEM-512} & 91467 & 92065 & 121185 & 121650 \\
+        \text{ML-KEM-512} & 91467 & 92065 & 121185 & 121650 \\
         \hline
-        \texttt{Kyber512} & 97811 & 98090 & 119937 & 120299 \\
+        \text{Kyber512} & 97811 & 98090 & 119937 & 120299 \\
         \hline
         % ML-KEM+-512
-        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & 93157 & 93626 & 33733 & 33908 \\
+        $\text{ML-KEM}^+$-512 w/ Poly1305 & 93157 & 93626 & 33733 & 33908 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ GMAC & 97369 & 97766 & 37725 & 37831 \\
+        $\text{ML-KEM}^+$-512 w/ GMAC & 97369 & 97766 & 37725 & 37831 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ CMAC & 99739 & 99959 & 40117 & 39943 \\
+        $\text{ML-KEM}^+$-512 w/ CMAC & 99739 & 99959 & 40117 & 39943 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ KMAC & 101009 & 101313 & 40741 & 40916 \\
+        $\text{ML-KEM}^+$-512 w/ KMAC & 101009 & 101313 & 40741 & 40916 \\
         \hline
     \end{tabular}\vspace{0.3cm}
 
@@ -922,7 +903,7 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
         $\pk$ size & 1184 \\
         $\sk$ size & 2400 \\
-        \texttt{ct} size & 1088 \\
+        \text{ct} size & 1088 \\
         \hline
         \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
         Median & 129895 \\
@@ -937,17 +918,17 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \cline{2-5}
         & Median & Average & Median & Average \\
         \hline
-        \texttt{ML-KEM-768} & 136405 & 147400 & 186445 & 187529 \\
+        \text{ML-KEM-768} & 136405 & 147400 & 186445 & 187529 \\
         \hline
-        \texttt{Kyber768} & 153061 & 153670 & 182129 & 182755 \\
+        \text{Kyber768} & 153061 & 153670 & 182129 & 182755 \\
         \hline
-        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
+        $\text{ML-KEM}^+$-768 w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
         \hline
-        $\texttt{ML-KEM-768}^+$ w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
+        $\text{ML-KEM}^+$-768 w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
         \hline
-        $\texttt{ML-KEM-768}^+$ w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
+        $\text{ML-KEM}^+$-768 w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
         \hline
-        $\texttt{ML-KEM-768}^+$ w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
+        $\text{ML-KEM}^+$-768 w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
         \hline
     \end{tabular}\vspace{0.3cm}
 
@@ -958,7 +939,7 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
         $\pk$ size & 1568 \\
         $\sk$ size & 3168 \\
-        \texttt{ct} size & 1568 \\
+        \text{ct} size & 1568 \\
         \hline
         \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
         Median & 194921 \\
@@ -973,17 +954,17 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
         \cline{2-5}
         & Median & Average & Median & Average \\
         \hline
-        \texttt{ML-KEM-1024} & 199185 & 199903 & 246245 & 247320 \\
+        \text{ML-KEM-1024} & 199185 & 199903 & 246245 & 247320 \\
         \hline
-        \texttt{Kyber1024} & 222351 & 223260 & 258231 & 259067 \\
+        \text{Kyber1024} & 222351 & 223260 & 258231 & 259067 \\
         \hline
-        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
+        $\text{ML-KEM}^+$-1024 w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
         \hline
-        $\texttt{ML-KEM-1024}^+$ w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
+        $\text{ML-KEM}^+$-1024 w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
         \hline
-        $\texttt{ML-KEM-1024}^+$ w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
+        $\text{ML-KEM}^+$-1024 w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
         \hline
-        $\texttt{ML-KEM-1024}^+$ w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
+        $\text{ML-KEM}^+$-1024 w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
         \hline
     \end{tabular}
 \end{table}
