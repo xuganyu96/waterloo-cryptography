@@ -1,7 +1,5 @@
 %%%% 1. DOCUMENTCLASS %%%%
 %
-% TODO: need more thorough references
-% TODO: need better conclusion
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
 \documentclass[journal=tches,submission]{iacrtrans}
 %%%% NOTES:
@@ -220,7 +218,7 @@
 % The idea of using a message authenticator to ensure ciphertext integrity was instantiated with ElGamal cryptosystem by Bellare and Rogaway in 1997 \cite{DBLP:conf/icics/BellareR97}, and its security was later reduced to the Gap Diffie-Hellman assumption by Abdulla, Bellare, and Rogaway in \cite{DBLP:conf/ctrsa/AbdallaBR01} in 2001. Our work can be seen as generalizing Bellare and Rogaway's scheme from ElGamal cryptosystem to all PKE with OW-PCA security.
 
 \section{Introduction}\label{sec:introduction}
-A key encapsulation mechanism (KEM) \cite{DBLP:journals/iacr/Shoup01} is a cryptographic primitive that allows two parties to establish a shared secret over an insecure channel. The desired security standard for a KEM is called indistinguishability under adaptive chosen-ciphertext attack (IND-CCA2). Intuitively speaking, IND-CCA2 security requires that no efficient adversary can distinguish a pseudorandom shared secret from truly random noise, even with access to a decapsulation oracle throughout the attack. However, building a provably IND-CCA2 KEM is tremendously difficult. Early attempts without formal proof, such as RSA encryption defined in PKCS\#1 v1.5 \cite{DBLP:journals/rfc/rfc2313}, were later shown to be vulnerable to practical chosen-ciphertext attack \cite{DBLP:conf/crypto/Bleichenbacher98}. In recent decades, the most viable approach has been to start with cryptographic primitives possessing weaker security properties, such as a public-key encryption (PKE) scheme with one-way security under chosen-plaintext attack (OW-CPA), then add steps to ensure ciphertext non-malleability \cite{bellare1998relations}. Some of the earliest proposals for generic IND-CCA2 secure constructions include OAEP \cite{bellare1995optimal}, Fujisaki-Okamoto transformation \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13}, REACT \cite{DBLP:conf/ctrsa/OkamotoP01}, and GEM \cite{DBLP:conf/ctrsa/CoronHJPPT02}.
+A key encapsulation mechanism (KEM) \cite{DBLP:journals/iacr/Shoup01} is a cryptographic primitive that allows two parties to establish a shared secret over an insecure channel. The desired security standard for a KEM is called indistinguishability under adaptive chosen-ciphertext attack (IND-CCA2). Intuitively speaking, IND-CCA2 security requires that no efficient adversary can distinguish a pseudorandom shared secret from truly random noise, even with access to a decapsulation oracle throughout the attack. However, building a provably IND-CCA2 KEM is tremendously difficult. Early attempts without formal proof, such as RSA encryption defined in PKCS\#1 v1.5 \cite{DBLP:journals/rfc/rfc2313}, were later shown to be vulnerable to practical chosen-ciphertext attack \cite{DBLP:conf/crypto/Bleichenbacher98}. In recent decades, the most viable approach has been to start with cryptographic primitives possessing weaker security properties, such as a public-key encryption (PKE) scheme with one-way security under chosen-plaintext attack (OW-CPA), then add steps to ensure ciphertext non-malleability \cite{DBLP:conf/asiacrypt/BellareN00}. Some of the earliest proposals for generic IND-CCA2 secure constructions include OAEP \cite{DBLP:conf/eurocrypt/BellareR94}, Fujisaki-Okamoto transformation \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13}, REACT \cite{DBLP:conf/ctrsa/OkamotoP01}, and GEM \cite{DBLP:conf/ctrsa/CoronHJPPT02}.
 
 On the other hand, chosen-ciphertext security is a solve problem in symmetric cryptography. It is well understood that, by combining an IND-CPA secure symmetric encryption scheme with an existentially unforgeable message authentication code (MAC) in a pattern called ``encrypt-then-MAC'' \cite{DBLP:conf/crypto/Krawczyk01}, one can build an authenticated encryption scheme \cite{DBLP:conf/asiacrypt/BellareN00} that achieves IND-CCA2 security. While this technique cannot be directly applied in the context of public-key cryptography due to the lack of a shared symmetric key between the two communicating parties, the concept of authenticating ciphertext using a MAC still has strong merits. Abdalla, Rogaway, and Bellare proposed DHIES (also known as ``Hashed ElGamal'')\cite{DBLP:journals/iacr/AbdallaBR99}\cite{DBLP:conf/ctrsa/AbdallaBR01}, a hybrid public-key encryption (HPKE) scheme whose IND-CCA2 security reduces to the Gap Diffie-Hellman assumption \cite{DBLP:conf/pkc/OkamotoP01} under the random oracle model. The technique behind DHIES is to derive both the shared secret and a symmetric MAC key by hashing a random PKE plaintext, encrypt the PKE plaintext, then authenticate the PKE ciphertext using the previously derived MAC key. Where the Gap Diffie-Hellman assumption holds and the MAC is existentially unforgeable, no efficient adversary can recover the decryption of an unknown ciphertext even with access to a decryption oracle because it cannot produce a valid tag for such unknown ciphertext.
 
@@ -349,7 +347,7 @@ However, the Fujisaki-Okamoto transformation is not perfect. Among its shortfall
 \subsection{Public-key encryption scheme}
 \textbf{Syntax.} A public-key encryption scheme $\pke(\keygen, \encrypt, \decrypt)$ is a collection of three routines defined over some plaintext space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. $(\pk, \sk) \leftsample \keygen()$ is a randomized routine that returns a keypair. The encryption routine $\encrypt: (\pk, m) \mapsto c$ encrypts the input plaintext under the input public key. The decryption routine $\decrypt: (\sk, c) \mapsto m$ decrypts the input ciphertext under the input secret key. Where the encryption routine is randomized, we denote the randomness by $r \in \mathcal{R}$, where $\mathcal{R}$ is called the coin space. The decryption routine is assumed to always be deterministic. Some decryption routines can detect malformed ciphertext and output the rejection symbol $\bot$ accordingly.
 
-\textbf{Correctness.} Following the definition in \cite{DBLP:conf/eurocrypt/DworkNR04} and \cite{hofheinz2017modular}, a $\pke$ is $\delta$-correct if:
+\textbf{Correctness.} Following the definition in \cite{DBLP:conf/eurocrypt/DworkNR04}, a $\pke$ is $\delta$-correct if:
 
 \begin{equation*}
     E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta
@@ -771,9 +769,9 @@ We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
 \end{proof}
 
 \section{Implementation}\label{sec:implementation}
-ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation \cite{hofheinz2017modular} is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. 
+ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. 
 
-We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment. See appendix \ref{sec:ml-kem-and-kyber} for comparison with Kyber's third round submission to NIST's PQC competition.
+We implemented the ``encrypt-then-MAC'' KEM construction using $\texttt{K-PKE}$ as the input PKE and compared its performance against ML-KEM under a variety of scenarios. The experimental data showed that while the ``encrypt-then-MAC'' construction adds a small amount of computational overhead to the encapsulation routine and a small increase in ciphertext size when compared with ML-KEM, it boasts enormous runtime savings in the decapsulation routine, which makes it particularly suitable for deployment in constrained environment.
 
 We refer readers to \cite{FIPS203} for the details of the \texttt{K-PKE} routines. The ``encrypt-then-MAC'' KEM routines are described in figure \ref{fig:ml-kem-plus-routines} below.
 
@@ -976,8 +974,6 @@ Compared to the $U^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in
 
 Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the ``encrypt-then-MAC'' transformation over the $U^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the $\text{ML-KEM}^+$ can be found in table \ref{tbl:kem-performance}
 
-% TODO: How is ML-KEM different from Kyber round 3?
-
 \begin{table}[h]
     \centering
     \footnotesize
@@ -985,7 +981,6 @@ Since \texttt{K-PKE.\encrypt} carries significantly more computational complexit
 
     \begin{tabular}[t]{|cc|}
         \hline
-        % TODO: this title needs to show that parameters are identical across all variants
         \multicolumn{2}{|c|}{\bf 128-bit security} \\
         \hline
         \multicolumn{2}{|c|}{size parameters (bytes)} \\
@@ -1421,9 +1416,16 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
 \end{table}
 
 \section{Conclusions and future works}\label{sec:future-works}
-The ``encrypt-then-MAC'' transformation is a generic KEM construction that achieves IND-CCA2 security under the random oracle model if the input PKE is OW-PCA secure. Compared to the Fujisaki-Okamoto transformation, our construction replaced \emph{de-randomization} and \emph{re-encryption} with a message authenticator. At the cost of some minimal increase in communication size and encapsulation runtime, our construction achieves significant efficiency gains in the decapsulation routine. In practical key exchange protocols, our construction saves between 35-45\% in round trip time.
+The ``encrypt-then-MAC'' transformation is a generic KEM construction whose IND-CCA2 security reduces to the OW-PCA security of the input PKE and the one-time existential unforgeability of the input MAC in the random oracle model. Compared to the Fujisaki-Okamoto transformation, the ``encrypt-then-MAC'' replaces the computationally expensive re-encryption with computing a MAC tag. At the cost of minimal increase in encapsulation cost and ciphertext size, the ``encrypt-then-MAC'' substantially improves the efficiency of the decapsulation routine. Where the input PKE's encryption is slower than decryption, the ``encrypt-then-MAC'' KEM achieves meaningful time savings in practical key exchange protocols.
 
-\textbf{Other suitable post-quantum instantiation.} In section \ref{sec:implementation}, we instantiated the ``encrypt-then-MAC'' KEM transformation with the PKE subroutines of ML-KEM. Unfortunately, ML-KEM is vulnerable to plaintext checking attacks that can recover complete secret key if the keypair is reused \cite{DBLP:conf/eurocrypt/BaetuDHTV19}. In fact, as Chris Peikert pointed out, because of the search-decision equivalence of LWE problems, almost all LWE-based cryptosystems will be vulerable to plaintext-checking attacks \cite{DBLP:conf/pqcrypto/Peikert14}. This naturally raises the question of finding other post-quantum primitives to instantiate ``encrypt-then-MAC'' with, such as other lattice-based cryptosystems not based on LWE, code-based cryptosystems and isogeny-based cryptosystems.
+Unfortunately, ML-KEM is not OW-PCA secure. In fact, as Chris Peikert pointed out in \cite{DBLP:conf/pqcrypto/Peikert14}, most lattice-based cryptosystems are not OW-PCA secure due to the search-decision equivalence of lattice problems. While we instantiated ``encrypt-then-MAC'' with ML-KEM subroutines for performance comparison, the resulting KEM is not chosen-ciphertext secure, and should not be used in production systems. The natural questions is thus to find a suitable cryptosystem to instantiate ``encrypt-then-MAC'' with.
+
+\textbf{RSA and ElGamal.} Combining ``encrypt-then-MAC'' with ElGamal results in the ``Hashed ElGamal'' scheme proposed in \cite{DBLP:journals/iacr/AbdallaBR99}\cite{DBLP:conf/ctrsa/AbdallaBR01}. RSA is also known to be OW-PCA secure because it is a trapdoor permutation and thus a rigid PKE. However, because of RSA's rigidity, there exists even more efficient KEM transformation (such as RSA-KEM \cite{DBLP:journals/iacr/Shoup01}) that only adds a single hash to the base PKE routines. While applying ``encrypt-then-MAC'' to RSA will result in an IND-CCA2 secure KEM, such construction offers no meaningful advantage to RSA-KEM.
+
+\textbf{Code-based cryptography.} Because the general problem of decoding a linear code is proven NP hard \cite{DBLP:journals/tit/BerlekampMT78}, code-based cryptosystems may not suffer from the inherent search-decision equivalence of lattice problems and thus be viable candidates with OW-PCA security. Unfortunately, among the code-based submissions to NIST PQC, HQC \cite{melchor2018hamming} and BIKE \cite{aragon2022bike} are known to be vulnerable to key-recovery plaintext-checking attacks (KR-PCA) \cite{DBLP:journals/tches/TanakaUXITH23}. On the other hand, classic McEliece \cite{classicmceliecespec} seems to be PCA secure and thus a viable candidate, though in classic McEliece, the decoding routine is more expensive than the encryption routine, so applying ``encrypt-then-MAC'' may not yield meaningful performance gains.
+
+\textbf{Isogeny-based cryptography.} The intractability assumptions of isogeny-based cryptography resemble the classical Diffie-Hellman assumptions, and it seems possible to formulate a ``Gap Diffie-Hellman assumption'' in supersingular isogeny \cite{DBLP:conf/icisc/FujiokaTTY18}. While SIKE and SIDH were found to be insecure \cite{DBLP:conf/eurocrypt/CastryckD23}, other isogeny-based cryptosystem such as CSIDH \cite{DBLP:conf/asiacrypt/Castryck0MPR18} remains unaffected by the aforementioned attack and might be suitable candidates.
+
 
 %%%% 8. BILBIOGRAPHY %%%%
 \bibliographystyle{alpha}
@@ -1432,114 +1434,114 @@ The ``encrypt-then-MAC'' transformation is a generic KEM construction that achie
 % - Use bilbio.bib for additional references not in the cryptobib database.
 %   If possible, take them from DBLP.
 
-\section{Appendix}\label{sec:appendix}
-% TODO: brief introduction to the various authenticators should be in the appendix
+% \section{Appendix}\label{sec:appendix}
+% % TODO: brief introduction to the various authenticators should be in the appendix
 
-\subsection{Performance comparison between $\texttt{ML-KEM}^+$ and Kyber}\label{sec:ml-kem-and-kyber}
-ML-KEM directly evolved from CRYSTALS-Kyber's third round submission to NIST's post quantum cryptography competition. While their IND-CPA subroutines (see figure \ref{fig:k-pke-routines}) are identical, ML-KEM deviated from Kyber by choosing a different variant of the Fujisaki-Okamoto transformation.
+% \subsection{Performance comparison between $\texttt{ML-KEM}^+$ and Kyber}\label{sec:ml-kem-and-kyber}
+% ML-KEM directly evolved from CRYSTALS-Kyber's third round submission to NIST's post quantum cryptography competition. While their IND-CPA subroutines (see figure \ref{fig:k-pke-routines}) are identical, ML-KEM deviated from Kyber by choosing a different variant of the Fujisaki-Okamoto transformation.
 
-\begin{figure}[H]
-    \centering
+% \begin{figure}[H]
+%     \centering
 
-    \begin{minipage}[t]{0.33\textwidth}
-        \begin{algorithm}[H]
-            \caption*{\texttt{K-PKE.KeyGen()}}
-            \begin{algorithmic}[1]
-                \State $A \leftsample R_q^{k \times k}$
-                \State $\mathbf{s} \leftsample \mathcal{X}_{\eta_1}^k$
-                \State $\mathbf{e} \leftsample \mathcal{X}_{\eta_1}^k$
-                \State $\mathbf{t} \leftarrow A\mathbf{s} + \mathbf{e}$
-                \State $\pk \leftarrow (A, \mathbf{t})$
-                \State $\sk \leftarrow \mathbf{s}$
-                \State \Return $(\pk, \sk)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.33\textwidth}
-        \begin{algorithm}[H]
-            \caption*{\texttt{K-PKE.Enc(pk, m)}}
-            \begin{algorithmic}[1]
-                \Ensure $\pk = (A, \mathbf{t})$
-                \Ensure $m \in R_2$
-                \State $\mathbf{r} \leftsample \mathcal{X}_{\eta_1}^k$
-                \State $\mathbf{e}_1 \leftsample \mathcal{X}_{\eta_2}^k$
-                \State $e_2 \leftsample \mathcal{X}_{\eta_2}$
-                \State $\mathbf{c}_1 \leftarrow A\mathbf{r} + \mathbf{e}_1$
-                \State $c_2 \leftarrow \mathbf{t}^\intercal \mathbf{r} + e_2 + m \cdot \lfloor \frac{q}{2}\rceil$
-                \State \Return $(\mathbf{c}_1, c_2)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}\hfill
-    \begin{minipage}[t]{0.3\textwidth}
-        \begin{algorithm}[H]
-            \caption*{\texttt{K-PKE.Dec(sk, c)}}
-            \begin{algorithmic}[1]
-                \Ensure $c = (\mathbf{c}_1, c_2)$
-                \Ensure $\sk = \mathbf{s}$
-                \State $\hat{m} \leftarrow c_2 - \mathbf{c}_1^\intercal \cdot \mathbf{s}$
-                \State $\hat{m} \leftarrow \texttt{Round}(\hat{m})$
-                \State \Return $\hat{m}$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \caption{\texttt{K-PKE} routines are identical between Kyber and ML-KEM}\label{fig:k-pke-routines}
-\end{figure}
+%     \begin{minipage}[t]{0.33\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{\texttt{K-PKE.KeyGen()}}
+%             \begin{algorithmic}[1]
+%                 \State $A \leftsample R_q^{k \times k}$
+%                 \State $\mathbf{s} \leftsample \mathcal{X}_{\eta_1}^k$
+%                 \State $\mathbf{e} \leftsample \mathcal{X}_{\eta_1}^k$
+%                 \State $\mathbf{t} \leftarrow A\mathbf{s} + \mathbf{e}$
+%                 \State $\pk \leftarrow (A, \mathbf{t})$
+%                 \State $\sk \leftarrow \mathbf{s}$
+%                 \State \Return $(\pk, \sk)$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}\hfill
+%     \begin{minipage}[t]{0.33\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{\texttt{K-PKE.Enc(pk, m)}}
+%             \begin{algorithmic}[1]
+%                 \Ensure $\pk = (A, \mathbf{t})$
+%                 \Ensure $m \in R_2$
+%                 \State $\mathbf{r} \leftsample \mathcal{X}_{\eta_1}^k$
+%                 \State $\mathbf{e}_1 \leftsample \mathcal{X}_{\eta_2}^k$
+%                 \State $e_2 \leftsample \mathcal{X}_{\eta_2}$
+%                 \State $\mathbf{c}_1 \leftarrow A\mathbf{r} + \mathbf{e}_1$
+%                 \State $c_2 \leftarrow \mathbf{t}^\intercal \mathbf{r} + e_2 + m \cdot \lfloor \frac{q}{2}\rceil$
+%                 \State \Return $(\mathbf{c}_1, c_2)$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}\hfill
+%     \begin{minipage}[t]{0.3\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{\texttt{K-PKE.Dec(sk, c)}}
+%             \begin{algorithmic}[1]
+%                 \Ensure $c = (\mathbf{c}_1, c_2)$
+%                 \Ensure $\sk = \mathbf{s}$
+%                 \State $\hat{m} \leftarrow c_2 - \mathbf{c}_1^\intercal \cdot \mathbf{s}$
+%                 \State $\hat{m} \leftarrow \texttt{Round}(\hat{m})$
+%                 \State \Return $\hat{m}$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}
+%     \caption{\texttt{K-PKE} routines are identical between Kyber and ML-KEM}\label{fig:k-pke-routines}
+% \end{figure}
 
-CRYSTALS-Kyber uses the $U^{\not\bot}$ variant, where the shared secret is derived from both the plaintext and the ciphertext. On the other hand, because by using \emph{re-encryption} and \emph{de-randomization}, the PKE is already made \emph{rigid}, the CRYSTALS-Kyber team decided to use the $U^{\not\bot}_m$ variant, where the shared secret is derived from the plaintext alone.
+% CRYSTALS-Kyber uses the $U^{\not\bot}$ variant, where the shared secret is derived from both the plaintext and the ciphertext. On the other hand, because by using \emph{re-encryption} and \emph{de-randomization}, the PKE is already made \emph{rigid}, the CRYSTALS-Kyber team decided to use the $U^{\not\bot}_m$ variant, where the shared secret is derived from the plaintext alone.
 
-\begin{figure}[H]
-    \centering
-    \begin{minipage}[t]{0.45\textwidth}
-        \begin{algorithm}[H]
-            \caption*{\texttt{KEM.KeyGen()}}
-            \begin{algorithmic}[1]
-                \State $z \leftsample \{0,1\}^{256}$
-                \State $(\pk, \sk^\prime) \leftsample \texttt{PKE.KeyGen}()$
-                \State $\sk \leftarrow (\sk^\prime \Vert \pk \Vert H(\pk) \Vert z)$
-                \State \Return $(\pk, \sk)$
-            \end{algorithmic}
-        \end{algorithm}
-        \begin{algorithm}[H]
-            \caption*{\texttt{KEM.Encap(pk)}}
-            \begin{algorithmic}[1]
-                \State $m \leftsample \{0,1\}^{256}$
-                \State $(\overline{K}, r) \leftarrow G(m \Vert H(\pk))$
-                \State $c \leftarrow \texttt{PKE.Enc}(\pk, m, r)$
-                \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert H(c))$
-                    \Comment{$U^{\not\bot}$}
-                \State $K \leftarrow \overline{K}$
-                    \Comment{$U^{\not\bot}_m$}
-                \State \Return $(c, K)$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
-    \begin{minipage}[t]{0.5\textwidth}
-        \begin{algorithm}[H]
-            \caption*{\texttt{KEM.Decap(sk, c)}}
-            \begin{algorithmic}[1]
-                \Ensure $\sk = (\sk^\prime \Vert \pk \Vert H(\pk) \Vert z)$
-                \State $\hat{m} \leftarrow \texttt{PKE.Dec}(\sk^\prime, c)$
-                \State $(\overline{K}, \hat{r}) \leftarrow G(\hat{m} \Vert H(\pk))$
-                \If{$\texttt{PKE.Enc}(\pk, \hat{m}, \hat{r}) = c$}
-                    \State $K \leftarrow \texttt{KDF}(\overline{K}, H(c))$
-                        \Comment{$U^{\not\bot}$}
-                    \State $K \leftarrow \overline{K}$
-                        \Comment{$U^{\not\bot}_m$}
-                \Else 
-                    \State $K \leftarrow \texttt{KDF}(z \Vert H(c))$
-                \EndIf
-                \State \Return $K$
-            \end{algorithmic}
-        \end{algorithm}
-    \end{minipage}
+% \begin{figure}[H]
+%     \centering
+%     \begin{minipage}[t]{0.45\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{\texttt{KEM.KeyGen()}}
+%             \begin{algorithmic}[1]
+%                 \State $z \leftsample \{0,1\}^{256}$
+%                 \State $(\pk, \sk^\prime) \leftsample \texttt{PKE.KeyGen}()$
+%                 \State $\sk \leftarrow (\sk^\prime \Vert \pk \Vert H(\pk) \Vert z)$
+%                 \State \Return $(\pk, \sk)$
+%             \end{algorithmic}
+%         \end{algorithm}
+%         \begin{algorithm}[H]
+%             \caption*{\texttt{KEM.Encap(pk)}}
+%             \begin{algorithmic}[1]
+%                 \State $m \leftsample \{0,1\}^{256}$
+%                 \State $(\overline{K}, r) \leftarrow G(m \Vert H(\pk))$
+%                 \State $c \leftarrow \texttt{PKE.Enc}(\pk, m, r)$
+%                 \State $K \leftarrow \texttt{KDF}(\overline{K} \Vert H(c))$
+%                     \Comment{$U^{\not\bot}$}
+%                 \State $K \leftarrow \overline{K}$
+%                     \Comment{$U^{\not\bot}_m$}
+%                 \State \Return $(c, K)$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}
+%     \begin{minipage}[t]{0.5\textwidth}
+%         \begin{algorithm}[H]
+%             \caption*{\texttt{KEM.Decap(sk, c)}}
+%             \begin{algorithmic}[1]
+%                 \Ensure $\sk = (\sk^\prime \Vert \pk \Vert H(\pk) \Vert z)$
+%                 \State $\hat{m} \leftarrow \texttt{PKE.Dec}(\sk^\prime, c)$
+%                 \State $(\overline{K}, \hat{r}) \leftarrow G(\hat{m} \Vert H(\pk))$
+%                 \If{$\texttt{PKE.Enc}(\pk, \hat{m}, \hat{r}) = c$}
+%                     \State $K \leftarrow \texttt{KDF}(\overline{K}, H(c))$
+%                         \Comment{$U^{\not\bot}$}
+%                     \State $K \leftarrow \overline{K}$
+%                         \Comment{$U^{\not\bot}_m$}
+%                 \Else 
+%                     \State $K \leftarrow \texttt{KDF}(z \Vert H(c))$
+%                 \EndIf
+%                 \State \Return $K$
+%             \end{algorithmic}
+%         \end{algorithm}
+%     \end{minipage}
 
-    \caption{
-        Kyber uses $U^{\not\bot}$ variant. ML-KEM uses $U^{\not\bot}_m$ variant.
-    }\label{fig:kyber-ml-kem-compare}
-\end{figure}
+%     \caption{
+%         Kyber uses $U^{\not\bot}$ variant. ML-KEM uses $U^{\not\bot}_m$ variant.
+%     }\label{fig:kyber-ml-kem-compare}
+% \end{figure}
 
-The reason for ML-KEM to use a different variant of the Fujisaki-Okamoto transformation is two-fold. The first reason is performance: using the $U^{\not\bot}_m$ transformation saves the need to hash the ciphertext, and since Kyber/ML-KEM's performance is mainly bottlenecked by the symmetric components, omitting the hash leads to significant runtime savings (up to 17\% in AVX-2 optimized implementations). The second reason is the simplified security proof and tighter security bounds of the $U^{\not\bot}_m$ variant compared to the $U^{\not\bot}$ variant. We will omit the details of the security proof and refer readers to \cite{hofheinz2017modular}.
+% The reason for ML-KEM to use a different variant of the Fujisaki-Okamoto transformation is two-fold. The first reason is performance: using the $U^{\not\bot}_m$ transformation saves the need to hash the ciphertext, and since Kyber/ML-KEM's performance is mainly bottlenecked by the symmetric components, omitting the hash leads to significant runtime savings (up to 17\% in AVX-2 optimized implementations). The second reason is the simplified security proof and tighter security bounds of the $U^{\not\bot}_m$ variant compared to the $U^{\not\bot}$ variant. We will omit the details of the security proof and refer readers to \cite{hofheinz2017modular}.
 
-In section \ref{sec:implementation}, we mainly compared $\texttt{ML-KEM}^+$ with \texttt{ML-KEM}, but the we would like to point out that, because Kyber uses the $U^{\not\bot}$ variant and needs to hash the ciphertext for deriving the shared secret, the performance advantage of $\texttt{ML-KEM}^+$ over Kyber will be even greater.
+% In section \ref{sec:implementation}, we mainly compared $\texttt{ML-KEM}^+$ with \texttt{ML-KEM}, but the we would like to point out that, because Kyber uses the $U^{\not\bot}$ variant and needs to hash the ciphertext for deriving the shared secret, the performance advantage of $\texttt{ML-KEM}^+$ over Kyber will be even greater.
 
 \end{document}
