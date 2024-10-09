@@ -768,6 +768,175 @@ We will prove theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
     Combining all equations above produce the desired security bound.
 \end{proof}
 
+\subsection{ElGamal is OW-PCA secure}
+We show that the DHAES/DHIES hybrid encryption scheme is a special case of the ``encrypt-then-MAC'' transformation. Specifically, we will sketch a proof of the following lemma:
+
+\begin{lemma}\label{lemma:elgamal-is-ow-pca}
+    For every OW-PCA adversary $A$ against the ElGamal cryptosystem, there exists a Gap Diffie-Hellman problem solver $B$ such that:
+
+    \begin{equation*}
+        \text{Adv}_\text{GapDH}(B) = \text{Adv}_\text{OW-PCA}(A)
+    \end{equation*}
+
+    In other words, ElGamal is OW-PCA secure under the Gap Diffie-Hellman assumption.
+\end{lemma}
+
+Each ElGamal cryptosystem \cite{DBLP:journals/tit/Elgamal85} is parameterized by a cyclic group $G = \langle g \rangle$ of prime order $q > 2$. A summary of the routine is shown below:
+
+\begin{figure}[H]
+    \centering
+
+    \begin{minipage}[t]{0.32\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{KeyGen()}}
+            \begin{algorithmic}[1]
+                \State $x \leftsample \mathbb{Z}_q$
+                \State $\sk \leftarrow x$
+                \State $\pk \leftarrow g^x$
+                \State \Return $(\pk, \sk)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.33\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{Enc}(\pk = g^x, m \in G)$}
+            \begin{algorithmic}[1]
+                \Require $m \in G$
+                \State $y \leftsample \mathbb{Z}_q$
+                \State $w \leftarrow g^y$
+                \State $v \leftarrow m \cdot (g^x)^y$
+                \State \Return $c = (w, v)$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hfill
+    \begin{minipage}[t]{0.33\textwidth}
+        \begin{algorithm}[H]
+            \caption*{$\texttt{Dec}(\sk = x, c = (w,v) \in G^2)$}
+            \begin{algorithmic}[1]
+                \State $\hat{m} \leftarrow (w^x)^{-1}\cdot v$
+                \State \Return $\hat{m}$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}
+    
+    \caption{ElGamal cryptosystem}
+\end{figure}
+
+The security of ElGamal cryptosystem reduces to the conjectured intractability of the computational Diffie-Hellman problem and the decisional Diffie-Hellman problem:
+
+\begin{definition}[\textbf{computational Diffie-Hellman problem (CDH)}]
+    Let $x, y \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $(g, g^x, g^y)$, compute $g^{xy}$.
+\end{definition}
+\begin{definition}[\textbf{decisional Diffie-Hellman problem (DDH)}]
+    Let $x, y, z \leftsample \mathbb{Z}_q$ be uniformly random samples. Let $h \leftsample \{g^z, g^{xy}\}$ be randomly chosen between $g^z$ and $g^{xy}$. Given $(g, g^x, g^y, h)$, determine whether $h$ is $g^{xy}$ or $g^z$
+\end{definition}
+
+It is also conjectured in \cite{DBLP:conf/ctrsa/AbdallaBR01} that for certain choice of cyclic group $G$, the computational Diffie-Hellman problem remains intractable even if the adversary as access to a restricted decisional Diffie-Hellman oracle. This assumption is captured in the Gap Diffie-Hellman problem:
+
+\begin{definition}[\textbf{Gap Diffie-Hellman problem}]
+    Let $G = \langle g \rangle$ be a cyclic group of prime order $q > 2$. Let $x, y \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $(g, g^x, g^y)$ and a restricted DDH oracle $\mathcal{O}^\text{DDH}: (u, v) \mapsto \llbrack u^x = v \rrbrack$, compute $g^{xy}$.
+\end{definition}
+
+We now present the proof for lemma \ref{lemma:elgamal-is-ow-pca}
+\begin{proof}
+    We will prove by sequence of game. A summary can be found in figure \ref{fig:elgamal-pca-games}
+
+    \begin{figure}
+        \centering
+
+        \begin{minipage}[t]{0.4\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$G_0 - G_2$}
+                \begin{algorithmic}[1]
+                    \State $x \leftsample \mathbb{Z}_q$
+                    \State $m^\ast \leftsample G$
+                    \State $y \leftsample \mathbb{Z}_q, w \leftarrow g^y$
+                    \State $v \leftarrow m^\ast \cdot (g^x)^y$
+                        \Comment{$G_0$ - $G_1$}
+                    \State $v \leftsample G$
+                        \Comment{$G_2$}
+                    \State $c^\ast \leftarrow (w, v)$
+                    \State $\hat{m} \leftsample A^{\pco}(g^x, c^\ast)$
+                        \Comment{$G_0$}
+                    \State $\hat{m} \leftsample A^{\pco_1}(g^x, c^\ast)$
+                        \Comment{$G_1$ - $G_2$}
+                    \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
+                        \Comment{$G_0$ - $G_1$}
+                    \State \Return $\llbrack \hat{m} = w^{-x}\cdot v \rrbrack$
+                        \Comment{$G_2$}
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \begin{minipage}[t]{0.4\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$\pco(m, c=(w, v))$}
+                \begin{algorithmic}[1]
+                    \State \Return $\llbrack m = (w^x)^{-1}\cdot v\rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+            \begin{algorithm}[H]
+                \caption*{$\pco_1(m, c=(w, v))$}
+                \begin{algorithmic}[1]
+                    \State \Return $\llbrack (w^x) = m^{-1} \cdot v \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+
+        \caption{Lemma \ref{lemma:elgamal-is-ow-pca} sequence of games}\label{fig:elgamal-pca-games}
+    \end{figure}
+
+    \emph{Game 0} is the OW-PCA game. Adversary $A$ has access to the plaintext-checking oracle $\pco$ and wins the game if it can correctly recover the challenge plaintext $m^\ast$.
+
+    \emph{Game 1} is identical to game 0, except that the formulation of the $\pco$ is changed. When servicing the plaintext-checking query $(m, c = (w, v))$, $\pco_1$ checks whether $w^x$ is equal to $m^{-1} \cdot v$. Observe that in the cyclic group $G$, the algebraic expressions in $\pco$ and $\pco_1$ are equivalent, which means that $\pco_1$ behaves identically to $\pco$.
+
+    \emph{Game 2} is identical to game 1 except for two modifications: first, when computing the challenge ciphertext, $v$ is no longer computed from $m^\ast$ but is randomly sampled; second, the win condition changed from $\hat{m} = m^\ast$ to $\hat{m} = w^{-x}\cdot v$. Notice that in game 0-1, $v \leftsample m^\ast \cdot (g^x)^y$ follows uniform random distribution on the cyclic group $G$ because $m^\ast$ is uniformly random in the cyclic group, so adversary $A$ retains its advantage in ``recovering the decryption'' when $v$ becomes truly uniformly random in the cyclic group. It is easy to verify that the two win conditions are equivalent. Up to this point, we have simply moved things around, and game 0 through game 2 are algebraically equivalent:
+
+    \begin{equation*}
+        \adv_0(A) = \adv_1(A) = \adv_2(A)
+    \end{equation*}
+
+    The Gap Diffie-Hellman adversary $B$ can perfectly simulate game 2 for $A$ (see figure \ref{fig:ow-pca-to-gap-dh}): $B$ receives as the Gap Diffie-Hellman problem inputs $g^x$ and $g^y$. $g^x$ simulates an ElGamal public key, where as $g^y$ simulates the first component of the challenge ciphertext. As in game 2, the second component of the challenge ciphertext can be randomly sampled. Finally, the $\pco_1$ from game 2 can be perfectly simulated using the restricted DDH oracle $\mathcal{O}^\text{DDH}$.
+
+    \begin{figure}
+        \centering
+
+        \begin{minipage}[t]{0.45\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$B^{\mathcal{O}^\text{DDH}}(g, g^x, g^y)$}
+                \begin{algorithmic}[1]
+                    \State $w \leftarrow g^y$
+                    \State $v \leftsample G$
+                    \State $c^\ast \leftarrow (w, v)$
+                    \State $\hat{m} \leftsample A^{\pco_2}(g^x, c^\ast)$
+                    \State \Return $\hat{m}^{-1}\cdot v$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+        \begin{minipage}[t]{0.45\textwidth}
+            \begin{algorithm}[H]
+                \caption*{$\mathcal{O}^\text{DDH}(u, v)$}
+                \begin{algorithmic}[1]
+                    \State \Return $\llbrack u^x = v \rrbrack$
+                \end{algorithmic}
+            \end{algorithm}\vspace{-0.3cm}
+            \begin{algorithm}[H]
+                \caption*{$\pco_2(m, c=(w, v))$}
+                \begin{algorithmic}[1]
+                    \State \Return $\mathcal{O}^\text{DDH}(w, m^{-1}\cdot v)$
+                \end{algorithmic}
+            \end{algorithm}
+        \end{minipage}
+
+        \caption{Gap Diffie-Hellman adversary $B$ simulates game 2 for $A$}\label{fig:ow-pca-to-gap-dh}
+    \end{figure}
+
+    If $A$ wins game 2, then its output is $\hat{m} = w^{-x}\cdot v = g^{-xy}\cdot v$, so $m^{-1}\cdot v$ is $g^{xy}$, the correct answer to the Gap Diffie-Hellman problem. In other words, $A$ wins game 2 if and only if $B$ solves the Gap Diffie-Hellman problem:
+
+    \begin{equation*}
+        \adv_2(A) = \adv_\text{GapDH}(B)
+    \end{equation*}
+\end{proof}
+
 \section{Implementation}\label{sec:implementation}
 ML-KEM is an \texttt{IND-CCA2} secure key encapsulation mechanism standardized by NIST in FIPS 203. The \texttt{IND-CCA2} security of ML-KEM is achieved in two steps. First, ML-KEM constructs an \texttt{IND-CPA} secure public key encryption scheme $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ whose security is based on the conjectured intractability of the module learning with error (MLWE) problems against both classical and quantum adversaries. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation is used to construct the KEM $\texttt{MLKEM}(\keygen, \encap, \decap)$ by calling $\texttt{K-PKE}(\keygen, \encrypt, \decrypt)$ as sub-routines. Because $\texttt{K-PKE}.\encrypt$ includes substantially more arithmetics than $\texttt{K-PKE}.\decrypt$, by using \textit{re-encryption} and \textit{de-randomization}, ML-KEM's decapsulation routine incurs significant computational cost. 
 
@@ -1202,9 +1371,9 @@ The RTT comparison is summarized in table \ref{tbl:ke-rtt}
 \subsubsection{Unilaterally authenticated key exchange (UAKE)}\label{sec:uakex}
 In unilaterally authenticated key exchange, the authenticating party proves its identity to the other party by demonstrating possession of a secret key that corresponds to a published long-term public key. In this implementation, the client possesses the long-term public key $\pk_S$ of the server, and the server authenticates itself by demonstrating possession of the corresponding long-term secret key $\sk_S$. UAKE routines are summarized in figure \ref{fig:uake-routines}.
 
-In addition to the long-term key, the client will also generate an ephemeral keypair as it does in an unauthenticated key exchange, and the session key is derived by applying the \texttt{KDF} to the concatenation of both the ephemeral shared secret and the shared secret encapsulated under server's long-term key. This helps the key exchange to achieve weak forward secrecy (citation needed).
+In addition to the long-term key, the client will also generate an ephemeral keypair as it does in an unauthenticated key exchange, and the session key is derived by applying the \texttt{KDF} to the concatenation of both the ephemeral shared secret and the shared secret encapsulated under server's long-term key. This helps the key exchange to achieve weak forward secrecy \cite{DBLP:conf/eurocrypt/CanettiK01}.
 
-Using KEM for authentication is especially interesting within the context of post-quantum cryptography: post-quantum KEM schemes usually enjoy better performance characteristics than post-quantum signature schemes with faster runtime, smaller memory footprint, and smaller communication sizes. KEMTLS was proposed in 2020 as an alternative to existing TLS handshake protocols, and many experimental implementations have demonstrated the performance advantage. (citation needed).
+Using KEM for authentication is especially interesting within the context of post-quantum cryptography: post-quantum KEM schemes usually enjoy better performance characteristics than post-quantum signature schemes with faster runtime, smaller memory footprint, and smaller communication sizes. KEMTLS was proposed in 2020 as an alternative to existing TLS handshake protocols, and many experimental implementations have demonstrated the performance advantage \cite{DBLP:conf/ccs/SchwabeSW20}.
 
 \begin{figure}[H]
     \centering
