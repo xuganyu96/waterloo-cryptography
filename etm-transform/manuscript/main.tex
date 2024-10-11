@@ -353,81 +353,66 @@ However, the Fujisaki-Okamoto transformation is not perfect. Among its shortfall
     E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta
 \end{equation*}
 
-Where the expectation is taken with respect to the probability distribution of all possible keypairs $(\pk, \sk) \leftsample \texttt{PKE.KeyGen()}$. For many lattice-based cryptosystems, including ML-KEM, decryption failures could leak information about the secret key, although the probability of a decryption failure is low enough that classical adversaries cannot exploit decryption failure more than they can defeat the underlying lattice problem. On the other hand, a quantum adversary may be able to exploit decryption failure in reasonable runtime by efficiently searching through all possible inputs using Grover's search algorithm. For that, ML-KEM made slight modifications in its KEM construction to prevent quantum adversary from precomputing large lookup table. We refer readers to \cite{avanzi2019crystals} and \cite{DBLP:conf/eurosp/BosDKLLSSSS18} for the details.
+Where the expectation is taken with respect to the probability distribution of all possible keypairs $(\pk, \sk) \leftsample \texttt{PKE.KeyGen()}$. For many lattice-based cryptosystems, including ML-KEM, decryption failures could leak information about the secret key, although the probability of a decryption failure is low enough that classical adversaries cannot exploit decryption failure more than they can defeat the underlying lattice problem. On the other hand, a quantum adversary may be able to exploit decryption failure in reasonable runtime by efficiently searching through all possible inputs using Grover's search algorithm. For that, ML-KEM made slight modifications in its KEM construction to prevent quantum adversary from precomputing large lookup table. We refer readers to \cite{avanzi2019crystals} and \cite{DBLP:conf/eurosp/BosDKLLSSSS18} for details of the mitigation techniques, though decryption failure is not a focus of this paper.
 
-\textbf{Security.} We discuss the security of a $\pke$ using the sequence of games described in \cite{shoup2004sequences}. Specifically, we first define the $\texttt{OW-ATK}$ as they pertain to a public key encryption scheme. In later section we will define the $\texttt{IND-CCA}$ game as it pertains to a key encapsulation mechanism.
+\textbf{Security.} The security of public-key encryption is conventionally discussed within the context of adversarial games played between a challenger and an adversary \cite{DBLP:conf/stoc/GoldwasserM82}. Each game is defined by the goal and the capabilities of the adversary.
 
-\def\algowatkgame{
-    \begin{algorithm}[H]
-        \caption*{The $\texttt{OW-ATK}$ game}
-        \begin{algorithmic}[1]
-            \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
-            \State $m^\ast \leftsample \mathcal{M}$
-            \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
-            \State $\hat{m} \leftsample \mathcal{A}^{\mathcal{O}_\texttt{ATK}}(
-                1^\lambda, \pk, c^\ast
-            )$
-            \State \Return $\llbrack m^\ast = \hat{m} \rrbrack$
-        \end{algorithmic}
-    \end{algorithm}
-}
-\def\algpco{
-    \begin{algorithm}[H]
-        \caption*{$\pco(m \in \mathcal{M}, c \in \mathcal{C})$}
-        \begin{algorithmic}[1]
-            \State \Return $\llbrack \decrypt(\sk, c) = m \rrbrack$
-        \end{algorithmic}
-    \end{algorithm}
-}
 \begin{figure}[H]
     \centering
-    \begin{minipage}[b]{0.49\textwidth}
-        \algowatkgame
+
+    \begin{minipage}[t]{0.4\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{OW-ATK} Game}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $m^\ast \leftsample \mathcal{M}$
+                \State $c^\ast \leftsample \encrypt(\pk, m^\ast)$
+                \State $\hat{m} \leftsample A^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
+                \State \Return $\llbrack \hat{m} = m^\ast \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
+    \end{minipage}\hspace{0.05\textwidth}
+    \begin{minipage}[t]{0.4\textwidth}
+        \begin{algorithm}[H]
+            \caption*{\texttt{IND-ATK} Game}
+            \begin{algorithmic}[1]
+                \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
+                \State $(m_0, m_1) \leftsample A^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk)$
+                \State $b \leftsample \{0,1\}$
+                \State $c^\ast \leftsample \encrypt(\pk, m_b)$
+                \State $\hat{b} \leftsample A^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast)$
+                \State \Return $\llbrack \hat{b} = b \rrbrack$
+            \end{algorithmic}
+        \end{algorithm}
     \end{minipage}
-    \begin{minipage}[b]{0.49\textwidth}
-        \algpco
-    \end{minipage}
-    \caption{
-        One-way security game of PKE (left) and plaintext-checking oracle (right)
-    }\label{fig:ow-game-pco}
+    \caption{The one-way game, indistinguishability game, plaintext-checking oracle (PCO), and decryption oracle. $\texttt{ATK} \in \{\texttt{CPA}, \texttt{PCA}, \texttt{CCA}\}$}
 \end{figure}
 
-In the \texttt{OW-ATK} game (see figure \ref{fig:ow-game-pco}), an adversary's goal is to recover the decryption of a randomly generated ciphertext. A challenger randomly samples a keypair and a challenge plaintext $m^\ast$, encrypts the challenge plaintext $c^\ast \leftsample \encrypt(\pk, m^\ast)$, then gives $\pk$ and $c^\ast$ to the adversary $A$. The adversary $A$, with access to some oracle $\mathcal{O}_\texttt{ATK}$, outputs a guess decryption $\hat{m}$. $A$ wins the game if its guess $\hat{m}$ is equal to the challenge plaintext $m^\ast$. The \textit{advantage} $\adv_\texttt{OW-ATK}$ of an adversary in this game is the probability that it wins the game:
-
-\begin{equation*}
-    \adv_\texttt{OW-ATK}(A) = P\left[
-        A(\pk, c^\ast) = m^\ast \vert
-        (\pk, \sk) \leftsample \keygen() ;
-        m^\ast \leftsample \mathcal{M};
-        c^\ast \leftsample \encrypt(\pk, m^\ast)
-    \right]
-\end{equation*}
-
-The capabilities of the oracle $\mathcal{O}_\texttt{ATK}$ depends on the choice of security goal $\texttt{ATK}$. Particularly relevant to our result is security against plaintext-checking attack (PCA), for which the adversary has access to a plaintext-checking oracle (PCO) (see figure \ref{fig:ow-game-pco}). A PCO takes as input a plaintext-ciphertext pair $(m, c)$ and returns \texttt{True} if $m$ is the decryption of $c$ or \texttt{False} otherwise.
+Depending on the attack model, the adversary may have access to various oracles. In public-key cryptography, adversaries are always assumed to have the public key with which they can mount chosen-plaintext attack. If the adversary has access to a plaintext-checking oracle $\pco$ then it can mount plaintext-checking attack (PCA). Where the adversary has access to a decryption oracle, it can mount chosen-ciphertext attacks (CCA). A PKE is \texttt{OW-ATK}/\texttt{IND-ATK} secure if no efficient adversary with access to the corresponding oracle(s) can win the corresponding game with non-negligible advantage.
 
 \subsection{Key encapsulation mechanism (KEM)}
-A key encapsulation mechanism is a collection of three routines $(\keygen, \encap, \decap)$ defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a fake session key that depends on the ciphertext and some other secret values.
+\textbf{Syntax} A key encapsulation mechanism $\kem(\keygen, \encap, \decap)$ is a collection of three routines defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a fake session key that depends on the ciphertext and some other secret values.
 
-The IND-CCA security of a KEM is defined by an adversarial game in which an adversary's goal is to distinguish pseudorandom shared secret (generated by running the $\encap$ routine) and a truly random value.
+\textbf{Security} The security of KEMs is similarly discussed in adversarial games (figure \ref{fig:kem-game}), although the win conditions differ slightly from the win conditions of a PKE's indistinguishability game. In a KEM's indistinguishability game, an adversary is given the public key and a challenge ciphertext, then asked to distinguish a pseudorandom shared secret $K_0$ associated with the challenge ciphertext from a truly random bit string of equal length.
 
-\begin{figure}[H]
+\begin{figure}[h]
     \centering
-    \begin{minipage}[b]{0.49\textwidth}
+    \begin{minipage}[t]{0.49\textwidth}
         \begin{algorithm}[H]
-            \caption*{KEM-IND-CCA2 game}
+            \caption*{\texttt{IND-ATK} game}
             \begin{algorithmic}[1]
                 \State $(\pk, \sk) \leftsample \keygen(1^\lambda)$
                 \State $(c^\ast, K_0) \leftsample \encap(\pk)$
                 \State $K_1 \leftsample \mathcal{K}$
                 \State $b \leftsample \{0, 1\}$
-                \State $\hat{b} \leftsample A^{\mathcal{O}_\decap}(
+                \State $\hat{b} \leftsample A^{\mathcal{O}_\texttt{ATK}}(
                     1^\lambda, \pk, c^\ast, K_b
                 )$
                 \State \Return $\llbrack \hat{b} = b \rrbrack$
             \end{algorithmic}
         \end{algorithm}
     \end{minipage}\hfill
-    \begin{minipage}[b]{0.49\textwidth}
+    \begin{minipage}[t]{0.49\textwidth}
         \begin{algorithm}[H]
         \caption*{$\mathcal{O}_\decap(c)$}
         \begin{algorithmic}[1]
@@ -435,9 +420,8 @@ The IND-CCA security of a KEM is defined by an adversarial game in which an adve
         \end{algorithmic}
         \end{algorithm}
     \end{minipage}
-    \caption{IND-CCA2 game for KEM (left) and decapsulation oracle (right)}\label{fig:kem-game}
+    \caption{\texttt{IND-ATK} game for KEM and decapsulation oracle $\mathcal{O}_\decap$}\label{fig:kem-game}
 \end{figure}
-
 
 The decapsulation oracle $\mathcal{O}^\decap$ takes a ciphertext $c$ and returns the output of the $\decap$ routine using the secret key. The advantage $\epsilon_\texttt{IND-CCA}$ of an IND-CCA adversary $\mathcal{A}_\texttt{IND-CCA}$ is defined by
 
