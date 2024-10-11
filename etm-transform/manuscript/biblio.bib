@@ -9,6 +9,16 @@
    year = {2024},
 }
 
+@techreport{FIPS202,
+   author = {National Institute of Standards and Technology},
+   title = {SHA-3 Standard: Permutation-Based Hash and Extendable-Output Functions},
+   institution = {U.S. Department of Commerce},
+   address= {Washington, D.C.},
+   number = {Federal Information Processing Standards Publication (FIPS) NIST FIPS 202},
+   DOI = {10.6028/NIST.FIPS.202},
+   year = {2015},
+}
+
 @techreport{SP80053r4,
    author = {Joint Task Force Transformation Initiative Interagency Working Group},
    title = {Security and Privacy Controls for Federal Information Systems and Organizations},
@@ -40,6 +50,38 @@
 }
 
 % ------------ Non-federal papers ---------
+@inproceedings{bertoni2007sponge,
+  author    = {Guido Bertoni and Joan Daemen and Michaël Peeters and Gilles Van Assche},
+  title     = {Sponge Functions},
+  booktitle = {ECRYPT Hash Workshop 2007},
+  year      = {2007},
+  url       = {https://keccak.team/files/SpongeFunctions.pdf}
+}
+
+@article{azarderakhsh2017supersingular,
+  title={Supersingular isogeny key encapsulation},
+  author={Azarderakhsh, Reza and Campagna, Matthew and Costello, Craig and Feo, Luca De and Hess, Basil and Jalali, Amir and Jao, David and Koziel, Brian and LaMacchia, Brian and Longa, Patrick and others},
+  journal={Submission to the NIST Post-Quantum Standardization project},
+  volume={152},
+  pages={154--155},
+  year={2017}
+}
+
+@misc{kyberrefimpl,
+  author       = {Joppe W. Bos and
+                  L{\'{e}}o Ducas and
+                  Eike Kiltz and
+                  Tancr{\`{e}}de Lepoint and
+                  Vadim Lyubashevsky and
+                  John M. Schanck and
+                  Peter Schwabe and
+                  Gregor Seiler and
+                  Damien Stehl{\'{e}}},
+  title={official reference implementation of the Kyber key encapsulation mechanism},
+  year={2024},
+  url={https://github.com/pq-crystals/kyber},
+}
+
 @inproceedings{DBLP:conf/stoc/GoldwasserM82,
   author       = {Shafi Goldwasser and
                   Silvio Micali},
