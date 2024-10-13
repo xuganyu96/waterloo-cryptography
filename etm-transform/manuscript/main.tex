@@ -1,11 +1,3 @@
-% TODO: add the implementation of the protocols in the abstract.
-% DONE: added "We also implemented key exchange protocols and measured..."
-
-% TODO: remove 768/1024 security level data, add remarks about 128-bit tag security.
-% DONE: removed Poly1305 data with ML-KEM-768/1024
-%   GCM's tag is up to 128 bits: https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38d.pdf
-%   CMAC's tag is up to 128 bits because it uses AES as underlying block cipher
-
 %%%% 1. DOCUMENTCLASS %%%%
 %
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
@@ -105,7 +97,10 @@ On the other hand, chosen-ciphertext security is a solved problem in symmetric c
 
 \paragraph{$\mlkemplus$: an instantiation of encrypt-then-MAC transformation with ML-KEM's PKE sub-routines.} We implemented $\mlkemplus$ by applying our encrypt-then-MAC transformation to ML-KEM's PKE sub-routines. Compared with ML-KEM, which is based on the $U^{\not\bot}$ variant (implicit rejection with rigidity) of the modular Fujisaki-Okamoto KEM transformation, $\mlkemplus$ demonstrates massive performance improvements in decapsulation while only incurring minimal performance penalty in encapsulation runtime and ciphertext size. On an AMD EPYC 9R14 CPU, $\mlkemplus$ with Poly1305 achieves between 72\%-80\% reduction of CPU cycles needed for decapsulation while only incurring 2\%-7\% increase of CPU cycles needed for encapsulation (see Table \ref{tbl:cpu-cycles-summary}).
 
-\begin{table}[H]
+\paragraph{C implementation and performance comparison} To observe the real-world performance of our encrypt-then-MAC transformation, we implemented $\mlkemplus$ in C and measured the CPU cycle count for encapsulation and decapsulation routines. Compared to ML-KEM, $\mlkemplus$ with Poly1305 achieves 72\%-80\% reduction of CPU cycle count for decapsulation while only increasing encapsulation CPU cycle count by 2\%-7\% (See Table \ref{tbl:cpu-cycles-summary}). We also implemented the Kyber key exchange protocols (described in \cite{DBLP:conf/eurosp/BosDKLLSSSS18}) using $\mlkemplus$. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
+
+
+\begin{table}[h]
     \centering
     % \footnotesize
     \small
@@ -167,10 +162,7 @@ On the other hand, chosen-ciphertext security is a solved problem in symmetric c
 
     \caption{$\mlkemplus$ achieves large performance improvements in decapsulation at the cost of minimal penalty in encapsulation performance and ciphertext size}\label{tbl:cpu-cycles-summary}
 \end{table}
-
-\paragraph{Performance improvements in practical key exchange.} We also implemented the three Kyber key exchange protocols described in \cite{DBLP:conf/eurosp/BosDKLLSSSS18} using $\mlkemplus$ and ML-KEM. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
-
-\begin{table}[H]
+\begin{table}[h]
     \centering
     % \footnotesize
     \small
@@ -1603,11 +1595,11 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
 \section{Conclusions and future works}\label{sec:future-works}
 The encrypt-then-MAC transformation is a generic KEM construction whose IND-CCA security reduces to the OW-PCA security of the input PKE and the one-time existential unforgeability of the input MAC in the random oracle model. Compared to the Fujisaki-Okamoto transformation, the encrypt-then-MAC replaces the computationally expensive re-encryption with computing a MAC tag. At the cost of minimal increase in encapsulation cost and ciphertext size, the encrypt-then-MAC substantially improves the efficiency of the decapsulation routine. Where the input PKE's encryption is slower than decryption, the encrypt-then-MAC KEM achieves meaningful time savings in practical key exchange protocols.
 
-Unfortunately, ML-KEM's K-PKE subroutines are not OW-PCA secure. In fact, as Chris Peikert pointed out in \cite{DBLP:conf/pqcrypto/Peikert14}, most lattice-based cryptosystems are not OW-PCA secure due to the search-decision equivalence of lattice problems. While we applied the encrypt-then-MAC transformation to K-PKE for performance comparison, $\mlkemplus$ is not chosen-ciphertext secure, and should not be used in production systems. The natural questions is thus to find a suitable cryptosystem to apply the encrypt-then-MAC transformation to.
+In our future work, we would like to look at applying encryption-then-MAC transformation to other post-quantum cryptosystems for improving their practical implementation efficiency.
 
-\textbf{Code-based cryptosystems.} Because the general problem of decoding a linear code is proven NP hard \cite{DBLP:journals/tit/BerlekampMT78}, code-based cryptosystems does not suffer from the inherent search-decision equivalence of lattice problems and thus be viable candidates with OW-PCA security. Unfortunately, among the code-based submissions to NIST PQC, HQC \cite{melchor2018hamming} and BIKE \cite{aragon2022bike} are known to be vulnerable to key-recovery plaintext-checking attacks (KR-PCA) \cite{DBLP:journals/tches/TanakaUXITH23}. On the other hand, classic McEliece \cite{classicmceliecespec} seems to be PCA secure and thus a viable candidate, although in classic McEliece, the decoding routine is more expensive than the encryption routine, so applying encrypt-then-MAC may not yield meaningful performance gains.
+\paragraph{Code-based cryptosystems.} Because the general problem of decoding a linear code is proven NP hard \cite{DBLP:journals/tit/BerlekampMT78}, code-based cryptosystems does not suffer from the inherent search-decision equivalence of lattice problems and thus be viable candidates with OW-PCA security. Unfortunately, among the code-based submissions to NIST PQC, HQC \cite{melchor2018hamming} and BIKE \cite{aragon2022bike} are known to be vulnerable to key-recovery plaintext-checking attacks (KR-PCA) \cite{DBLP:journals/tches/TanakaUXITH23}. On the other hand, classic McEliece \cite{classicmceliecespec} seems to be PCA secure and thus a viable candidate, although in classic McEliece, the decoding routine is more expensive than the encryption routine, so applying encrypt-then-MAC may yield less impressive performance gains.
 
-\textbf{Isogeny-based cryptosystems.} The intractability assumptions of isogeny-based cryptography resemble the classical Diffie-Hellman assumptions, and it seems possible to formulate a ``Gap Diffie-Hellman assumption'' in supersingular isogeny \cite{DBLP:conf/icisc/FujiokaTTY18}. In fact, SIKE \cite{azarderakhsh2017supersingular} also uses the Fujisaki-Okamoto transformation, and given the heavy computational cost of isogeny computation, replacing re-encryption with MAC will result in substantial performance improvements. While SIKE and SIDH were found to be insecure \cite{DBLP:conf/eurocrypt/CastryckD23}, other isogeny-based cryptosystem such as CSIDH \cite{DBLP:conf/asiacrypt/Castryck0MPR18} remains unaffected by the aforementioned attack and might be suitable candidates.
+\paragraph{Isogeny-based cryptosystems.} The intractability assumptions of isogeny-based cryptography resemble the classical Diffie-Hellman assumptions, and it seems possible to formulate a ``Gap Diffie-Hellman assumption'' in supersingular isogeny \cite{DBLP:conf/icisc/FujiokaTTY18}. In fact, SIKE \cite{azarderakhsh2017supersingular} also uses the Fujisaki-Okamoto transformation, and given the heavy computational cost of isogeny computation, replacing re-encryption with MAC will result in substantial performance improvements. While SIKE and SIDH were found to be insecure \cite{DBLP:conf/eurocrypt/CastryckD23}, other isogeny-based cryptosystem such as CSIDH \cite{DBLP:conf/asiacrypt/Castryck0MPR18} remains unaffected by the aforementioned attack and might be suitable candidates.
 
 
 %%%% 8. BILBIOGRAPHY %%%%
