@@ -1,23 +1,10 @@
-% TODO: describe ML-KEM in appendix
-%   Added in Figure 14
+% TODO: add the implementation of the protocols in the abstract.
+% DONE: added "We also implemented key exchange protocols and measured..."
 
-% TODO: why is key derived from H(preKey || c') vs H(preKey || t)
-% DONE: that was a typo and was fixed. the implementation hashed the tag, not the ciphertext
-
-% TODO: Decapsulation line 9
-% DONE: ML-KEM still uses implicit rejection, see line 7 of Algorithm 18 in FIPS 203 (https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf)
-
-% TODO: Explain the removal of the pseudorandom coin
-% DONE: added paragraph in section 3: "Since the encrypt-then-MAC transformation removes re-encryption..."
-
-% TODO: reference for key exchange protocols
-% DONE: Added to the beginning of section 5.3
-
-% TODO: revise abstract and introduction
-% DONE: revised abstract, reorganized introduction, removed RSA/ElGamal in the last section
-
-% TODO: Why only 128-bit tag?
-% DONE: Added a few sentences in section 4.1
+% TODO: remove 768/1024 security level data, add remarks about 128-bit tag security.
+% DONE: removed Poly1305 data with ML-KEM-768/1024
+%   GCM's tag is up to 128 bits: https://nvlpubs.nist.gov/nistpubs/legacy/sp/nistspecialpublication800-38d.pdf
+%   CMAC's tag is up to 128 bits because it uses AES as underlying block cipher
 
 %%%% 1. DOCUMENTCLASS %%%%
 %
@@ -105,7 +92,7 @@
 
 %%%% 6. ABSTRACT %%%%
 \begin{abstract}
-    ML-KEM is a lattice-based IND-CCA secure key encapsulation mechanism (KEM) standardized by NIST in FIPS 203. ML-KEM achieves chosen-ciphertext security by applying the Fujisaki-Okamoto transformation to an IND-CPA secure public-key encryption (PKE) scheme. The Fujisaki-Okamoto transformation uses de-randomization and re-encryption to ensure ciphertext non-malleability, but because ML-KEM's underlying PKE encryption is significantly slower than the underlying PKE decryption, ML-KEM's decapsulation performance is dominated by re-encryption. In this paper, we propose an alternative generic IND-CCA secure KEM transformation that applies the encrypt-then-MAC pattern to an OW-PCA secure PKE and an existentially unforgeable MAC. Compared to the Fujisaki-Okamoto transformation, our encrypt-then-MAC transformation replaces de-randomization and re-encryption with computing a MAC tag. We then implemented $\mlkemplus$ by applying the encrypt-then-MAC transformation to the PKE sub-routines of ML-KEM and a wide selection of MACs including Poly1305, GMAC, CMAC, and KMAC. At all three security levels (128-bit, 196-bit, and 256-bit security), our implementation demonstrates great performance improvements in a variety of practical scenarios. For example, $\mlkemplus$ with Poly1305 reduces decapsulation's CPU cycles by 72\%-79\% and decreases network round trip time in key exchange protocols by 24\%-48\%.
+    ML-KEM is a lattice-based IND-CCA secure key encapsulation mechanism (KEM) standardized by NIST in FIPS 203. ML-KEM achieves chosen-ciphertext security by applying the Fujisaki-Okamoto transformation to an IND-CPA secure public-key encryption (PKE) scheme. The Fujisaki-Okamoto transformation uses de-randomization and re-encryption to ensure ciphertext non-malleability, but because ML-KEM's underlying PKE encryption is significantly slower than the underlying PKE decryption, ML-KEM's decapsulation performance is dominated by re-encryption. In this paper, we propose an alternative generic IND-CCA secure KEM transformation that applies the encrypt-then-MAC pattern to an OW-PCA secure PKE and an existentially unforgeable MAC. Compared to the Fujisaki-Okamoto transformation, our encrypt-then-MAC transformation replaces de-randomization and re-encryption with computing a MAC tag. We then implemented $\mlkemplus$ by applying the encrypt-then-MAC transformation to the PKE sub-routines of ML-KEM and a wide selection of MACs including Poly1305, GMAC, CMAC, and KMAC. At the cost of minimal increase in encapsulation CPU cycles (+1.8\%) and ciphertext size (+2.1\%), $\mlkemplus$ achieves massive reduction of decapsulation CPU cycles (-72.2\%) compared to ML-KEM. We also implemented key exchange protocols and measured realistic network round trip time (RTT), where $\mlkemplus$ reduces RTT by 23.9\%-39.5\% compared to ML-KEM.
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
@@ -120,69 +107,127 @@ On the other hand, chosen-ciphertext security is a solved problem in symmetric c
 
 \begin{table}[H]
     \centering
-    \footnotesize
+    % \footnotesize
+    \small
 
-    \begin{tabular}{|p{1.2cm}|p{1.49cm}|p{1.49cm}|p{1.49cm}|}
-        \hline
-        & $\text{ML-KEM}^+$ \newline 512 
-        & $\text{ML-KEM}^+$ \newline 768 
-        & $\text{ML-KEM}^+$ \newline 1024 
-        \\
-        \hline
-        Encap \newline (ccl/tick) 
-        & 93157 \newline (+1.8\%) 
-        & 146405 \newline (+7.3\%) 
-        & 205763 \newline (+3.3\%) 
-        \\
-        \hline
-        Decap \newline (ccl/tick) 
-        & 33733 \newline (-72.2\%) 
-        & 43315 \newline (-76.8\%) 
-        & 51375 \newline (-79.1\%) 
-        \\
-        \hline
-        CT size \newline (bytes) 
-        & 784 \newline (+2.1\%) 
-        & 1104 \newline (+1.5\%) 
-        & 1584 \newline (+1.0\%) 
-        \\
-        \hline
+    % TODO: Poly1305 may not be suitable for 192/256 bit security level
+    % \begin{tabular}{|p{1.2cm}|p{1.49cm}|p{1.49cm}|p{1.49cm}|}
+    %     \hline
+    %     & $\text{ML-KEM}^+$ \newline 512 
+    %     & $\text{ML-KEM}^+$ \newline 768 
+    %     & $\text{ML-KEM}^+$ \newline 1024 
+    %     \\
+    %     \hline
+    %     Encap \newline (ccl/tick) 
+    %     & 93157 \newline (+1.8\%) 
+    %     & 146405 \newline (+7.3\%) 
+    %     & 205763 \newline (+3.3\%) 
+    %     \\
+    %     \hline
+    %     Decap \newline (ccl/tick) 
+    %     & 33733 \newline (-72.2\%) 
+    %     & 43315 \newline (-76.8\%) 
+    %     & 51375 \newline (-79.1\%) 
+    %     \\
+    %     \hline
+    %     CT size \newline (bytes) 
+    %     & 784 \newline (+2.1\%) 
+    %     & 1104 \newline (+1.5\%) 
+    %     & 1584 \newline (+1.0\%) 
+    %     \\
+    %     \hline
+    % \end{tabular}
+    \begin{tabular}{|p{2.5cm}|p{1.4cm}|p{1.4cm}|p{1.4cm}|}
+       \hline
+       & Encap \newline (ccl/tick) 
+       & Decap \newline (ccl/tick) 
+       & CT size \newline (bytes) \\
+       \hline
+       $\mlkemplus$-512 \newline (Poly1305)
+       & 93157 \newline (+1.8\%)
+       & 33733 \newline (-72.2\%)
+       & 784 \newline (+2.1\%) \\
+       \hline
+       $\mlkemplus$-512 \newline (GMAC)
+       & 97369 \newline (+6.5\%)
+       & 37725 \newline (-68.9\%)
+       & 784 \newline (+2.1\%) \\
+       \hline
+       $\mlkemplus$-512 \newline (CMAC)
+       & 99739 \newline (+9.0\%)
+       & 40117 \newline (-66.9\%)
+       & 784 \newline (+2.1\%) \\
+       \hline
+       $\mlkemplus$-512 \newline (KMAC-256)
+       & 101009 \newline (+10.4\%)
+       & 40741 \newline (-66.4\%)
+       & 784 \newline (+2.1\%) \\
+       \hline
     \end{tabular}
 
-    \caption{$\mlkemplus$ with Poly1305 achieves large performance improvements in decapsulation at the cost of minimal penalty in encapsulation performance and ciphertext size}\label{tbl:cpu-cycles-summary}
+    \caption{$\mlkemplus$ achieves large performance improvements in decapsulation at the cost of minimal penalty in encapsulation performance and ciphertext size}\label{tbl:cpu-cycles-summary}
 \end{table}
 
 \paragraph{Performance improvements in practical key exchange.} We also implemented the three Kyber key exchange protocols described in \cite{DBLP:conf/eurosp/BosDKLLSSSS18} using $\mlkemplus$ and ML-KEM. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
 
 \begin{table}[H]
     \centering
-    \footnotesize
+    % \footnotesize
+    \small
 
-    \begin{tabular}{|p{1.6cm}|p{1.49cm}|p{1.49cm}|p{1.49cm}|}
-        \hline
-        &  $\text{ML-KEM}^+$ \newline 512 
-        &  $\text{ML-KEM}^+$ \newline 768 
-        &  $\text{ML-KEM}^+$ \newline 1024 
-        \\
-        \hline
-        KE RTT \newline ($\us$) 
-        &  70 \newline (-23.9\%) 
-        &  99 \newline (-26.7\%) 
-        &  138 \newline (-28.5\%) 
-        \\
-        \hline
-        UAKE RTT \newline ($\us$) 
-        &  103 \newline (-29.0\%) 
-        &  144 \newline (-33.0\%) 
-        &  202 \newline (-34.8\%) 
-        \\
-        \hline
-        AKE RTT \newline ($\us$) 
-        &  133 \newline (-39.5\%) 
-        &  190 \newline (-35.4\%) 
-        &  266 \newline (-48.0\%) 
-        \\
-        \hline
+    % TODO: Poly1305 might not be suitable for 192/256 bit security
+    % \begin{tabular}{|p{1.6cm}|p{1.49cm}|p{1.49cm}|p{1.49cm}|}
+    %     \hline
+    %     &  $\text{ML-KEM}^+$ \newline 512 
+    %     &  $\text{ML-KEM}^+$ \newline 768 
+    %     &  $\text{ML-KEM}^+$ \newline 1024 
+    %     \\
+    %     \hline
+    %     KE RTT \newline ($\us$) 
+    %     &  70 \newline (-23.9\%) 
+    %     &  99 \newline (-26.7\%) 
+    %     &  138 \newline (-28.5\%) 
+    %     \\
+    %     \hline
+    %     UAKE RTT \newline ($\us$) 
+    %     &  103 \newline (-29.0\%) 
+    %     &  144 \newline (-33.0\%) 
+    %     &  202 \newline (-34.8\%) 
+    %     \\
+    %     \hline
+    %     AKE RTT \newline ($\us$) 
+    %     &  133 \newline (-39.5\%) 
+    %     &  190 \newline (-35.4\%) 
+    %     &  266 \newline (-48.0\%) 
+    %     \\
+    %     \hline
+    % \end{tabular}
+    \begin{tabular}{|p{2.5cm}|p{1.4cm}|p{1.8cm}|p{1.8cm}|}
+       \hline
+       & KE RTT \newline ($\us$) 
+       & UAKE RTT \newline ($\us$) 
+       & AKE RTT \newline ($\us$) \\
+       \hline
+       $\mlkemplus$-512 \newline (Poly1305)
+       & 70 \newline (-23.9\%)
+       & 103 \newline (-29.0\%)
+       & 133 \newline (-39.5\%) \\
+       \hline
+       $\mlkemplus$-512 \newline (GMAC)
+       & 73 \newline (-20.7\%)
+       & 106 \newline (-26.9\%)
+       & 139 \newline (-36.8\%) \\
+       \hline
+       $\mlkemplus$-512 \newline (CMAC)
+       & 75 \newline (-18.5\%)
+       & 108 \newline (-25.5\%)
+       & 143 \newline (-35.0\%) \\
+       \hline
+       $\mlkemplus$-512 \newline (KMAC-256)
+       & 76 \newline (-17.4\%)
+       & 109 \newline (-24.8\%)
+       & 145 \newline (-34.1\%) \\
+       \hline
     \end{tabular}
 
     \caption{$\mlkemplus$ achieves substantial RTT savings despite increased encapsulation cost and ciphertext size}\label{tbl:rtt-summary}
@@ -1033,7 +1078,9 @@ When applying our encrypt-then-MAC transformation to K-PKE, we modified the rout
 We also modified how the shared secret is derived: instead of hashing the entire ciphertext, we hashed the MAC tag, which essentially functions as a hash of the ciphertext and thus serves the same purpose. On the other hand, because ML-KEM ciphertext sizes range from 768 bytes to 1568 bytes while the tag size is fixed at 16 bytes, applying the KDF to the tag instead of the entire ciphertext further yields meaningful performance improvements.
 
 \subsection{Choosing a message authenticator}\label{sec:choosing-a-message-authenticator}
-For implementation, we instantiated the MAC with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}. All chosen MACs are parameterized with 256-bit keys and 128-bit tags. We chose 256-bit keys for all three security levels (128-bit, 196-bit, and 256-bit security) because choosing a smaller key size does not yield meaningful performance gains (in addition, Poly1305 only supports 256-bit keys). On the other hand, a 128-bit tag size is sufficient for all three security levels because unlike brute-force attacks on the MAC key, which can be carried out offline with large computing capacity, attacks on the tag require interaction with an online peer that plays the role of a MAC verification oracle. This means that the attack bandwidth is limited by the throughput of the online oracle instead of the attacker's computing power, and in practice it is easy to implement rate limiting in the cryptographic protocol such that the adversary cannot submit large quantities of MAC verification queries.
+For implementation, we instantiated the MAC with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}. 
+
+% All chosen MACs are parameterized with 256-bit keys and 128-bit tags. We chose 256-bit keys for all three security levels (128-bit, 196-bit, and 256-bit security) because choosing a smaller key size does not yield meaningful performance gains (in addition, Poly1305 only supports 256-bit keys). On the other hand, a 128-bit tag size is sufficient for all three security levels because unlike brute-force attacks on the MAC key, which can be carried out offline with large computing capacity, attacks on the tag require interaction with an online peer that plays the role of a MAC verification oracle. This means that the attack bandwidth is limited by the throughput of the online oracle instead of the attacker's computing power, and in practice it is easy to implement rate limiting in the cryptographic protocol such that the adversary cannot submit large quantities of MAC verification queries.
 
 Poly1305 and GMAC are both Carter-Wegman style authenticators \cite{wegman1981new} that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC operates by breaking the message into message blocks that can then be parsed into finite field elements. The tag is computed by evaluating a polynomial whose coefficients are the message blocks and whose interdeterminate is the secret key.
 
@@ -1043,7 +1090,7 @@ CMAC is based on the CBC-MAC with the block cipher instantiated from AES-256. To
 
 KMAC is based on the SHA-3 family of sponge functions \cite{FIPS202}. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length and 128 bits for tag size for consistency with other authenticators.
 
-
+\emph{Remark.} Unfortunately Poly1305, GMAC, and CMAC all use tag size of 128 bits with no straightforward ways to increase the tag size. We suspect this small tag size to be unsuitable for instantiation with ML-KEM-768 and ML-KEM-1024 due to their higher security target (192-bit and 256-bit security respectively). Consequently, we only instantiate with ML-KEM-512, with a target 128-bit security level.
 
 \section{Performance comparison}\label{sec:performance-comparison}
 We measured the real-world performance of the individual routines of our $\mlkemplus$ construction, as well as the round trip time of performing key exchange over a network in a variety of authentication modes. Our implementation extended from the reference implementation by the PQCrystals team \cite{kyberrefimpl}. All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance (AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM) in the \texttt{us-west-2} region.
@@ -1053,13 +1100,14 @@ To isolate the performance characteristics of each authenticator in our instanti
 
 \begin{table}[h]
     \centering
-    \footnotesize
+    % \footnotesize
+    \small
     \caption{CPU cycles needed to compute tag on various input sizes}\label{tbl:mac-performance}
     \begin{tabular}{|c|c|c|}
         \hline
         \multicolumn{3}{|c|}{\bf Input size: 768 bytes} \\
         \hline
-        MAC & Median & Average \\
+        MAC & Median (ccl/tick) & Average (ccl/tick)\\
         \hline
         Poly1305 & 909 & 2823 \\
         \hline
@@ -1070,36 +1118,37 @@ To isolate the performance characteristics of each authenticator in our instanti
         KMAC & 6373 & 7791 \\
         \hline
     \end{tabular}
-    \begin{tabular}{|c|c|c|}
-        \hline
-        \multicolumn{3}{|c|}{\bf Input size: 1088 bytes} \\
-        \hline
-        MAC & Median & Average \\
-        \hline
-        Poly1305 & 961 & 2704 \\
-        \hline
-        GMAC & 3899 & 4827 \\
-        \hline
-        CMAC & 7305 & 7588 \\
-        \hline
-        KMAC & 9697 & 9928 \\
-        \hline
-    \end{tabular}
-    \begin{tabular}{|c|c|c|}
-        \hline
-        \multicolumn{3}{|c|}{\bf Input size: 1568 bytes} \\
-        \hline
-        MAC & Median & Average \\
-        \hline
-        Poly1305 & 1065 & 1809 \\
-        \hline
-        GMAC & 4055 & 5026 \\
-        \hline
-        CMAC & 8735 & 8772 \\
-        \hline
-        KMAC & 11647 & 12186 \\
-        \hline
-    \end{tabular}
+    % TODO: 128-bit tag size is not suitable for higher security level.
+    % \begin{tabular}{|c|c|c|}
+    %     \hline
+    %     \multicolumn{3}{|c|}{\bf Input size: 1088 bytes} \\
+    %     \hline
+    %     MAC & Median & Average \\
+    %     \hline
+    %     Poly1305 & 961 & 2704 \\
+    %     \hline
+    %     GMAC & 3899 & 4827 \\
+    %     \hline
+    %     CMAC & 7305 & 7588 \\
+    %     \hline
+    %     KMAC & 9697 & 9928 \\
+    %     \hline
+    % \end{tabular}
+    % \begin{tabular}{|c|c|c|}
+    %     \hline
+    %     \multicolumn{3}{|c|}{\bf Input size: 1568 bytes} \\
+    %     \hline
+    %     MAC & Median & Average \\
+    %     \hline
+    %     Poly1305 & 1065 & 1809 \\
+    %     \hline
+    %     GMAC & 4055 & 5026 \\
+    %     \hline
+    %     CMAC & 8735 & 8772 \\
+    %     \hline
+    %     KMAC & 11647 & 12186 \\
+    %     \hline
+    % \end{tabular}
 \end{table}
 
 \subsection{Individual routine performance}
@@ -1149,77 +1198,78 @@ Compared to the $U^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in
         \hline
     \end{tabular}\vspace{0.3cm}
 
-    \begin{tabular}[t]{|cc|}
-        \hline
-        \multicolumn{2}{|c|}{\bf 192-bit security} \\
-        \hline
-        \multicolumn{2}{|c|}{size parameters (bytes)} \\
-        $\pk$ size & 1184 \\
-        $\sk$ size & 2400 \\
-        \text{ct} size & 1088 \\
-        \hline
-        \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
-        Median & 129895 \\
-        Average & 130650 \\
-        \hline
-    \end{tabular}
-    \begin{tabular}[t]{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant} 
-        & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
-        & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
-        \cline{2-5}
-        & Median & Average & Median & Average \\
-        \hline
-        \text{ML-KEM-768} & 136405 & 147400 & 186445 & 187529 \\
-        \hline
-        \text{Kyber768} & 153061 & 153670 & 182129 & 182755 \\
-        \hline
-        $\text{ML-KEM}^+$-768 w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
-        \hline
-        $\text{ML-KEM}^+$-768 w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
-        \hline
-        $\text{ML-KEM}^+$-768 w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
-        \hline
-        $\text{ML-KEM}^+$-768 w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
-        \hline
-    \end{tabular}\vspace{0.3cm}
+    % TODO: 128-bit tag size is unsuitable for higher security level
+    % \begin{tabular}[t]{|cc|}
+    %     \hline
+    %     \multicolumn{2}{|c|}{\bf 192-bit security} \\
+    %     \hline
+    %     \multicolumn{2}{|c|}{size parameters (bytes)} \\
+    %     $\pk$ size & 1184 \\
+    %     $\sk$ size & 2400 \\
+    %     \text{ct} size & 1088 \\
+    %     \hline
+    %     \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
+    %     Median & 129895 \\
+    %     Average & 130650 \\
+    %     \hline
+    % \end{tabular}
+    % \begin{tabular}[t]{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant} 
+    %     & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
+    %     & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
+    %     \cline{2-5}
+    %     & Median & Average & Median & Average \\
+    %     \hline
+    %     \text{ML-KEM-768} & 136405 & 147400 & 186445 & 187529 \\
+    %     \hline
+    %     \text{Kyber768} & 153061 & 153670 & 182129 & 182755 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-768 w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-768 w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-768 w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-768 w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
+    %     \hline
+    % \end{tabular}\vspace{0.3cm}
 
-    \begin{tabular}[t]{|cc|}
-        \hline
-        \multicolumn{2}{|c|}{\bf 256-bit security} \\
-        \hline
-        \multicolumn{2}{|c|}{size parameters (bytes)} \\
-        $\pk$ size & 1568 \\
-        $\sk$ size & 3168 \\
-        \text{ct} size & 1568 \\
-        \hline
-        \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
-        Median & 194921 \\
-        Average & 195465 \\
-        \hline
-    \end{tabular}
-    \begin{tabular}[t]{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant} 
-        & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
-        & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
-        \cline{2-5}
-        & Median & Average & Median & Average \\
-        \hline
-        \text{ML-KEM-1024} & 199185 & 199903 & 246245 & 247320 \\
-        \hline
-        \text{Kyber1024} & 222351 & 223260 & 258231 & 259067 \\
-        \hline
-        $\text{ML-KEM}^+$-1024 w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
-        \hline
-        $\text{ML-KEM}^+$-1024 w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
-        \hline
-        $\text{ML-KEM}^+$-1024 w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
-        \hline
-        $\text{ML-KEM}^+$-1024 w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
-        \hline
-    \end{tabular}
+    % \begin{tabular}[t]{|cc|}
+    %     \hline
+    %     \multicolumn{2}{|c|}{\bf 256-bit security} \\
+    %     \hline
+    %     \multicolumn{2}{|c|}{size parameters (bytes)} \\
+    %     $\pk$ size & 1568 \\
+    %     $\sk$ size & 3168 \\
+    %     \text{ct} size & 1568 \\
+    %     \hline
+    %     \multicolumn{2}{|c|}{$\keygen$ cycles/tick} \\
+    %     Median & 194921 \\
+    %     Average & 195465 \\
+    %     \hline
+    % \end{tabular}
+    % \begin{tabular}[t]{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant} 
+    %     & \multicolumn{2}{|c|}{$\encap$ cycles/tick} 
+    %     & \multicolumn{2}{|c|}{$\decap$ cycles/tick} \\
+    %     \cline{2-5}
+    %     & Median & Average & Median & Average \\
+    %     \hline
+    %     \text{ML-KEM-1024} & 199185 & 199903 & 246245 & 247320 \\
+    %     \hline
+    %     \text{Kyber1024} & 222351 & 223260 & 258231 & 259067 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-1024 w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-1024 w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-1024 w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
+    %     \hline
+    %     $\text{ML-KEM}^+$-1024 w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
+    %     \hline
+    % \end{tabular}
 \end{table}
 
 \subsection{Key exchange protocols}\label{sec:key-exchange-protocols}
@@ -1278,57 +1328,58 @@ In unauthenticated key exchange (KE), a single pair of ephemeral keypair $(\pk_e
         \cline{4-5}
         & & & Median & Average \\
         \hline
-        \texttt{ML-KEM-512} & 800 & 768 & 92 & 97 \\
+        ML-KEM-512 & 800 & 768 & 92 & 97 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & 800 & 784 & 70 & 72 \\
+        $\mlkemplus$-512 w/ Poly1305 & 800 & 784 & 70 & 72 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ GMAC & 800 & 784 & 73 & 76 \\
+        $\mlkemplus$-512 w/ GMAC & 800 & 784 & 73 & 76 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ CMAC & 800 & 784 & 75 & 79 \\
+        $\mlkemplus$-512 w/ CMAC & 800 & 784 & 75 & 79 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ KMAC & 800 & 784 & 76 & 78 \\
-        \hline
-    \end{tabular}\vspace{0.3cm}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant}
-        & \multirow{2}{*}{Client TX bytes}
-        & \multirow{2}{*}{Server TX bytes}
-        & \multicolumn{2}{|c|}{RTT ($\us$)} \\
-        \cline{4-5}
-        & & & Median & Average \\
-        \hline
-        \texttt{ML-KEM-768} & 1184 & 1088 & 135 & 140 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 1184 & 1104 & 99 & 104 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ GMAC & 1184 & 1104 & 101 & 105 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ CMAC & 1184 & 1104 & 103 & 109 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ KMAC & 1184 & 1104 & 103 & 107 \\
+        $\mlkemplus$-512 w/ KMAC & 800 & 784 & 76 & 78 \\
         \hline
     \end{tabular}\vspace{0.3cm}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant}
-        & \multirow{2}{*}{Client TX bytes}
-        & \multirow{2}{*}{Server TX bytes}
-        & \multicolumn{2}{|c|}{RTT ($\us$)} \\
-        \cline{4-5}
-        & & & Median & Average \\
-        \hline
-        \texttt{ML-KEM-1024} & 1568 & 1568 & 193 & 199 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 1568 & 1584 & 138 & 141 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ GMAC & 1568 & 1584 & 140 & 145 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ CMAC & 1568 & 1584 & 143 & 148 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ KMAC & 1568 & 1584 & 144 & 149 \\
-        \hline
-    \end{tabular}
+    % TODO: 128-bit tag size is unsuitable for higher security level
+    % \begin{tabular}{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant}
+    %     & \multirow{2}{*}{Client TX bytes}
+    %     & \multirow{2}{*}{Server TX bytes}
+    %     & \multicolumn{2}{|c|}{RTT ($\us$)} \\
+    %     \cline{4-5}
+    %     & & & Median & Average \\
+    %     \hline
+    %     \texttt{ML-KEM-768} & 1184 & 1088 & 135 & 140 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 1184 & 1104 & 99 & 104 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ GMAC & 1184 & 1104 & 101 & 105 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ CMAC & 1184 & 1104 & 103 & 109 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ KMAC & 1184 & 1104 & 103 & 107 \\
+    %     \hline
+    % \end{tabular}\vspace{0.3cm}
+    % \begin{tabular}{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant}
+    %     & \multirow{2}{*}{Client TX bytes}
+    %     & \multirow{2}{*}{Server TX bytes}
+    %     & \multicolumn{2}{|c|}{RTT ($\us$)} \\
+    %     \cline{4-5}
+    %     & & & Median & Average \\
+    %     \hline
+    %     \texttt{ML-KEM-1024} & 1568 & 1568 & 193 & 199 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 1568 & 1584 & 138 & 141 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ GMAC & 1568 & 1584 & 140 & 145 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ CMAC & 1568 & 1584 & 143 & 148 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ KMAC & 1568 & 1584 & 144 & 149 \\
+    %     \hline
+    % \end{tabular}
 \end{table}
 
 \subsubsection{Unilaterally authenticated key exchange}\label{sec:uakex}
@@ -1385,57 +1436,59 @@ In addition to the long-term key, the client will also generate an ephemeral key
         \cline{4-5}
         & & & Median & Average \\
         \hline
-        \texttt{ML-KEM-512} & 1568 & 768 & 145 & 151 \\
+        ML-KEM-512 & 1568 & 768 & 145 & 151 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & 1584 & 784 & 103 & 106 \\
+        $\mlkemplus$-512 w/ Poly1305 & 1584 & 784 & 103 & 106 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ GMAC & 1584 & 784 & 106 & 110 \\
+        $\mlkemplus$-512 w/ GMAC & 1584 & 784 & 106 & 110 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ CMAC & 1584 & 784 & 108 & 112 \\
+        $\mlkemplus$-512 w/ CMAC & 1584 & 784 & 108 & 112 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ KMAC & 1584 & 784 & 109 & 113 \\
-        \hline
-    \end{tabular}\vspace{0.3cm}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant}
-        & \multirow{2}{*}{Client TX bytes}
-        & \multirow{2}{*}{Server TX bytes}
-        & \multicolumn{2}{|c|}{RTT ($\us$)} \\
-        \cline{4-5}
-        & & & Median & Average \\
-        \hline
-        \texttt{ML-KEM-768} & 2272 & 1088 & 215 & 222 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 2288 & 1104 & 144 & 150 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ GMAC & 2288 & 1104 & 149 & 156 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ CMAC & 2288 & 1104 & 153 & 160 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ KMAC & 2288 & 1104 & 154 & 159 \\
+        $\mlkemplus$-512 w/ KMAC & 1584 & 784 & 109 & 113 \\
         \hline
     \end{tabular}\vspace{0.3cm}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant}
-        & \multirow{2}{*}{Client TX bytes}
-        & \multirow{2}{*}{Server TX bytes}
-        & \multicolumn{2}{|c|}{RTT ($\us$)} \\
-        \cline{4-5}
-        & & & Median & Average \\
-        \hline
-        \texttt{ML-KEM-1024} & 3136 & 1568 & 310 & 318 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 3152 & 1584 & 202 & 209 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ GMAC & 3152 & 1584 & 212 & 228 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ CMAC & 3152 & 1584 & 212 & 218 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ KMAC & 3152 & 1584 & 213 & 220 \\
-        \hline
-    \end{tabular}
+
+    % TODO: 128-bit tag size is unsuitable for higher security level
+    % \begin{tabular}{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant}
+    %     & \multirow{2}{*}{Client TX bytes}
+    %     & \multirow{2}{*}{Server TX bytes}
+    %     & \multicolumn{2}{|c|}{RTT ($\us$)} \\
+    %     \cline{4-5}
+    %     & & & Median & Average \\
+    %     \hline
+    %     \texttt{ML-KEM-768} & 2272 & 1088 & 215 & 222 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 2288 & 1104 & 144 & 150 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ GMAC & 2288 & 1104 & 149 & 156 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ CMAC & 2288 & 1104 & 153 & 160 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ KMAC & 2288 & 1104 & 154 & 159 \\
+    %     \hline
+    % \end{tabular}\vspace{0.3cm}
+    % \begin{tabular}{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant}
+    %     & \multirow{2}{*}{Client TX bytes}
+    %     & \multirow{2}{*}{Server TX bytes}
+    %     & \multicolumn{2}{|c|}{RTT ($\us$)} \\
+    %     \cline{4-5}
+    %     & & & Median & Average \\
+    %     \hline
+    %     \texttt{ML-KEM-1024} & 3136 & 1568 & 310 & 318 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 3152 & 1584 & 202 & 209 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ GMAC & 3152 & 1584 & 212 & 228 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ CMAC & 3152 & 1584 & 212 & 218 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ KMAC & 3152 & 1584 & 213 & 220 \\
+    %     \hline
+    % \end{tabular}
 \end{table}
 
 \subsubsection{Mutually authenticated key exchange (AKE)}\label{sec:akex}
@@ -1493,57 +1546,58 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
         \cline{4-5}
         & & & Median & Average \\
         \hline
-        \texttt{ML-KEM-512} & 1568 & 1536 & 220 & 213 \\
+        ML-KEM-512 & 1568 & 1536 & 220 & 213 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ Poly1305 & 1584 & 1568 & 133 & 138 \\
+        $\mlkemplus$-512 w/ Poly1305 & 1584 & 1568 & 133 & 138 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ GMAC & 1584 & 1568 & 139 & 143 \\
+        $\mlkemplus$-512 w/ GMAC & 1584 & 1568 & 139 & 143 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ CMAC & 1584 & 1568 & 143 & 148 \\
+        $\mlkemplus$-512 w/ CMAC & 1584 & 1568 & 143 & 148 \\
         \hline
-        $\texttt{ML-KEM-512}^+$ w/ KMAC & 1584 & 1568 & 145 & 151 \\
-        \hline
-    \end{tabular}\vspace{0.3cm}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant}
-        & \multirow{2}{*}{Client TX bytes}
-        & \multirow{2}{*}{Server TX bytes}
-        & \multicolumn{2}{|c|}{RTT ($\us$)} \\
-        \cline{4-5}
-        & & & Median & Average \\
-        \hline
-        \texttt{ML-KEM-768} & 2272 & 2176 & 294 & 301 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 2288 & 2208 & 190 & 196 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ GMAC & 2288 & 2208 & 197 & 210 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ CMAC & 2288 & 2208 & 202 & 208 \\
-        \hline
-        $\texttt{ML-KEM-768}^+$ w/ KMAC & 2288 & 2208 & 204 & 210 \\
+        $\mlkemplus$-512 w/ KMAC & 1584 & 1568 & 145 & 151 \\
         \hline
     \end{tabular}\vspace{0.3cm}
-    \begin{tabular}{|c|c|c|c|c|}
-        \hline
-        \multirow{2}{*}{KEM variant}
-        & \multirow{2}{*}{Client TX bytes}
-        & \multirow{2}{*}{Server TX bytes}
-        & \multicolumn{2}{|c|}{RTT ($\us$)} \\
-        \cline{4-5}
-        & & & Median & Average \\
-        \hline
-        \texttt{ML-KEM-1024} & 3136 & 3136 & 512 & 511 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 3152 & 3168 & 266 & 273 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ GMAC & 3152 & 3168 & 273 & 282 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ CMAC & 3152 & 3168 & 280 & 287 \\
-        \hline
-        $\texttt{ML-KEM-1024}^+$ w/ KMAC & 3152 & 3168 & 282 & 288 \\
-        \hline
-    \end{tabular}
+    % TODO: 128-bit tag size is unsuitable for higher security level
+    % \begin{tabular}{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant}
+    %     & \multirow{2}{*}{Client TX bytes}
+    %     & \multirow{2}{*}{Server TX bytes}
+    %     & \multicolumn{2}{|c|}{RTT ($\us$)} \\
+    %     \cline{4-5}
+    %     & & & Median & Average \\
+    %     \hline
+    %     \texttt{ML-KEM-768} & 2272 & 2176 & 294 & 301 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ Poly1305 & 2288 & 2208 & 190 & 196 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ GMAC & 2288 & 2208 & 197 & 210 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ CMAC & 2288 & 2208 & 202 & 208 \\
+    %     \hline
+    %     $\texttt{ML-KEM-768}^+$ w/ KMAC & 2288 & 2208 & 204 & 210 \\
+    %     \hline
+    % \end{tabular}\vspace{0.3cm}
+    % \begin{tabular}{|c|c|c|c|c|}
+    %     \hline
+    %     \multirow{2}{*}{KEM variant}
+    %     & \multirow{2}{*}{Client TX bytes}
+    %     & \multirow{2}{*}{Server TX bytes}
+    %     & \multicolumn{2}{|c|}{RTT ($\us$)} \\
+    %     \cline{4-5}
+    %     & & & Median & Average \\
+    %     \hline
+    %     \texttt{ML-KEM-1024} & 3136 & 3136 & 512 & 511 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ Poly1305 & 3152 & 3168 & 266 & 273 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ GMAC & 3152 & 3168 & 273 & 282 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ CMAC & 3152 & 3168 & 280 & 287 \\
+    %     \hline
+    %     $\texttt{ML-KEM-1024}^+$ w/ KMAC & 3152 & 3168 & 282 & 288 \\
+    %     \hline
+    % \end{tabular}
 \end{table}
 
 \section{Conclusions and future works}\label{sec:future-works}
