@@ -1,3 +1,9 @@
+% TODO: Section 6 confusion
+% DONE: deleted
+
+% TODO: remove indents
+% DONE: we should not do it; other accepted CHES papers kept the default indent, so we should do the same
+
 %%%% 1. DOCUMENTCLASS %%%%
 %
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
@@ -8,6 +14,8 @@
 % - Add "notanonymous" to reveal authors
 % - Add "spthm" for LNCS-like theorems
 
+% No indentation
+% \setlength{\parindent}{0px}
 
 %%%% 2. PACKAGES %%%%
 \usepackage{algorithm}
@@ -92,13 +100,14 @@ A key encapsulation mechanism (KEM) \cite{DBLP:journals/iacr/Shoup01} is a crypt
 
 On the other hand, chosen-ciphertext security is a solved problem in symmetric cryptography. It is well understood that, by combining an IND-CPA secure symmetric encryption scheme with an existentially unforgeable message authentication code (MAC) in a pattern called encrypt-then-MAC \cite{DBLP:conf/crypto/Krawczyk01}, one can build an authenticated encryption scheme \cite{DBLP:conf/asiacrypt/BellareN00} that achieves IND-CCA security. While this technique cannot be directly applied in the context of public-key cryptography due to the lack of a shared symmetric key between the two communicating parties, the concept of authenticating ciphertext using a MAC still has strong merits. Abdalla, Rogaway, and Bellare proposed DHIES (also known as ``Hashed ElGamal'')\cite{DBLP:journals/iacr/AbdallaBR99}\cite{DBLP:conf/ctrsa/AbdallaBR01}, a hybrid public-key encryption (HPKE) scheme whose IND-CCA security reduces to the Gap Diffie-Hellman assumption \cite{DBLP:conf/pkc/OkamotoP01} under the random oracle model. The technique behind DHIES is to derive both the shared secret and a symmetric MAC key by hashing a random PKE plaintext, encrypting the PKE plaintext, then authenticating the PKE ciphertext using the previously derived MAC key. When the Gap Diffie-Hellman assumption holds and the MAC is existentially unforgeable, no efficient adversary can recover the decryption of an unknown ciphertext even with access to a decryption oracle because it cannot produce a valid tag for such unknown ciphertext.
 
-\subsection{Our contribution}
-\paragraph{Encrypt-then-MAC: a generic IND-CCA secure KEM transformation} In this paper, we propose a generic IND-CCA secure KEM using techniques adapted from DHIES. We call our proposed scheme the encrypt-then-MAC transformation due to the conceptual similarity to the namesake symmetric encryption technique for achieving authenticated encryption. We prove that the IND-CCA security of the encrypt-then-MAC transformation reduces tightly to the OW-PCA security of the underlying PKE and the existential unforgeability of the underlying MAC. In addition, we argue that the encrypt-then-MAC transformation can be instantiated with one-time MAC for further performance improvements.
+\subsection{Contributions}
+Our main contributions are threefold:
 
-\paragraph{$\mlkemplus$: an instantiation of encrypt-then-MAC transformation with ML-KEM's PKE sub-routines.} We implemented $\mlkemplus$ by applying our encrypt-then-MAC transformation to ML-KEM's PKE sub-routines. Compared with ML-KEM, which is based on the $U^{\not\bot}$ variant (implicit rejection with rigidity) of the modular Fujisaki-Okamoto KEM transformation, $\mlkemplus$ demonstrates massive performance improvements in decapsulation while only incurring minimal performance penalty in encapsulation runtime and ciphertext size. On an AMD EPYC 9R14 CPU, $\mlkemplus$ with Poly1305 achieves between 72\%-80\% reduction of CPU cycles needed for decapsulation while only incurring 2\%-7\% increase of CPU cycles needed for encapsulation (see Table \ref{tbl:cpu-cycles-summary}).
+\paragraph{1). Encrypt-then-MAC: a generic IND-CCA secure KEM transformation.} We propose a generic IND-CCA secure KEM transformation called the encrypt-then-MAC transformation and prove that the IND-CCA security of the encrypt-then-MAC transformation reduces tightly to the OW-PCA security of the underlying PKE and the existential unforgeability of the underlying MAC. In addition, we argue that the encrypt-then-MAC transformation can be instantiated with one-time MAC such as Poly1305 for further performance improvements.
 
-\paragraph{C implementation and performance comparison} To observe the real-world performance of our encrypt-then-MAC transformation, we implemented $\mlkemplus$ in C and measured the CPU cycle count for encapsulation and decapsulation routines. Compared to ML-KEM, $\mlkemplus$ with Poly1305 achieves 72\%-80\% reduction of CPU cycle count for decapsulation while only increasing encapsulation CPU cycle count by 2\%-7\% (See Table \ref{tbl:cpu-cycles-summary}). We also implemented the Kyber key exchange protocols (described in \cite{DBLP:conf/eurosp/BosDKLLSSSS18}) using $\mlkemplus$. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
+\paragraph{2). $\mlkemplus$: an application of encrypt-then-MAC transformation to ML-KEM.} We describe $\mlkemplus$, an IND-CCA secure KEM constructed by applying the encrypt-then-MAC transformation to ML-KEM's underlying PKE sub-routines. Compared to ML-KEM, $\mlkemplus$ adds a small amount of performance penalty to the encapsulation routine and a small increase in ciphertext size, but replaces the expensive re-encryption step in decapsulation with computing a MAC tag, which yields substantial performance improvements.
 
+\paragraph{3). C implementation and performance comparison.} We implemented $\mlkemplus$ in C and compared its performance with ML-KEM in a variety of scenarios. Compared to ML-KEM, $\mlkemplus$ achieves 72.2\%-79.1\% reduction of CPU cycle count for decapsulation while only increasing encapsulation's CPU cycle count by 1.8\%-7.3\% and ciphertext size by 1.0\%-2.0\% (see Table \ref{tbl:cpu-cycles-summary}).
 
 \begin{table}[h]
     \centering
@@ -162,6 +171,9 @@ On the other hand, chosen-ciphertext security is a solved problem in symmetric c
 
     \caption{$\mlkemplus$ achieves large performance improvements in decapsulation at the cost of minimal penalty in encapsulation performance and ciphertext size}\label{tbl:cpu-cycles-summary}
 \end{table}
+
+We also implemented the Kyber key exchange protocols \cite{DBLP:conf/eurosp/BosDKLLSSSS18} with $\mlkemplus$ and measured the round trip time (RTT) in realistic network settings. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
+
 \begin{table}[h]
     \centering
     % \footnotesize
@@ -228,7 +240,7 @@ On the other hand, chosen-ciphertext security is a solved problem in symmetric c
 \subsection{Related works}
 \textbf{Optimal Asymmetric Encryption Padding (OAEP)} \cite{DBLP:conf/eurocrypt/BellareR94}\cite{DBLP:conf/crypto/BellareDPR98} is a generic chosen-ciphertext secure PKE. Under the random oracle model, the chosen-ciphertext security of the OAEP encryption scheme reduces to the one-wayness of the input trapdoor permutation. Although it was discovered that there exist trapdoor permutations with which the OAEP encryption scheme does not achieve full IND-CCA security \cite{DBLP:journals/joc/Shoup02}, Fujisaki et al. later proved that the OAEP is IND-CCA secure when combined with the RSA trapdoor permutation \cite{DBLP:conf/crypto/FujisakiOPS01}\cite{DBLP:journals/cacm/RivestSA78}. RSA-OAEP was standardized in PKCS\#1 v2 \cite{rfc8017} and is currently the most recommended of all RSA-based encryption schemes. Unfortunately, OAEP's requirement for a trapdoor permutation is immensely difficult to satisfy, and no other practical instantiation saw widespread adoption to this day.
 
-The \textbf{Fujisaki-Okamoto transformation} \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13} is another generic chosen-ciphertext secure transformation. While Fujisaki and Okamoto originally proposed a hybrid public-key encryption scheme whose IND-CCA security reduces non-tightly to the OW-CPA security of the underlying PKE and the IND-CPA security of the symmetric encryption scheme. Later works \cite{DBLP:conf/ima/Dent03}\cite{DBLP:conf/tcc/HofheinzHK17}\cite{DBLP:conf/eurocrypt/DworkNR04}\cite{DBLP:conf/asiacrypt/HovelmannsHM22}\cite{bernstein2018towards}  tightened the security reduction, accounted for imperfect correctness, adapted the original proposal to build a KEM, and proved its security in the quantum random oracle model (QROM).
+The \textbf{Fujisaki-Okamoto transformation} \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13} is another generic IND-CCA secure transformation. While Fujisaki and Okamoto originally proposed a hybrid public-key encryption scheme whose IND-CCA security reduces non-tightly to the OW-CPA security of the underlying PKE and the IND-CPA security of the symmetric encryption scheme. Later works \cite{DBLP:conf/ima/Dent03}\cite{DBLP:conf/tcc/HofheinzHK17}\cite{DBLP:conf/eurocrypt/DworkNR04}\cite{DBLP:conf/asiacrypt/HovelmannsHM22}\cite{bernstein2018towards}  tightened the security reduction, accounted for imperfect correctness, adapted the original proposal to build a KEM, and proved its security in the quantum random oracle model (QROM).
 
 \begin{figure}[h]
     \centering
@@ -278,7 +290,7 @@ The \textbf{Fujisaki-Okamoto transformation} \cite{DBLP:conf/crypto/FujisakiO99}
 
 The modular Fujisaki-Okamoto KEM transformation is remarkably successful because of the simplicity of its construction, the tightness of the security bound, and the proven (though non-tight) security against quantum adversaries. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{DBLP:conf/eurosp/BosDKLLSSSS18}, Saber \cite{DBLP:conf/africacrypt/DAnversKRV18}, FrodoKEM \cite{DBLP:conf/ccs/BosCDMNNRS16}, and classic McEliece \cite{classicmceliecespec} among others. The $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation (see Figure \ref{fig:u-notbot-m-routines}) is adopted in ML-KEM.
 
-However, the Fujisaki-Okamoto transformation is not perfect. Because it uses de-randomization and re-encryption for achieving ciphertext non-malleability, the Fujisaki-Okamoto transformation suffers from the following two problems: \begin{itemize}
+However, the Fujisaki-Okamoto transformation is not perfect. Because it uses re-encryption for achieving ciphertext non-malleability, the Fujisaki-Okamoto transformation suffers from the following two problems: \begin{itemize}
     \item \textbf{Computational inefficiency}. The decapsulation routine needs to re-encrypt the decryption to ensure ciphertext has not been tempered with. For input PKE whose encryption routine carries substantial computational cost, such as most lattice-based cryptosystems, re-encryption slows down decapsulation significantly.
     \item \textbf{Side-channel vulnerability}. Re-encryption also introduces side-channels that can leak information about the decrypted PKE plaintext. As demonstrated in \cite{ueno2022curse}\cite{ravi2019generic}\cite{DBLP:journals/tches/TanakaUXITH23}, these side-channels can be converted into efficient plaintext-checking attacks that can fully recover the secret key.
 \end{itemize}
@@ -451,7 +463,7 @@ In this section we introduce the encrypt-then-MAC transformation that transforms
     \caption{Combining PKE with MAC using encrypt-then-MAC to ensure ciphertext integrity}\label{fig:etm-diagram}
 \end{figure}
 
-In Section \ref{sec:proof-of-theorem} we reduce the IND-CCA security of the KEM tightly to the OW-PCA security of the underlying PKE, and non-tightly to the unforgeability of the MAC. In Section \ref{sec:elgamal-is-ow-pca}, we show that the ``Hashed ElGamal'' cryptosystem in \cite{DBLP:conf/ctrsa/AbdallaBR01} is a special case of the encrypt-then-MAC transformation by reducing the OW-PCA security of the ElGamal cryptosystem to the Gap Diffie-Hellman assumption.
+In Section \ref{sec:proof-of-theorem} we reduce the IND-CCA security of the KEM tightly to the OW-PCA security of the underlying PKE, and non-tightly to the unforgeability of the MAC. In Section \ref{sec:elgamal-is-ow-pca}, we show that DHIES \cite{DBLP:conf/ctrsa/AbdallaBR01} is a special case of the encrypt-then-MAC transformation by reducing the OW-PCA security of the ElGamal cryptosystem to the Gap Diffie-Hellman assumption.
 
 Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $\mac: \mathcal{K}_\mac \times \mathcal{B}^\ast \rightarrow \mathcal{T}$ be a deterministic message authentication code that takes a key $k \in \mathcal{K}_\mac$, some message $m \in \mathcal{B}^\ast$, and outputs a digest $t \in \mathcal{T}$. Let $G: \mathcal{M} \rightarrow \mathcal{K}_\mac$ be a hash function that maps from $\pke$'s plaintext space to $\mac$'s key space. Let $H: \mathcal{B}^\ast \rightarrow \mathcal{K}_\kem$ be a hash function that maps bit strings into the set of possible shared secrets. The encrypt-then-MAC transformation $\etm[\pke, \mac, G, H]$ constructs a key encapsulation mechanism $\kem_\etm(\keygen, \encap, \decap)$, whose routines are described in Figure \ref{fig:etm-routines}.
 
