@@ -436,7 +436,7 @@ The security of a MAC is defined in an adversarial game in which an adversary, w
 The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game. Some MACs are one-time existentially unforgeable, meaning that each secret key can be used to authenticate only a single message. The corresponding security game is modified such that the signing oracle will only answer a single signing query.
 
 \section{The encrypt-then-MAC transformation}\label{sec:main-results}
-In this section we introduce the encrypt-then-MAC transformation that transforms an OW-PCA secure PKE and an one-time existentially unforgeable MAC into an IND-CCA secure KEM. Our scheme mainly differs from DHIES in its versatility and input requirement. Whereas the IND-CCA security of DHIES reduces specifically to the Gap Diffie-Hellman assumption, the chosen-ciphertext security of the encrypt-then-MAC KEM reduces more generally to the OW-PCA security \cite{DBLP:conf/ctrsa/OkamotoP01} of the input scheme (we will show in Section \ref{sec:elgamal-is-ow-pca} that the Gap Diffie-Hellman assumption implies OW-PCA security). In addition, we propose that because each call to encapsulation samples a fresh PKE plaintext, the encrypt-then-MAC KEM can be instantiated with one-time secure MAC such as Poly1305 (M. Abdalla et al. originally proposed to use HMAC and CBC-MAC, which are many-time secure MAC but less efficient than one-time MAC, see Section \ref{sec:choosing-a-message-authenticator}), which greatly improves the computational efficiency of the scheme. A summary of encapsulation data flow is illustrated in Figure \ref{fig:etm-diagram}.
+In this section we introduce the encrypt-then-MAC transformation that transforms an OW-PCA secure PKE and an one-time existentially unforgeable MAC into an IND-CCA secure KEM. Our scheme mainly differs from DHIES in its versatility and input requirement. Whereas the IND-CCA security of DHIES reduces specifically to the Gap Diffie-Hellman assumption, the chosen-ciphertext security of the encrypt-then-MAC KEM reduces more generally to the OW-PCA security \cite{DBLP:conf/ctrsa/OkamotoP01} of the input scheme (we will show in Section \ref{sec:elgamal-is-ow-pca} that the Gap Diffie-Hellman assumption implies OW-PCA security). In addition, we propose that because each call to encapsulation samples a fresh PKE plaintext, the encrypt-then-MAC KEM can be instantiated with one-time secure MAC such as Poly1305 (M. Abdalla et al. originally proposed to use HMAC and CBC-MAC, which are many-time secure MAC but less efficient than one-time MAC, see Section \ref{sec:choosing-a-message-authenticator}), which greatly improves the computational efficiency of the scheme. The encapsulation data flow is illustrated in Figure \ref{fig:etm-diagram}.
 
 \begin{figure}[h]
     \centering
@@ -486,10 +486,10 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
             \caption*{$\kem_\etm.\encap(\pk)$}
             \begin{algorithmic}[1]
                 \State $m \leftsample \mathcal{M}$
-                \State $k \leftarrow G(m)$
+                \State $k \leftarrow G(\pk, m)$
                 \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m)$
                 \State $t \leftarrow \mac(k, c^\prime)$
-                \State $K \leftarrow H(m, c^\prime)$
+                \State $K \leftarrow H(\pk, m, t)$
                 \State $c \leftarrow (c^\prime, t)$
                 \State \Return $(c, K)$
             \end{algorithmic}
@@ -502,11 +502,11 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
                 \State $(c^\prime, t) \leftarrow c$
                 \State $(\sk^\prime, z) \leftarrow \sk$
                 \State $\hat{m} \leftarrow \pke\texttt{.}\decrypt(\sk^\prime, c^\prime)$
-                \State $\hat{k} \leftarrow G(\hat{m})$
+                \State $\hat{k} \leftarrow G(\pk, \hat{m})$
                 \If{$\mac(\hat{k}, c^\prime) \neq t$}
-                    \State $K \leftarrow H(z, c^\prime)$
+                    \State $K \leftarrow H(z, t)$
                 \Else
-                    \State $K \leftarrow H(\hat{m}, c^\prime)$
+                    \State $K \leftarrow H(\pk, \hat{m}, t)$
                 \EndIf
                 \State \Return $K$
             \end{algorithmic}
@@ -517,7 +517,11 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
 
 The key generation routine of $\kem_\etm$ is largely identical to that of the $\pke$, only a secret value $z$ is sampled as the implicit rejection symbol. In the encapsulation routine, a MAC key is derived from the randomly sampled plaintext $k \leftarrow G(m)$, then used to sign the unauthenticated ciphertext $c^\prime$. Finally, the unauthenticated ciphertext $c^\prime$ and the tag $t$ combine into the authenticated ciphertext $c$ that would be transmitted to the peer. In the decapsulation routine, the decryption $\hat{m}$ of the unauthenticated ciphertext is used to re-derive the MAC key $\hat{k}$, which is then used to re-compute the tag $\hat{t}$. The ciphertext is considered valid if and only if the recomputed tag is identical to the input tag.
 
-Since the encrypt-then-MAC transformation removes re-encryption in decapsulation, there is no longer the need for fixing the pseudorandom coin $r$ in the PKE's encryption routine. If the input PKE is already rigid, then the shared secret may be derived from hashing the PKE plaintext alone. However, if the input PKE is not rigid, then the shared secret must be derived from hashing both the PKE plaintext and the PKE ciphertext. 
+Here are some additional design rationales that have practical impact on security and performance but do not affect the security proof: \begin{itemize}
+    \item \textbf{Removing de-randomization.} Since the encrypt-then-MAC transformation removes re-encryption in decapsulation, there is no longer the need for fixing the pseudorandom coin $r$ in the PKE's encryption routine. If the input PKE is already rigid, then the shared secret may be derived from hashing the PKE plaintext alone. However, if the input PKE is not rigid, then the shared secret must be derived from hashing both the PKE plaintext and the PKE ciphertext. 
+    \item \textbf{Hashing the public key.} The public key goes into deriving both the MAC key and the shared secret for two main reasons. First, in a realistic key exchange, the public key and the random PKE plaintext are generated by opposite parties. Hashing both the public key and the PKE plaintext ensures that both parties have inputs into the shared secret. Second, if the MAC key is derived from the PKE plaintext alone, then an adversary can pre-compute a large dictionary mapping MAC keys to the pre-image PKE plaintext. Upon receiving some ciphertext, an adversary can search through this key-plaintext dictionary and recover the decryption. Adding the public key into the derivation of the MAC key will dramatically increase the space and time requirement of such dictionary attack and render it infeasible in practice.
+    \item \textbf{Hashing the MAC tag instead of the entire ciphertext.} Because we allow the PKE to be randomized, the shared secret must have inputs from both the plaintext and the ciphertext. However, we find it unnecessary to hash the entire ciphertext. Instead, since the MAC tag functions as a keyed hash of the ciphertext, we can use the MAC tag as a substitute ciphertext hash, which yields meaningful performance improvements for shared secret derivation. On the other hand, not hashing the entire ciphertext will not give an adversary additional advantage because asssuming that the adversary does not already know the underlying decryption, it cannot tamper with any part of the challenge ciphertext without making the ciphertext-tag invalid, so the decapsulation oracle will always return the implicit rejection.
+\end{itemize}
 
 The chosen-ciphertext security of the encrypt-then-MAC scheme can be intuitively argued through an adversary's inability to learn additional information from the decapsulation oracle. For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without knowing its preimage $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryptions that the adversary does not already know. 
 
@@ -1080,9 +1084,11 @@ We applied the encrypt-then-MAC transformation to the K-PKE routines of ML-KEM. 
     \caption{$\texttt{ML-KEM}^+$ applies our encrypt-then-MAC transformation to K-PKE. $G$ is SHA3-512, $H$ is SHA3-256, $\texttt{KDF}$ is Shake256}\label{fig:ml-kem-plus-routines}
 \end{figure}
 
-When applying our encrypt-then-MAC transformation to K-PKE, we modified the routines described in Figure \ref{fig:etm-routines} such that the public key is added into the derivation of the MAC key and the shared secret. There are two main reasons behind this modification. First, in a realistic key exchange scenario, the public key will be generated by one party while the random PKE plaintext is sampled by the other party. Hashing both the public key and the plaintext ensures that both parties in a key exchange have inputs into deriving the shared secret. The second reason is to prevent a dictionary attack on the MAC key. If the MAC key is derived on plaintext alone, then an adversary can pre-compute a large dictionary mapping MAC keys to the corresponding PKE plaintext. Upon receiving the ciphertext, the adversary can search through the MAC keys and recover the PKE plaintext. Adding the public key into the derivation of the MAC key will dramatically increase the space requirement and render such dictionary attack infeasible in practice.
-
-We also modified how the shared secret is derived: instead of hashing the entire ciphertext, we hashed the MAC tag, which essentially functions as a hash of the ciphertext and thus serves the same purpose. On the other hand, because ML-KEM ciphertext sizes range from 768 bytes to 1568 bytes while the tag size is fixed at 16 bytes, applying the KDF to the tag instead of the entire ciphertext further yields meaningful performance improvements.
+Compared to ML-KEM, $\mlkemplus$ makes the following performance trade-offs: \begin{itemize}
+    \item $\mlkemplus$ encapsulation contains two additional steps: computing the MAC tag and hashing the MAC tag into the shared secret.
+    \item $\mlkemplus$ ciphertext size increases by the size of the MAC tag
+    \item $\mlkemplus$ decapsulation replaces re-encryption with computing the MAC tag
+\end{itemize}
 
 \subsection{Choosing a message authenticator}\label{sec:choosing-a-message-authenticator}
 For implementation, we instantiated the MAC with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}. 
