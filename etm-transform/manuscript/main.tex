@@ -1,9 +1,3 @@
-% TODO: Section 6 confusion
-% DONE: deleted
-
-% TODO: remove indents
-% DONE: we should not do it; other accepted CHES papers kept the default indent, so we should do the same
-
 %%%% 1. DOCUMENTCLASS %%%%
 %
 % \documentclass[journal=tches,submission,notanonymous]{iacrtrans}
@@ -103,9 +97,9 @@ On the other hand, chosen-ciphertext security is a solved problem in symmetric c
 
 \subsection{Contributions}
 Our main contributions are threefold: \begin{itemize}
-    \item \textbf{Encrypt-then-MAC: a generic IND-CCA secure KEM transformation.} We propose a generic IND-CCA secure KEM transformation called the encrypt-then-MAC transformation and prove that the IND-CCA security of the encrypt-then-MAC transformation reduces tightly to the OW-PCA security of the underlying PKE and the existential unforgeability of the underlying MAC. In addition, we argue that the encrypt-then-MAC transformation can be instantiated with one-time MAC such as Poly1305 for further performance improvements.
-    \item \textbf{$\mlkemplus$: an application of encrypt-then-MAC transformation to ML-KEM.} We describe $\mlkemplus$, an IND-CCA secure KEM constructed by applying the encrypt-then-MAC transformation to ML-KEM's underlying PKE sub-routines. Compared to ML-KEM, $\mlkemplus$ adds a small amount of performance penalty to the encapsulation routine and a small increase in ciphertext size, but replaces the expensive re-encryption step in decapsulation with computing a MAC tag, which yields substantial performance improvements.
-    \item \textbf{C implementation and performance comparison.} We implemented $\mlkemplus$ in C and compared its performance with ML-KEM in a variety of scenarios. Compared to ML-KEM, $\mlkemplus$ achieves 72.2\%-79.1\% reduction of CPU cycle count for decapsulation while only increasing encapsulation's CPU cycle count by 1.8\%-7.3\% and ciphertext size by 1.0\%-2.0\% (see Table \ref{tbl:cpu-cycles-summary}). We also implemented the Kyber key exchange protocols \cite{DBLP:conf/eurosp/BosDKLLSSSS18} with $\mlkemplus$ and measured the round trip time (RTT) in realistic network settings. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
+    \item \textbf{Encrypt-then-MAC: a generic IND-CCA secure KEM transformation.} \textcolor{red}{\bf New IND-CCA secure KEM construction using encrypt-then-MAC.} We propose a generic IND-CCA secure KEM transformation called the encrypt-then-MAC transformation and prove that the IND-CCA security of the encrypt-then-MAC transformation reduces tightly to the OW-PCA security of the underlying PKE and the existential unforgeability of the underlying MAC. In addition, we argue that the encrypt-then-MAC transformation can be instantiated with one-time MAC such as Poly1305 for further performance improvements.
+    \item \textbf{$\mlkemplus$: an application of encrypt-then-MAC transformation to ML-KEM.} \textcolor{red}{\bf $\mlkemplus$: Efficient CCA-secure KEM based on ML-KEM.} We present $\mlkemplus$, an IND-CCA secure KEM constructed by applying the encrypt-then-MAC transformation to ML-KEM's underlying PKE sub-routines. Compared to ML-KEM, $\mlkemplus$ adds a small amount of performance penalty to the encapsulation routine and a small increase in ciphertext size, but replaces the expensive re-encryption step in decapsulation with computing a MAC tag, which yields substantial performance improvements.
+    \item \textbf{C implementation and performance comparison.}  \textcolor{red}{\bf Performance evaluation and comparisons.} We implemented $\mlkemplus$ in C and compared its performance with ML-KEM in a variety of scenarios. Compared to ML-KEM, $\mlkemplus$ achieves 72.2\%-79.1\% reduction of CPU cycle count for decapsulation while only increasing encapsulation's CPU cycle count by 1.8\%-7.3\% and ciphertext size by 1.0\%-2.0\% (see Table \ref{tbl:cpu-cycles-summary}). We also implemented the Kyber key exchange protocols \cite{DBLP:conf/eurosp/BosDKLLSSSS18} with $\mlkemplus$ and measured the round trip time (RTT) in realistic network settings. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
 \end{itemize}
 
 \begin{table}[h]
@@ -564,13 +558,13 @@ We will prove Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
                 \State $(\pk, \sk) \leftsample \kem_\etm\texttt{.}\keygen()$
                 \State $m^\ast \leftsample \mathcal{M}$
                 \State $c^\prime \leftsample \pke\texttt{.}\encrypt(\pk, m^\ast)$
-                \State $k^\ast \leftarrow G(m^\ast)$
+                \State $k^\ast \leftarrow G(\pk, m^\ast)$
                     \Comment{Game 0-1}
                 \State $k^\ast \leftsample \mathcal{K}_\mac$
                     \Comment{Game 2-3}
                 \State $t \leftarrow \mac(k^\ast, c^\prime)$
                 \State $c^\ast \leftarrow c^\prime \Vert t$
-                \State $K_0 \leftarrow H(m^\ast, c^\prime)$
+                \State $K_0 \leftarrow H(\pk, m^\ast, t)$
                     \Comment{Game 0-2}
                 \State $K_0 \leftsample \mathcal{K}_\kem$
                     \Comment{Game 3}
@@ -601,11 +595,11 @@ We will prove Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
             \begin{algorithmic}[1]
                 \State $(c^\prime, t) \leftarrow c$
                 \State $\hat{m} = \decrypt(\sk^\prime, c^\prime)$
-                \State $\hat{k} \leftarrow G(\hat{m})$
+                \State $\hat{k} \leftarrow G(\pk, \hat{m})$
                 \If{$\mac(\hat{k}, c^\prime) = t$}
-                    \State $K \leftarrow H(\hat{m}, c^\prime)$
+                    \State $K \leftarrow H(\pk, \hat{m}, t)$
                 \Else 
-                    \State $K \leftarrow H(z, c^\prime)$
+                    \State $K \leftarrow H(z, t)$
                 \EndIf 
                 \State \Return $K$
             \end{algorithmic}
@@ -931,7 +925,10 @@ We now present the proof for Lemma \ref{lemma:elgamal-is-ow-pca}
 \end{proof}
 
 \section{Practical instantiation with ML-KEM}\label{sec:practical-instantiation-with-mlkem}
-ML-KEM is an IND-CCA secure key encapsulation mechanism standardized by NIST in FIPS 203 \cite{FIPS203}. The chosen-ciphertext security of ML-KEM is achieved in two steps. First, ML-KEM constructs a PKE (called K-PKE, see Figure \ref{fig:k-pke-routines}) whose IND-CPA security reduces to the conjectured intractability of the decisional Module Learning with Error (MLWE) problem. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation is applied to convert the IND-CPA secure PKE into an IND-CCA secure KEM (see Figure \ref{fig:ml-kem-routines}).
+
+
+
+ML-KEM is an IND-CCA secure key encapsulation mechanism standardized by NIST in FIPS 203 \cite{FIPS203}. The chosen-ciphertext security of ML-KEM is achieved in two steps. First, ML-KEM constructs a PKE (called K-PKE, see Figure \ref{fig:k-pke-routines}) whose IND-CPA security reduces to the conjectured intractability of the decisional Module Learning with Error (MLWE) problem. Then, the $U^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation is applied to convert the IND-CPA secure PKE into an IND-CCA secure KEM (\textcolor{blue}{See see Figure \ref{fig:ml-kem-routines} in Appendix}).
 
 \begin{figure}[h]
     \centering
@@ -980,6 +977,7 @@ ML-KEM is an IND-CCA secure key encapsulation mechanism standardized by NIST in 
     \caption{K-PKE is an IND-CPA secure PKE based on the conjectured intractability of the Module Learning with Error (MWLE) problem}\label{fig:k-pke-routines}
 \end{figure}
 
+
 \begin{figure}[H]
     \centering
     
@@ -1025,7 +1023,9 @@ ML-KEM is an IND-CCA secure key encapsulation mechanism standardized by NIST in 
     \caption{ML-KEM uses the $U^{\not\bot}_m$ variant of the modular Fujisaki-Okamoto KEM transformation}\label{fig:ml-kem-routines}
 \end{figure}
 
-We applied the encrypt-then-MAC transformation to the K-PKE routines of ML-KEM. The resulting KEM is called $\mlkemplus$ (See Figure \ref{fig:ml-kem-plus-routines}).
+\subsection{$\mlkemplus$} (\textcolor{blue}{In general, you cannot have only one subsection.}
+
+We apply the encrypt-then-MAC transformation to the K-PKE routines of ML-KEM. The resulting KEM is called $\mlkemplus$ (See Figure \ref{fig:ml-kem-plus-routines}).
 
 \begin{figure}[h]
     \centering
@@ -1084,20 +1084,39 @@ Compared to ML-KEM, $\mlkemplus$ makes the following performance trade-offs: \be
     \item $\mlkemplus$ decapsulation replaces re-encryption with computing the MAC tag
 \end{itemize}
 
-\subsection{Choosing a message authenticator}\label{sec:choosing-a-message-authenticator}
+\subsection{Choosing a message authentication code (MAC)}\label{sec:choosing-a-message-authenticator}
 For implementation, we instantiated the MAC with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}. 
 
 % All chosen MACs are parameterized with 256-bit keys and 128-bit tags. We chose 256-bit keys for all three security levels (128-bit, 196-bit, and 256-bit security) because choosing a smaller key size does not yield meaningful performance gains (in addition, Poly1305 only supports 256-bit keys). On the other hand, a 128-bit tag size is sufficient for all three security levels because unlike brute-force attacks on the MAC key, which can be carried out offline with large computing capacity, attacks on the tag require interaction with an online peer that plays the role of a MAC verification oracle. This means that the attack bandwidth is limited by the throughput of the online oracle instead of the attacker's computing power, and in practice it is easy to implement rate limiting in the cryptographic protocol such that the adversary cannot submit large quantities of MAC verification queries.
 
-Poly1305 and GMAC are both Carter-Wegman style authenticators \cite{wegman1981new} that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC operates by breaking the message into message blocks that can then be parsed into finite field elements. The tag is computed by evaluating a polynomial whose coefficients are the message blocks and whose interdeterminate is the secret key.
+\subsection{Poly1305 and GMAC with 128-bit tags}
+Poly1305 and GMAC are both Carter-Wegman style authenticators \cite{wegman1981new} that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC operates by breaking the message into message blocks that can then be parsed into finite field elements. The tag is computed by evaluating a polynomial whose coefficients are the message blocks and whose interdeterminate is the secret key, which is also called a \textit{hash key}.
 
 Specifically, Poly1035 operates in the prime field $\mathbb{F}_q$ where $q = 2^{130} - 5$ whereas GMAC operates in the binary field $\mathbb{F}_{2^{128}}$. In OpenSSL's implementation, standalone Poly1305 is a one-time secure MAC, whereas GMAC uses a nonce and AES as the PRF and is thus many-time secure (in OpenSSL GMAC is AES-256-GCM except all data is fed into the ``associated data'' section and thus not encrypted).
 
+
+\textcolor{blue}{\textbf{ I have revised this part. Please consider to get the data, and revise Table 4, i.e., put back the original 192 and 256 cases without Poly1305. }
+}
+
+
+In order to get the tag sizes of 192-bit and 256-bit respectively. 
+We can extend GMAC, CMAC, and KMAC to get those tags.
+
+\subsection{Constructions of GMAC for 192-bit and 256-bit tags}
+
+For 192-bit and 256-bit tag size for GMAC, the hash key is given by $h=r_0 || r'$ where $r_0=AES_{256}(k, 0)$  and $r'$ is the most significant 64 bits from $r_1=AES_{256}(k, 1)$ for 192-bit tag and $h=r_0||r_1$ for 256-bit tag.  Now the cipher polynomial, (i.e., it parses the ciphertext  as 192-bit as  blocks or 256-bit as  blocks)  is  evaluated in $\mathbb{F}_{2^{192}}$ and $\mathbb{F}_{2^{256}}$, respectively. 
+
+\subsection{CMAC and an extension to get larger tags}
 CMAC is based on the CBC-MAC with the block cipher instantiated from AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time.
 
-KMAC is based on the SHA-3 family of sponge functions \cite{FIPS202}. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length and 128 bits for tag size for consistency with other authenticators.
+For the other two cases, it runs AES one more time to get another block of 128 bit.  Using  the same method in the case for getting  192-bit and 256-bit hash keys in GMAC,  we get the tag with  192-bit and 256-bit respectively. 
 
-\emph{Remark.} Unfortunately Poly1305, GMAC, and CMAC all use tag size of 128 bits with no straightforward ways to increase the tag size. We suspect this small tag size to be unsuitable for instantiation with ML-KEM-768 and ML-KEM-1024 due to their higher security target (192-bit and 256-bit security respectively). Consequently, we only instantiate with ML-KEM-512, with a target 128-bit security level.
+
+\subsection{KMAC}
+KMAC is based on the SHA-3 family of sponge functions \cite{FIPS202}. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC allows variable-length key and tag, but we chose the 256 bits for key length, since the output of Shake256 can output 256 bits, so, we can get tag with size 128-bit, 192-bit and 256-bit, respectively.  
+
+
+\emph{Remark.} Unfortunately Poly1305 uses tag size of 128 bits with no straightforward ways to increase the tag size.  We suspect this small tag size to be unsuitable for instantiation with ML-KEM-768 and ML-KEM-1024 due to their higher security target (192-bit and 256-bit security respectively). Consequently, we only instantiate  with ML-KEM-512 with Poly1305, with a target 128-bit security level, instead of the other cases. 
 
 \section{Performance comparison}\label{sec:performance-comparison}
 We measured the real-world performance of the individual routines of our $\mlkemplus$ construction, as well as the round trip time of performing key exchange over a network in a variety of authentication modes. Our implementation extended from the reference implementation by the PQCrystals team \cite{kyberrefimpl}. All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance (AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM) in the \texttt{us-west-2} region.
