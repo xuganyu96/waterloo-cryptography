@@ -86,13 +86,13 @@
 
 %%%% 6. ABSTRACT %%%%
 \begin{abstract}
-    ML-KEM is a lattice-based IND-CCA secure key encapsulation mechanism (KEM) standardized by NIST in FIPS 203. ML-KEM achieves chosen-ciphertext security by applying the Fujisaki-Okamoto transformation to an IND-CPA secure public-key encryption (PKE) scheme. The Fujisaki-Okamoto transformation uses de-randomization and re-encryption to ensure ciphertext non-malleability, but because ML-KEM's underlying PKE encryption is significantly slower than the underlying PKE decryption, ML-KEM's decapsulation performance is dominated by re-encryption. In this paper, we propose an alternative generic IND-CCA secure KEM transformation that achieves chosen-ciphertext security by applying the encrypt-then-MAC mechanism to a OW-PCA secure PKE and an existentially unforgeable MAC. Compared to the Fujisaki-Okamoto transformation, our encrypt-then-MAC transformation replaces de-randomization and re-encryption with computing a MAC tag. We instantiate our proposed KEM with the PKE sub-routines of ML-KEM and call it ML-KEM+. We then implement ML-KEM+ with a wide selection of MACs including Poly1305, GMAC, CMAC, and KMAC. At the cost of minimal increase in encapsulation CPU cycles (+1.8\%) and ciphertext size (+2.1\%), ML-KEM+ achieves a massive reduction of decapsulation CPU cycles (-72.2\%) compared to ML-KEM. Furthermore, we implement key exchange protocols and measure realistic network round trip times (RTTs), where $\mlkemplus$ reduces RTTs by 23.9\%-39.5\%,  compared to ML-KEM.
+    ML-KEM is a lattice-based IND-CCA secure key encapsulation mechanism (KEM) standardized by NIST in FIPS 203. ML-KEM achieves chosen-ciphertext security by applying the Fujisaki-Okamoto transformation to an IND-CPA secure public-key encryption (PKE) scheme. The Fujisaki-Okamoto transformation uses de-randomization and re-encryption to ensure ciphertext non-malleability, but because ML-KEM's underlying PKE encryption is significantly slower than the underlying PKE decryption, ML-KEM's decapsulation performance is dominated by re-encryption. In this paper, we propose an alternative generic IND-CCA secure KEM transformation that achieves chosen-ciphertext security by applying the encrypt-then-MAC mechanism to an OW-PCA secure PKE and an existentially unforgeable MAC. Compared to the Fujisaki-Okamoto transformation, our encrypt-then-MAC transformation replaces de-randomization and re-encryption with computing a MAC tag. We instantiate our proposed KEM with the PKE sub-routines of ML-KEM and call it $\mlkemplus$. We then implement $\mlkemplus$ with a wide selection of MACs including Poly1305, GMAC, CMAC, and KMAC. At the cost of minimal increase in encapsulation CPU cycles (+1.8\%) and ciphertext size (+2.1\%), $\mlkemplus$ achieves a massive reduction of decapsulation CPU cycles (-72.2\%) compared to ML-KEM. Furthermore, we implement key exchange protocols and measure realistic network round trip times (RTT), where $\mlkemplus$ reduces RTT by 23.9\%-39.5\% compared to ML-KEM.
 \end{abstract}
 
 \section{Introduction}\label{sec:introduction}
 A key encapsulation mechanism (KEM) \cite{DBLP:journals/iacr/Shoup01} is a cryptographic primitive that allows two parties to establish a shared secret over an insecure channel. The desired security standard for a KEM is called indistinguishability under chosen-ciphertext attack (IND-CCA). Intuitively speaking, IND-CCA security requires that no efficient adversary can distinguish a pseudorandom shared secret from a uniformly random bit string of equal length, even with access to a decapsulation oracle throughout the attack. However, building a provably IND-CCA secure KEM is tremendously difficult. Early attempts without formal proofs, such as RSA encryption defined in PKCS\#1 v1.5 \cite{DBLP:journals/rfc/rfc2313}, were later shown to be vulnerable to practical chosen-ciphertext attacks \cite{DBLP:conf/crypto/Bleichenbacher98}. In recent decades, the most viable approach has been to start with cryptographic primitives possessing weaker security properties, such as a public-key encryption (PKE) scheme with one-way security under chosen-plaintext attack (OW-CPA), then add steps to achieve \emph{ciphertext non-malleability} \cite{DBLP:conf/asiacrypt/BellareN00}. Some of the earliest proposals for generic IND-CCA secure constructions include OAEP \cite{DBLP:conf/eurocrypt/BellareR94}, Fujisaki-Okamoto transformation \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13}, REACT \cite{DBLP:conf/ctrsa/OkamotoP01}, and GEM \cite{DBLP:conf/ctrsa/CoronHJPPT02}. Some other notable examples for constructing IND-CCA secure public-key cryptosystems in the standard model include the constructions of Naor and Yung \cite{naor1990public}, Cramer and Shoup \cite{cramer1998practical} and Canetti, Halevi and Katz \cite{CCA-IBE-EUROCRYPT2004}. The construction of Naor and Yung uses an IND-CPA secure PKE and a non-interactive zero-knowledge (NIZK) proof system. Canetti, Halevi and Katz \cite{CCA-IBE-EUROCRYPT2004} proposed a construction to build an IND-CCA secure PKE scheme from an IND-CPA secure IBE scheme and a one-time signature scheme.
 
-On the other hand, chosen-ciphertext security is a solved problem in symmetric cryptography. It is well understood that, by combining an IND-CPA secure symmetric encryption scheme with an existentially unforgeable message authentication code (MAC) in a pattern called encrypt-then-MAC \cite{DBLP:conf/crypto/Krawczyk01}, one can build an authenticated encryption scheme \cite{DBLP:conf/asiacrypt/BellareN00} that achieves IND-CCA security. The encrypt-then-MAC (EtM) mechanism was standard in ISO 19772 \cite{international2009iso-encrypt-then-mac}. While this technique cannot be directly applied in the context of public-key cryptography due to the lack of a shared symmetric key between the two communicating parties, the concept of authenticating ciphertext using a MAC still has strong merits. Abdalla, Rogaway, and Bellare proposed DHIES (also known as ``Hashed ElGamal'')\cite{DBLP:journals/iacr/AbdallaBR99}\cite{DBLP:conf/ctrsa/AbdallaBR01}, a hybrid public-key encryption (HPKE) scheme whose IND-CCA security reduces to the Gap Diffie-Hellman assumption \cite{DBLP:conf/pkc/OkamotoP01} under the random oracle model. The technique behind DHIES is to derive both the shared secret and a symmetric MAC key by hashing a random PKE plaintext, encrypting the PKE plaintext, then authenticating the PKE ciphertext using the previously derived MAC key. When the Gap Diffie-Hellman assumption holds and the MAC is existentially unforgeable, no efficient adversary can recover the decryption of an unknown ciphertext even with access to a decryption oracle because it cannot produce a valid tag for such unknown ciphertext. 
+On the other hand, chosen-ciphertext security is a solved problem in symmetric cryptography. It is well understood that, by combining an IND-CPA secure symmetric encryption scheme with an existentially unforgeable message authentication code (MAC) in a pattern called encrypt-then-MAC \cite{DBLP:conf/crypto/Krawczyk01}, one can build an authenticated encryption scheme \cite{DBLP:conf/asiacrypt/BellareN00} that achieves IND-CCA security. The encrypt-then-MAC (EtM) mechanism was standardized in ISO 19772 \cite{international2009iso-encrypt-then-mac}. While this technique cannot be directly applied in the context of public-key cryptography due to the lack of a shared symmetric key between the two communicating parties, the concept of authenticating ciphertext using a MAC still has strong merits. Abdalla, Rogaway, and Bellare proposed DHIES (also known as ``Hashed ElGamal'')\cite{DBLP:journals/iacr/AbdallaBR99}\cite{DBLP:conf/ctrsa/AbdallaBR01}, a hybrid public-key encryption (HPKE) scheme whose IND-CCA security reduces to the Gap Diffie-Hellman assumption \cite{DBLP:conf/pkc/OkamotoP01} under the random oracle model. The technique behind DHIES is to derive both the shared secret and a symmetric MAC key by hashing a random PKE plaintext, encrypting the PKE plaintext, then authenticating the PKE ciphertext using the previously derived MAC key. If the Gap Diffie-Hellman assumption holds and the MAC is existentially unforgeable, no efficient adversary can recover the decryption of an unknown ciphertext even with access to a decryption oracle because it cannot produce a valid tag for such unknown ciphertext. 
 
 % TODO: this seems rather unnecessary
 % \red{To our knowledge, there is no work focused on constructing KEMs using the encrypt-then-MAC mechanism.}
@@ -102,7 +102,7 @@ Our main contributions are threefold: \begin{itemize}
     \setlength\itemsep{.1em}
     \item {\bf New IND-CCA secure KEM construction using encrypt-then-MAC.} We propose a generic IND-CCA secure KEM transformation called the encrypt-then-MAC transformation and prove that the IND-CCA security of the encrypt-then-MAC transformation reduces tightly to the OW-PCA security of the underlying PKE and the existential unforgeability of the underlying MAC. In addition, we argue that the encrypt-then-MAC transformation can be instantiated with one-time MAC such as Poly1305 for further performance improvements.
     \item {\bf $\mlkemplus$: Efficient CCA-secure KEM based on ML-KEM.} We present $\mlkemplus$, an IND-CCA secure KEM constructed by applying the encrypt-then-MAC transformation to ML-KEM's underlying PKE sub-routines. Compared to ML-KEM, $\mlkemplus$ adds a small amount of performance penalty to the encapsulation routine and a small increase in ciphertext size, but replaces the expensive re-encryption step in decapsulation with computing and verifying a MAC tag, which yields substantial performance improvements.
-    \item {\bf Performance evaluation and comparisons.} We implemented $\mlkemplus$ in C by adapting ML-KEM's reference implementation \cite{kyberrefimpl} and compared its performance with ML-KEM in a variety of scenarios. Compared to ML-KEM, $\mlkemplus$ achieves 72.2\%-79.1\% reduction of CPU cycle count for decapsulation while only increasing encapsulation's CPU cycle count by 1.8\%-7.3\% and ciphertext size by 1.0\%-2.0\% (see Table \ref{tbl:cpu-cycles-summary}). We also implemented the Kyber key exchange protocols \cite{DBLP:conf/eurosp/BosDKLLSSSS18} with $\mlkemplus$ and measured the round trip time (RTT) in realistic network settings. Compared to ML-KEM, $\mlkemplus$ achieves 24\%-28\% reduction of round trip time in unauthenticated key exchange (KE), 29\%-35\% in unilaterally authenticated key exchange (UAKE), and 35\%-48\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
+    \item {\bf Performance evaluation and comparisons.} We implemented $\mlkemplus$ in C by adapting ML-KEM's reference implementation \cite{kyberrefimpl} and compared its performance with ML-KEM in a variety of scenarios. Compared to ML-KEM, $\mlkemplus$ achieves 72.2\%-74.7\% reduction of CPU cycle count for decapsulation while only increasing encapsulation's CPU cycle count by 1.8\%-13.8\% and ciphertext size by 2.0\% (see Table \ref{tbl:cpu-cycles-summary}). We also implemented the Kyber key exchange protocols \cite{DBLP:conf/eurosp/BosDKLLSSSS18} with $\mlkemplus$ and measured the round trip time (RTT) in realistic network settings. Compared to ML-KEM, $\mlkemplus$ achieves 23.7\%-25.4\% reduction of round trip time in unauthenticated key exchange (KE), 28.4\%-32.3\% in unilaterally authenticated key exchange (UAKE), and 30.6\%-44.9\% reduction in mutually authenticated key exchange (AKE). See Table \ref{tbl:rtt-summary} for a summary of round trip times.
 \end{itemize}
 
 \begin{table}[h]
@@ -178,9 +178,9 @@ Our main contributions are threefold: \begin{itemize}
     % TODO: Poly1305 might not be suitable for 192/256 bit security
     \begin{tabular}{|p{1.6cm}|p{2.50cm}|p{2.50cm}|p{2.50cm}|}
         \hline
-        &  $\text{ML-KEM}^+$-512 \newline Poly1305
-        &  $\text{ML-KEM}^+$-768 \newline KMAC 192-bit tag
-        &  $\text{ML-KEM}^+$-1024 \newline KMAC 256-bit tag
+        &  $\mlkemplus$-512 \newline Poly1305
+        &  $\mlkemplus$-768 \newline KMAC 192-bit tag
+        &  $\mlkemplus$-1024 \newline KMAC 256-bit tag
         \\
         \hline
         KE RTT \newline ($\us$) 
@@ -236,9 +236,9 @@ Our main contributions are threefold: \begin{itemize}
 \end{table}
 
 \subsection{Related works}
-\textbf{Optimal Asymmetric Encryption Padding (OAEP)} \cite{DBLP:conf/eurocrypt/BellareR94}\cite{DBLP:conf/crypto/BellareDPR98} is a generic chosen-ciphertext secure PKE. Under the random oracle model, the chosen-ciphertext security of the OAEP encryption scheme reduces to the one-wayness of the input trapdoor permutation. Although it was discovered that there exist trapdoor permutations with which the OAEP encryption scheme does not achieve full IND-CCA security \cite{DBLP:journals/joc/Shoup02}, Fujisaki et al. later proved that the OAEP is IND-CCA secure when combined with the RSA trapdoor permutation \cite{DBLP:conf/crypto/FujisakiOPS01}\cite{DBLP:journals/cacm/RivestSA78}. RSA-OAEP was standardized in PKCS\#1 v2 \cite{rfc8017} and is currently the most recommended of all RSA-based encryption schemes. Unfortunately, OAEP's requirement for a trapdoor permutation is immensely difficult to satisfy, and no other practical instantiation saw widespread adoption to this day.
+\textbf{Optimal Asymmetric Encryption Padding (OAEP)} \cite{DBLP:conf/eurocrypt/BellareR94}\cite{DBLP:conf/crypto/BellareDPR98} is a generic chosen-ciphertext secure PKE. Under the random oracle model, the chosen-ciphertext security of the OAEP encryption scheme reduces to the one-wayness of the input trapdoor permutation. Although it was discovered that there exist trapdoor permutations with which the OAEP encryption scheme does not achieve full IND-CCA security \cite{DBLP:journals/joc/Shoup02}, Fujisaki et al. later proved that OAEP is IND-CCA secure when combined with the RSA trapdoor permutation \cite{DBLP:conf/crypto/FujisakiOPS01}\cite{DBLP:journals/cacm/RivestSA78}. RSA-OAEP was standardized in PKCS\#1 v2 \cite{rfc8017} and is currently the most recommended of all RSA-based encryption schemes. Unfortunately, OAEP's requirement for a trapdoor permutation is immensely difficult to satisfy, and no other practical instantiation saw widespread adoption to this day.
 
-The \textbf{Fujisaki-Okamoto transformation} \cite{DBLP:conf/crypto/FujisakiO99}\cite{DBLP:journals/joc/FujisakiO13} is another generic IND-CCA secure transformation. While Fujisaki and Okamoto originally proposed a hybrid public-key encryption scheme whose IND-CCA security reduces non-tightly to the OW-CPA security of the underlying PKE and the IND-CPA security of the symmetric encryption scheme. Later works \cite{DBLP:conf/ima/Dent03}\cite{DBLP:conf/tcc/HofheinzHK17}\cite{DBLP:conf/eurocrypt/DworkNR04}\cite{DBLP:conf/asiacrypt/HovelmannsHM22}\cite{bernstein2018towards}  tightened the security reduction, accounted for imperfect correctness, adapted the original proposal to build a KEM, and proved its security in the quantum random oracle model (QROM).
+The \textbf{Fujisaki-Okamoto transformation} \cite{DBLP:conf/crypto/FujisakiO99, DBLP:journals/joc/FujisakiO13} is another generic IND-CCA secure transformation. In the original publication, Fujisaki and Okamoto proposed a hybrid public-key encryption scheme whose IND-CCA security reduces non-tightly to the OW-CPA security of the underlying PKE and the IND-CPA security of the symmetric encryption scheme. Later works \cite{DBLP:conf/ima/Dent03, DBLP:conf/tcc/HofheinzHK17, DBLP:conf/eurocrypt/DworkNR04, DBLP:conf/asiacrypt/HovelmannsHM22, bernstein2018towards}  tightened the security reduction, accounted for imperfect correctness, adapted the original proposal to build a KEM, and proved its security in the quantum random oracle model (QROM).
 
 \begin{figure}[h]
     \centering
@@ -286,12 +286,12 @@ The \textbf{Fujisaki-Okamoto transformation} \cite{DBLP:conf/crypto/FujisakiO99}
     \caption{The $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformation is used in ML-KEM}\label{fig:u-notbot-m-routines}
 \end{figure}
 
-The modular Fujisaki-Okamoto KEM transformation is remarkably successful because of the simplicity of its construction, the tightness of the security bound, and the proven (though non-tight) security against quantum adversaries. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{DBLP:conf/eurosp/BosDKLLSSSS18}, Saber \cite{DBLP:conf/africacrypt/DAnversKRV18}, FrodoKEM \cite{DBLP:conf/ccs/BosCDMNNRS16}, and classic McEliece \cite{classicmceliecespec} among others. The $\kem^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation (see Figure \ref{fig:u-notbot-m-routines}) is adopted in ML-KEM.
+The Fujisaki-Okamoto transformation is remarkably successful because of the simplicity of its construction, the tightness of the security bound, and the proven (though non-tight) security against quantum adversaries. It was adopted by many submissions to NIST's post-quantum cryptography competition, including Kyber \cite{DBLP:conf/eurosp/BosDKLLSSSS18}, Saber \cite{DBLP:conf/africacrypt/DAnversKRV18}, FrodoKEM \cite{DBLP:conf/ccs/BosCDMNNRS16}, and classic McEliece \cite{classicmceliecespec} among others. The $\kem^{\not\bot}_m$ variant of the Fujisaki-Okamoto transformation (see Figure \ref{fig:u-notbot-m-routines}) is adopted in ML-KEM \cite{FIPS203}.
 
 However, the Fujisaki-Okamoto transformation is not perfect. Because it uses re-encryption for achieving ciphertext non-malleability, the Fujisaki-Okamoto transformation suffers from the following two problems: \begin{itemize}
     \setlength\itemsep{.1em}
     \item \textbf{Computational inefficiency}. The decapsulation routine needs to re-encrypt the decryption to ensure ciphertext has not been tempered with. For input PKE whose encryption routine carries substantial computational cost, such as most lattice-based cryptosystems, re-encryption slows down decapsulation significantly.
-    \item \textbf{Side-channel vulnerability}. Re-encryption also introduces side-channels that can leak information about the decrypted PKE plaintext. As demonstrated in \cite{ueno2022curse}\cite{ravi2019generic}\cite{DBLP:journals/tches/TanakaUXITH23}, these side-channels can be converted into efficient plaintext-checking attacks that can fully recover the secret key.
+    \item \textbf{Side-channel vulnerability}. Re-encryption also introduces side-channels that can leak information about the decrypted PKE plaintext. As demonstrated in \cite{ueno2022curse,ravi2019generic,DBLP:journals/tches/TanakaUXITH23}, these side-channels can be converted into efficient plaintext-checking attacks that can fully recover the secret key.
 \end{itemize}
 
 The rest of the paper is organized as follows. In Section \ref{sec:preliminaries}, we define and discuss the preliminary concepts and theorems. In Section \ref{sec:main-results}, we present our encrypt-then-MAC transformation in details, prove its security results, and discusses its relationship to the ElGamal cryptosystem. In Section \ref{sec:practical-instantiation-with-mlkem}, we present $\mlkemplus$, an instantiation of the encrypt-then-MAC transformation using ML-KEM's PKE sub-routines, then discuss some implementation rationales. In Section \ref{sec:performance-comparison}, we benchmark and compare the performance of individual KEM routines and key exchange round trip times between $\mlkemplus$ and ML-KEM.
@@ -299,17 +299,17 @@ The rest of the paper is organized as follows. In Section \ref{sec:preliminaries
 \section{Preliminaries}\label{sec:preliminaries}
 
 \subsection{Public-key encryption scheme}
-\textbf{Syntax.} A public-key encryption scheme $\pke(\keygen, \encrypt, \decrypt)$ is a collection of three routines defined over some plaintext space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Key generation $(\pk, \sk) \leftsample \keygen()$ is a randomized routine that returns a keypair. The encryption routine $\encrypt: (\pk, m) \mapsto c$ encrypts the input plaintext under the input public key. The decryption routine $\decrypt: (\sk, c) \mapsto m$ decrypts the input ciphertext under the input secret key. Where the encryption routine is randomized, we denote the randomness by a coin $r \in \mathcal{R}$, where $\mathcal{R}$ is called the coin space. The decryption routine is assumed to always be deterministic. Some decryption routines can detect malformed ciphertext and output the rejection symbol $\bot$ accordingly.
+\textbf{Syntax.} A public-key encryption scheme $\pke(\keygen, \encrypt, \decrypt)$ is a collection of three routines defined over some plaintext space $\mathcal{M}$ and some ciphertext space $\mathcal{C}$. Key generation $(\pk, \sk) \leftsample \keygen()$ is a randomized routine that returns a keypair. The encryption routine $\encrypt: (\pk, m) \mapsto c$ encrypts the input plaintext $m$ under the input public key $\pk$ and produces a ciphertext $c$. The decryption routine $\decrypt: (\sk, c) \mapsto m$ decrypts the input ciphertext $c$ under the input secret key $\sk$ and produces a plaintext $m$. Where the encryption routine is randomized, we denote the randomness by a coin $r \in \mathcal{R}$, where $\mathcal{R}$ is called the coin space. The decryption routine is assumed to always be deterministic.
 
 \textbf{Correctness.} Following the definition in \cite{DBLP:conf/eurocrypt/DworkNR04}, a $\pke$ is $\delta$-correct if:
 
 \begin{equation*}
-    E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta
+    E\left[\max_{m \in \mathcal{M}} P\left[\decrypt(\sk, c) \neq m \mid c \leftsample \encrypt(\pk, m)\right]\right] \leq \delta.
 \end{equation*}
 
 Where the expectation is taken with respect to the probability distribution of all possible keypairs $(\pk, \sk) \leftsample \texttt{PKE.KeyGen()}$. For many lattice-based cryptosystems, including ML-KEM, decryption failures could leak information about the secret key, although the probability of a decryption failure is low enough that classical adversaries cannot exploit decryption failure more than they can defeat the underlying lattice problem.
 
-\textbf{Security.} The security of public-key encryption is conventionally discussed within the context of adversarial games played between a challenger and an adversary \cite{DBLP:conf/stoc/GoldwasserM82}. There are two main types of games: in the one-wayness game, the adversary is given a random encryption, then asked to produce the correct decryption; in the indistinguishability game, the adversary is given the encryption of one of two adversary-chosen plaintexts, then asked to decide which of the plaintexts corresopnds with the given encryption. Depending on the attack model, the adversary may have access to various oracles. Within the context of public-key cryptography, adversaries are always assumed to have the public key with which they can mount chosen-plaintext attack (CPA). If the adversary has access to a plaintext-checking oracle (PCO) \cite{DBLP:conf/ctrsa/OkamotoP01} then it can mount plaintext-checking attack (PCA). Where the adversary has access to a decryption oracle, it can mount chosen-ciphertext attacks (CCA). 
+\textbf{Security.} The security of public-key encryption is conventionally discussed within the context of adversarial games played between a challenger and an adversary \cite{DBLP:conf/stoc/GoldwasserM82}. There are two main types of games: i) in the one-wayness (OW-ATK) game, the adversary is given a random encryption, then asked to produce the correct decryption; ii) in the indistinguishability (IND-ATK) game, the adversary is given the encryption of one of two adversary-chosen plaintexts, then asked to decide which of the plaintexts corresponds with the given encryption. Depending on the attack model, the adversary may have access to various oracles. Within the context of public-key cryptography, adversaries are always assumed to have the public key with which they can mount chosen-plaintext attack (CPA). If the adversary has access to a plaintext-checking oracle (PCO) \cite{DBLP:conf/ctrsa/OkamotoP01} then it can mount plaintext-checking attack (PCA). Where the adversary has access to a decryption oracle, it can mount chosen-ciphertext attacks (CCA). 
 
 \begin{figure}[H]
     \centering
@@ -356,16 +356,16 @@ Where the expectation is taken with respect to the probability distribution of a
     \caption{The one-way game, indistinguishability game, plaintext-checking oracle (PCO), and decryption oracle. $\texttt{ATK} \in \{\texttt{CPA}, \texttt{PCA}, \texttt{CCA}\}$}
 \end{figure}
 
-The advantage of an adversary in the \texttt{OW-ATK} game is the probability that it ouputs the correct decryption. The advantage of an adversary in the \texttt{IND-ATK} game is defined below. A PKE is \texttt{OW-ATK}/\texttt{IND-ATK} secure if no efficient adversary has non-negligible advantage in the corresponding security game.
+The advantage of an adversary in the \texttt{OW-ATK} game is the probability that it outputs the correct decryption. The advantage of an adversary in the \texttt{IND-ATK} game is defined below. A PKE is \texttt{OW-ATK}/\texttt{IND-ATK} secure if no efficient adversary has non-negligible advantage in the corresponding security game.
 
 \begin{equation*}
-    \texttt{Adv}_\texttt{IND-ATK}(A) = \left\vert P\left[ \hat{b} = b \right] - \frac{1}{2} \right\vert
+    \texttt{Adv}_\texttt{IND-ATK}(A) = \left\vert P\left[A^{\mathcal{O}_\texttt{ATK}}(1^\lambda, \pk, c^\ast) = b \right] - \frac{1}{2} \right\vert.
 \end{equation*}
 
 \subsection{Key encapsulation mechanism (KEM)}
-\textbf{Syntax} A key encapsulation mechanism $\kem(\keygen, \encap, \decap)$ is a collection of three routines defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a fake session key that depends on the ciphertext and some other secret values.
+\textbf{Syntax.} A key encapsulation mechanism $\kem(\keygen, \encap, \decap)$ is a collection of three routines defined over some ciphertext space $\mathcal{C}$ and some key space $\mathcal{K}$. The key generation routine takes the security parameter $1^\lambda$ and outputs a keypair $(\pk, \sk) \leftsample \keygen(1^\lambda)$. $\encap(\pk)$ is a probabilistic routine that takes a public key $\pk$ and outputs a pair of values $(c, K)$ where $c \in \mathcal{C}$ is the ciphertext (also called encapsulation) and $K \in \mathcal{K}$ is the shared secret (also called session key). $\decap(\sk, c)$ is a deterministic routine that takes the secret key $\sk$ and the encapsulation $c$ and returns the shared secret $K$ if the ciphertext is valid. Some KEM constructions use explicit rejection, where if $c$ is invalid then $\decap$ will return a rejection symbol $\bot$; other KEM constructions use implicit rejection, where if $c$ is invalid then $\decap$ will return a fake session key that depends on the ciphertext and some other secret values.
 
-\textbf{Security} The security of KEMs is similarly discussed in adversarial games (Figure \ref{fig:kem-game}), although the win conditions differ slightly from the win conditions of a PKE's indistinguishability game. In a KEM's indistinguishability game, an adversary is given the public key and a challenge ciphertext, then asked to distinguish a pseudorandom shared secret $K_0$ associated with the challenge ciphertext from a truly random bit string of equal length.
+\textbf{Security.} The security of a KEM is similarly discussed in adversarial games (Figure \ref{fig:kem-game}), although the win conditions differ slightly from the win conditions of a PKE indistinguishability game. In a KEM's indistinguishability game, an adversary is given the public key and a challenge ciphertext, then asked to distinguish a pseudorandom shared secret $K_0$ associated with the challenge ciphertext from a truly random bit string of equal length.
 
 \begin{figure}[h]
     \centering
@@ -395,45 +395,53 @@ The advantage of an adversary in the \texttt{OW-ATK} game is the probability tha
     \caption{\texttt{IND-ATK} game for KEM and decapsulation oracle $\mathcal{O}_\decap$}\label{fig:kem-game}
 \end{figure}
 
-The decapsulation oracle $\mathcal{O}^\decap$ takes a ciphertext $c$ and returns the output of the $\decap$ routine using the secret key. The advantage $\epsilon_\texttt{IND-CCA}$ of an IND-CCA adversary $\mathcal{A}_\texttt{IND-CCA}$ is defined by the adversary's ability to correctly distinguish the two cases beyond blind guess:
+The decapsulation oracle $\mathcal{O}^\decap$ takes a ciphertext $c$ and returns the output of the $\decap$ routine using the secret key. The advantage of an IND-CCA adversary $\mathcal{A}_\texttt{IND-CCA}$ is defined by the adversary's ability to correctly distinguish the two cases beyond a blind guess:
 
 \begin{equation*}
     \adv_\texttt{IND-CCA}(A) = \norm{
         P[A^{\mathcal{O}_\decap}(a^\lambda, \pk, c^\ast, K_b) = b] - \frac{1}{2}
-    }
+    }.
 \end{equation*}
 
 A KEM is \texttt{IND-ATK} secure if no efficient adversary has non-negligible advantage in the corresponding security game.
 
 \subsection{Message authentication code (MAC)}\label{sec:message-authentication-code}
-A message authentication code $\mac(\keygen, \sign, \verify)$ is a collection of routines defined over some key space $\mathcal{K}$, some message space $\mathcal{M}$, and some tag space $\mathcal{T}$. The signing routine $\sign(k, m)$ authenticates the message $m$ under the secret key $k$ by producing a tag $t$ (also called digest). The verification routine $\verify(k, m, t)$ takes the triplet of secret key, message, and tag, and outputs $\texttt{1}$ if the message-tag pair is valid under the secret key, or $\texttt{0}$ otherwise. Many MAC constructions are deterministic. For these constructions it is simpler to denote the signing routine by $t \leftarrow \mac(k, m)$ and perform verification using a simple comparison.
+\textbf{Syntax.} A message authentication code $\mac(\keygen, \sign, \verify)$ is a collection of routines defined over some key space $\mathcal{K}$, some message space $\mathcal{M}$, and some tag space $\mathcal{T}$. The signing routine $\sign(k, m)$ authenticates the message $m$ under the secret key $k$ by producing a tag $t$ (also called digest) (we define the process that generates an authentication tag $t$ over message $m$ a \textit{signing routine} in this paper). The verification routine $\verify(k, m, t)$ takes the triplet of secret key $k$, message $m$, and tag $t$, and outputs $\texttt{1}$ if the message-tag pair is valid under the secret key, or $\texttt{0}$ otherwise. Many MAC constructions are deterministic. For these constructions it is simpler to denote the signing routine by $t \leftarrow \mac(k, m)$ and perform verification using a simple comparison.
 
-The security of a MAC is defined in an adversarial game in which an adversary, with access to some signing oracle $\mathcal{O}_\sign(m)$, tries to forge a new valid message-tag pair that has never been queried before. The existential unforgeability under chosen message attack (EUF-CMA) game is shown below:
+\textbf{Security.} The security of a MAC is defined in an adversarial game in which an adversary, with access to a MAC oracle that can answer signing queries $\mac(k, m) \leftarrow \mathcal{O}_\mac(m)$, tries to forge a new valid message-tag pair that has never been queried before. The ability to access a MAC oracle is called \emph{chosen-message attack (CMA)}. The ability to produce a valid tag on some arbitrary message is called \emph{existential forgery}. The existential unforgeability under chosen message attack (EUF-CMA) game is shown below:
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.53\textwidth}
+    \begin{minipage}[t]{0.53\textwidth}
         \begin{algorithm}[H]
             \caption*{\texttt{EUF-CMA} game}
             \begin{algorithmic}[1]
                 \State $k^\ast \leftsample \mathcal{K}$
-                \State $(\hat{m}, \hat{t}) \leftsample \mathcal{A}^{\mathcal{O}_\sign}()$
+                \State $(\hat{m}, \hat{t}) \leftsample \mathcal{A}^{\mathcal{O}_\mac}()$
                 \State \Return $
                     \llbrack \verify(k^\ast, \hat{m}, \hat{t}) 
-                    \land (\hat{m}, \hat{t}) \not\in \mathcal{O}_\sign
+                    \land (\hat{m}, \hat{t}) \not\in \mathcal{O}_\mac
                     \rrbrack
                 $
             \end{algorithmic}
         \end{algorithm}
+    \end{minipage}\hspace{0.3cm}
+    \begin{minipage}[t]{0.4\textwidth}
+        \begin{algorithm}[H]
+            \caption*{MAC oracle $\mathcal{O}_\mac(m)$}
+            \begin{algorithmic}[1]
+                \State \Return $\mac(k^\ast, m)$
+            \end{algorithmic}
+        \end{algorithm}
     \end{minipage}
-    \caption{The existential forgery game}\label{fig:euf-cma-game}
+    \caption{The existential forgery game and the MAC oracle}\label{fig:euf-cma-game}
 \end{figure}
 
-The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game. Some MACs are one-time existentially unforgeable, meaning that each secret key can be used to authenticate only a single message. The corresponding security game is modified such that the signing oracle will only answer a single signing query.
+The advantage $\adv_\texttt{EUF-CMA}$ of the existential forgery adversary is the probability that it wins the EUF-CMA game. Some MACs are one-time existentially unforgeable, meaning that each secret key can be used to authenticate only a single message. The corresponding security game is modified such that the MAC oracle will only answer a single signing query.
 
 % \section{Encrypt-then-MAC: new generic IND-CCA KEM transformation}\label{sec:main-results}
 \section{The encrypt-then-MAC transformation}\label{sec:main-results}
-In this section we introduce the encrypt-then-MAC transformation that transforms an OW-PCA secure PKE and an one-time existentially unforgeable MAC into an IND-CCA secure KEM. Our scheme mainly differs from DHIES in its versatility and input requirement. Whereas the IND-CCA security of DHIES reduces specifically to the Gap Diffie-Hellman assumption, the chosen-ciphertext security of the encrypt-then-MAC KEM reduces more generally to the OW-PCA security \cite{DBLP:conf/ctrsa/OkamotoP01} of the input scheme (we will show in Section \ref{sec:elgamal-is-ow-pca} that the Gap Diffie-Hellman assumption implies OW-PCA security). In addition, we propose that because each call to encapsulation samples a fresh PKE plaintext, the encrypt-then-MAC KEM can be instantiated with one-time secure MAC such as Poly1305 for further performance improvements (M. Abdalla et al. originally proposed to use HMAC and CBC-MAC, which are many-time secure MAC but less efficient than one-time MAC, see Section \ref{sec:choosing-a-message-authenticator}). The encapsulation data flow is illustrated in Figure \ref{fig:etm-diagram}.
+\noindent\textbf{Our technique.} We introduce our encrypt-then-MAC transformation that transforms a OW-PCA secure PKE and an one-time existentially unforgeable MAC into an IND-CCA secure KEM. Our scheme mainly differs from DHIES in its versatility and input requirement. Whereas the IND-CCA security of DHIES reduces specifically to the Gap Diffie-Hellman assumption, the chosen-ciphertext security of the encrypt-then-MAC KEM reduces more generally to the OW-PCA security \cite{DBLP:conf/ctrsa/OkamotoP01} of the input scheme. In addition, we propose that because each call to encapsulation samples a fresh PKE plaintext, the encrypt-then-MAC KEM can be instantiated with one-time secure MAC such as Poly1305 for further performance improvements (Abdalla, Rogaway, and Bellare originally proposed to use HMAC and CBC-MAC, which are many-time secure MAC but less efficient than one-time MAC, see Section \ref{sec:choosing-a-message-authenticator}). The encapsulation data flow is illustrated in Figure \ref{fig:etm-diagram}.
 
 \begin{figure}[h]
     \centering
@@ -465,7 +473,8 @@ In this section we introduce the encrypt-then-MAC transformation that transforms
 
 In Section \ref{sec:proof-of-theorem} we reduce the IND-CCA security of the KEM tightly to the OW-PCA security of the underlying PKE, and non-tightly to the unforgeability of the MAC. In Section \ref{sec:elgamal-is-ow-pca}, we show that DHIES is a special case of the encrypt-then-MAC transformation by reducing the OW-PCA security of the ElGamal cryptosystem to the Gap Diffie-Hellman assumption.
 
-Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $\mac: \mathcal{K}_\mac \times \mathcal{B}^\ast \rightarrow \mathcal{T}$ be a deterministic message authentication code that takes a key $k \in \mathcal{K}_\mac$, some message $m \in \mathcal{B}^\ast$, and outputs a digest $t \in \mathcal{T}$. Let $G: \mathcal{M} \rightarrow \mathcal{K}_\mac$ be a hash function that maps from $\pke$'s plaintext space to $\mac$'s key space. Let $H: \mathcal{B}^\ast \rightarrow \mathcal{K}_\kem$ be a hash function that maps bit strings into the set of possible shared secrets. The encrypt-then-MAC transformation $\etm[\pke, \mac, G, H]$ constructs a key encapsulation mechanism $\kem_\etm(\keygen, \encap, \decap)$, whose routines are described in Figure \ref{fig:etm-routines}.
+\subsection{The generic KEM construction}
+Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, \encrypt, \decrypt)$ be a public-key encryption scheme defined over message space $\mathcal{M}$ and ciphertext space $\mathcal{C}$. Let $\mac: \mathcal{K}_\mac \times \mathcal{B}^\ast \rightarrow \mathcal{T}$ be a deterministic message authentication code that takes a key $k \in \mathcal{K}_\mac$, some message $m \in \mathcal{B}^\ast$, and outputs a tag $t \in \mathcal{T}$. Let $G: \mathcal{M} \rightarrow \mathcal{K}_\mac$ be a hash function that maps from $\pke$'s plaintext space to $\mac$'s key space. Let $H: \mathcal{B}^\ast \rightarrow \mathcal{K}_\kem$ be a hash function that maps bit strings into the set of possible shared secrets. The encrypt-then-MAC transformation $\etm[\pke, \mac, G, H]$ constructs a key encapsulation mechanism $\kem_\etm(\keygen, \encap, \decap)$, whose routines are described in Figure \ref{fig:etm-routines}.
 
 \begin{figure}[h]
     \centering
@@ -510,14 +519,14 @@ Let $\mathcal{B}^\ast$ denote the set of finite bit strings. Let $\pke(\keygen, 
             \end{algorithmic}
         \end{algorithm}
     \end{minipage}
-    \caption{The encrypt-then-MAC transformation builds a KEM $\kem_\etm$ using a $\pke(\keygen, \encrypt, \decrypt)$, a $\mac$, and two hash functions $G, H$}\label{fig:etm-routines} 
+    \caption{The encrypt-then-MAC transformation builds a KEM, denoted by $\kem_\etm$, using a $\pke(\keygen, \encrypt, \decrypt)$, a $\mac$, and two hash functions $G, H$}\label{fig:etm-routines} 
 \end{figure}
 
 % The key generation routine of $\kem_\etm$ is largely identical to that of the $\pke$, only a secret value $z$ is sampled as the implicit rejection symbol. In the encapsulation routine, a MAC key is derived from the randomly sampled plaintext, then used to sign the unauthenticated ciphertext $c^\prime$. Finally, the unauthenticated ciphertext $c^\prime$ and the tag $t$ combine into the authenticated ciphertext $c$ that would be transmitted to the peer. In the decapsulation routine, the decryption $\hat{m}$ of the unauthenticated ciphertext is used to re-derive the MAC key $\hat{k}$, which is then used to re-compute the tag $\hat{t}$. The ciphertext is considered valid if and only if the recomputed tag is identical to the input tag.
 
 Since the encrypt-then-MAC transformation removes re-encryption in decapsulation, there is no longer the need for fixing the pseudorandom coin $r$ in the PKE's encryption routine. If the input PKE is already rigid, then the shared secret may be derived from hashing the PKE plaintext alone. However, if the input PKE is not rigid, then the shared secret must be derived from hashing both the PKE plaintext and the PKE ciphertext. 
 
-The chosen-ciphertext security of the encrypt-then-MAC scheme can be intuitively argued through an adversary's inability to learn additional information from the decapsulation oracle. For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without knowing its preimage $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryptions that the adversary does not already know. 
+\paragraph{Security analysis.} The chosen-ciphertext security of the encrypt-then-MAC scheme can be intuitively argued through an adversary's inability to learn additional information from the decapsulation oracle. For an adversary $A$ to produce a valid tag $t$ for some unauthenticated ciphertext $c^\prime$ under the symmetric key $k \leftarrow G(\decrypt(\sk^\prime, c^\prime))$ implies that $A$ must either know the symmetric key $k$ or produce a forgery. Under the random oracle model, $A$ also cannot know $k$ without knowing its pre-image $\decrypt(\sk^\prime, c^\prime)$, so $A$ must either have produced $c^\prime$ honestly, or have broken the one-way security of $\pke$. This means that the decapsulation oracle will not give out information on decryption that the adversary does not already know. 
 
 However, a decapsulation oracle can still give out some information: for a known plaintext $m$, all possible encryptions $c^\prime \leftsample \encrypt(\pk, m)$ can be correctly signed, while ciphertexts that don't decrypt back to $m$ cannot be correctly signed. This means that a decapsulation oracle can be converted into a plaintext-checking oracle, so every chosen-ciphertext attack against the KEM can be converted into a plaintext-checking attack against the underlying PKE.
 
@@ -527,12 +536,19 @@ On the other hand, if the underlying PKE is OW-PCA secure and the underlying MAC
     For every \texttt{IND-CCA} adversary $A$ against $\kem_\etm$ that makes $q$ decapsulation queries, there exists an \texttt{OW-PCA} adversary $B$ who makes at least $q$ plaintext-checking queries against the underlying $\pke$, and an one-time existential forgery adversary $C$ against the underlying $\mac$ such that
 
     \begin{equation*}
-        \texttt{Adv}_\texttt{IND-CCA}(A) \leq q \cdot \adv_\texttt{OT-MAC}(C) + 2 \cdot \texttt{Adv}_\texttt{OW-PCA}(B)
+        \texttt{Adv}_\texttt{IND-CCA}(A) \leq q \cdot \adv_\texttt{OT-MAC}(C) + 2 \cdot \texttt{Adv}_\texttt{OW-PCA}(B).
     \end{equation*}
 \end{theorem}
 
-\subsection{Proof of theorem \ref{thm:ow-pca-implies-kem-ind-cca2}}\label{sec:proof-of-theorem}
-We will prove Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of game. A summary of the the sequence of games can be found in Figure \ref{fig:etm-ind-cc2-sequence-of-games} and \ref{fig:ow-pca-simulates-game-3}. From a high level we made three incremental modifications to the IND-CCA game for $\kem_\etm$: replace true decapsulation with simulated decapsulation, replace the pseudorandom MAC key $k^\ast \leftarrow G(\pk, m^\ast)$ with a truly random MAC key $k^\ast \leftsample \mathcal{K}_\mac$, and finally replace pseudorandom shared secret $K_0 \leftarrow H(m^\ast, t)$ with a truly random shared secret $K_0 \leftsample \mathcal{K}_\kem$. A OW-PCA adversary can then simulate the modified IND-CCA game for the KEM adversary, and the advantage of the OW-PCA adversary is associated with the probability of certain behaviors of the KEM adversary.
+\subsection{Proof of Theorem \ref{thm:ow-pca-implies-kem-ind-cca2}}\label{sec:proof-of-theorem}
+We will prove Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of game. A summary of the the sequence of games can be found in Figure \ref{fig:etm-ind-cc2-sequence-of-games} and \ref{fig:ow-pca-simulates-game-3}. From a high level we made three incremental modifications to the IND-CCA game for $\kem_\etm$: \begin{enumerate}
+    \setlength\itemsep{0.1em}
+    \item Replace the true decapsulation oracle with a simulated decapsulation oracle
+    \item Replace the pseudorandom MAC key $k^\ast \leftarrow G(m^\ast)$ with a truly random $k^\ast \leftsample \mathcal{K}_\mac$
+    \item Replace the pseudorandom shared secret $K_0 \leftarrow H(m^\ast, c)$ with a truly random shared secret $K_0 \leftsample \mathcal{K}_\kem$
+\end{enumerate}
+
+A OW-PCA adversary can then simulate the modified IND-CCA game for the KEM adversary, and the advantage of the OW-PCA adversary is associated with the probability of certain behaviors of the KEM adversary.
 
 \begin{figure}[h]
     \centering
@@ -693,35 +709,35 @@ We will prove Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
 
 
 \begin{proof}
-    \emph{Game 0} is the standard IND-CCA game for KEMs. The decapsulation oracle $\mathcal{O}^\decap$ executes the decapsulation routine using the challenge keypair and return the results faithfully. The queries made to the hash oracles $\mathcal{O}^G, \mathcal{O}^H$ are recorded to their respective tapes $\mathcal{L}^G, \mathcal{L}^H$.
+    \emph{Game 0} is the standard KEM IND-CCA game. The decapsulation oracle $\mathcal{O}^\decap$ executes the decapsulation routine using the challenge keypair and return the results faithfully. The queries made to the hash oracles $\mathcal{O}^G, \mathcal{O}^H$ are recorded to their respective tapes $\mathcal{L}^G, \mathcal{L}^H$.
 
     \emph{Game 1} is identical to game 0 except that the true decapsulation oracle $\mathcal{O}^\decap$ is replaced with a simulated oracle $\mathcal{O}^\decap_1$. Instead of directly decrypting $c^\prime$ as in the decapsulation routine, the simulated oracle searches through the tape $\mathcal{L}^G$ to find a matching query $(\tilde{m}, \tilde{k})$ such that $\tilde{m}$ is the decryption of $c^\prime$. The simulated oracle then uses $\tilde{k}$ to validate the tag $t$ against $c^\prime$.
 
     If the simulated oracle accepts the queried ciphertext as valid, then there is a matching query that also validates the tag, which means that the queried ciphertext is honestly generated. Therefore, the true oracle must also accept the queried ciphertext. On the other hand, if the true oracle rejects the queried ciphertext, then the tag is simply invalid under the MAC key $k = G(\decrypt(\sk^\prime, c^\prime))$. Therefore, there could not have been a matching query that also validates the tag, and the simulated oracle must also rejects the queried ciphertext.
 
-    This means that from the adversary $A$'s perspective, game 1 and game 0 differ only when the true oracle accepts while the simulated oracle rejects, which means that $t$ is a valid tag for $c^\prime$ under $k = G(\decrypt(\sk^\prime, c^\prime))$, but $k$ has never been queried. Under the random oracle model, such $k$ is a uniformly random sample of $\mathcal{K}_\mac$ that the adversary does not know, so for $A$ to produce a valid tag is to produce a forgery against the $\mac$ under an unknown and uniformly random key. Furthermore, the security game does not include a signing oracle, so this is a zero-time forgery. While zero-time forgery is not a standard security definition for a MAC, we can bound it by the advantage of a one-time forgery adversary $C$:
+    This means that from the adversary $A$'s perspective, game 1 and game 0 differ only when the true oracle accepts while the simulated oracle rejects, which means that $t$ is a valid tag for $c^\prime$ under $k = G(\decrypt(\sk^\prime, c^\prime))$, but $k$ has never been queried. Under the random oracle model, such $k$ is a uniformly random sample of $\mathcal{K}_\mac$ that the adversary does not know, so for $A$ to produce a valid tag is to produce a forgery against the $\mac$ under an unknown and uniformly random key. Furthermore, the security game does not include a MAC oracle, so this is a zero-time forgery. While zero-time forgery is not a standard security definition for a MAC, we can bound it by the advantage of a one-time forgery adversary $C$:
 
     \begin{equation*}
         P\left[\mathcal{O}^\decap(c) \neq \mathcal{O}^\decap_1(c)\right]
-        \leq \adv_\texttt{OT-MAC}(C)
+        \leq \adv_\texttt{OT-MAC}(C).
     \end{equation*}
 
     Across all $q$ decapsulation queries, the probability that at least one query is a forgery is thus at most $q \cdot P\left[\mathcal{O}^\decap(c) \neq \mathcal{O}^\decap_1(c)\right]$. By the difference lemma:
 
     \begin{equation*}
-        \adv_{G_0}(A) - \adv_{G_1}(A) \leq q\cdot  \adv_\texttt{OT-MAC}(C)
+        \adv_{G_0}(A) - \adv_{G_1}(A) \leq q\cdot  \adv_\texttt{OT-MAC}(C).
     \end{equation*}
 
     \emph{Game 2} is identical to game 1, except that the challenger samples a uniformly random MAC key $k^\ast \leftsample \mathcal{K}_\mac$ instead of deriving it from $m^\ast$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $G$ with the value of $m^\ast$. Denote the probability that $A$ queries $G$ with $m^\ast$ by $P[\texttt{QUERY G}]$, then:
 
     \begin{equation*}
-        \adv_{G_1}(A) - \adv_{G_2}(A) \leq P\left[\texttt{QUERY G}\right]
+        \adv_{G_1}(A) - \adv_{G_2}(A) \leq P\left[\texttt{QUERY G}\right].
     \end{equation*}
 
     \emph{Game 3} is identical to game 2, except that the challenger samples a uniformly random shared secret $K_0 \leftsample \mathcal{K}_\kem$ instead of deriving it from $m^\ast$ and $t$. From $A$'s perspective the two games are indistinguishable, unless $A$ queries $H$ with $(m^\ast, \cdot)$. Denote the probability that $A$ queries $H$ with $(m^\ast, \cdot)$ by $P[\texttt{QUERY H}]$, then:
 
     \begin{equation*}
-        \adv_{G_2}(A) - \adv_{G_3}(A) \leq P\left[\texttt{QUERY H}\right]
+        \adv_{G_2}(A) - \adv_{G_3}(A) \leq P\left[\texttt{QUERY H}\right].
     \end{equation*}
 
     Since in game 3, both $K_0$ and $K_1$ are uniformly random and independent of all other variables, no adversary can have any advantage: $\adv_{G_3}(A) = 0$.
@@ -732,8 +748,8 @@ We will prove Theorem \ref{thm:ow-pca-implies-kem-ind-cca2} using a sequence of 
 
     \begin{equation*}
         \begin{aligned}
-            P\left[\texttt{QUERY G}\right] &\leq \adv_\texttt{OW-PCA}(B) \\
-            P\left[\texttt{QUERY H}\right] &\leq \adv_\texttt{OW-PCA}(B) \\
+            P\left[\texttt{QUERY G}\right] &\leq \adv_\texttt{OW-PCA}(B), \\
+            P\left[\texttt{QUERY H}\right] &\leq \adv_\texttt{OW-PCA}(B). \\
         \end{aligned}
     \end{equation*}
 
@@ -747,7 +763,7 @@ We show that the DHAES/DHIES hybrid encryption scheme is a special case of the e
     For every OW-PCA adversary $A$ against the ElGamal cryptosystem, there exists a Gap Diffie-Hellman problem solver $B$ such that:
 
     \begin{equation*}
-        \text{Adv}_\text{GapDH}(B) = \text{Adv}_\text{OW-PCA}(A)
+        \text{Adv}_\text{GapDH}(B) = \text{Adv}_\text{OW-PCA}(A).
     \end{equation*}
 
     In other words, ElGamal is OW-PCA secure under the Gap Diffie-Hellman assumption.
@@ -809,9 +825,9 @@ It is also conjectured in \cite{DBLP:conf/ctrsa/AbdallaBR01} (and later extensiv
     Let $G = \langle g \rangle$ be a cyclic group of prime order $q > 2$. Let $x, y \leftsample \mathbb{Z}_q$ be uniformly random samples. Given $(g, g^x, g^y)$ and a restricted DDH oracle $\mathcal{O}^\text{DDH}: (u, v) \mapsto \llbrack u^x = v \rrbrack$, compute $g^{xy}$.
 \end{definition}
 
-We now present the proof for Lemma \ref{lemma:elgamal-is-ow-pca}
+We now present the proof for Lemma \ref{lemma:elgamal-is-ow-pca}. 
 \begin{proof}
-    We will prove by sequence of game. A summary can be found in Figure \ref{fig:elgamal-pca-games}
+    We will prove by a sequence of games. A summary can be found in Figure \ref{fig:elgamal-pca-games}
 
     \begin{figure}[h]
         \centering
@@ -854,7 +870,7 @@ We now present the proof for Lemma \ref{lemma:elgamal-is-ow-pca}
             \end{algorithm}
         \end{minipage}
 
-        \caption{Lemma \ref{lemma:elgamal-is-ow-pca} sequence of games}\label{fig:elgamal-pca-games}
+        \caption{ The sequence of games in proving Lemma \ref{lemma:elgamal-is-ow-pca}}\label{fig:elgamal-pca-games}
     \end{figure}
 
     \emph{Game 0} is the OW-PCA game. Adversary $A$ has access to the plaintext-checking oracle $\pco$ and wins the game if it can correctly recover the challenge plaintext $m^\ast$.
@@ -864,7 +880,7 @@ We now present the proof for Lemma \ref{lemma:elgamal-is-ow-pca}
     \emph{Game 2} is identical to game 1 except for two modifications: first, when computing the challenge ciphertext, $v$ is no longer computed from $m^\ast$ but is randomly sampled; second, the win condition changed from $\hat{m} = m^\ast$ to $\hat{m} = w^{-x}\cdot v$. It is easy to verify that Game 0 through Game 2 are algebraically equivalent:
 
     \begin{equation*}
-        \adv_0(A) = \adv_1(A) = \adv_2(A)
+        \adv_0(A) = \adv_1(A) = \adv_2(A). 
     \end{equation*}
 
     The Gap Diffie-Hellman adversary $B$ can perfectly simulate game 2 for $A$ (see Figure \ref{fig:ow-pca-to-gap-dh}): $B$ receives as the Gap Diffie-Hellman problem inputs $g^x$ and $g^y$. $g^x$ simulates an ElGamal public key, where as $g^y$ simulates the first component of the challenge ciphertext. As in game 2, the second component of the challenge ciphertext can be randomly sampled. Finally, the $\pco_1$ from game 2 can be perfectly simulated using the restricted DDH oracle $\mathcal{O}^\text{DDH}$.
@@ -909,7 +925,9 @@ We now present the proof for Lemma \ref{lemma:elgamal-is-ow-pca}
 
 ML-KEM is an IND-CCA secure key encapsulation mechanism standardized by NIST in FIPS 203 \cite{FIPS203}. The chosen-ciphertext security of ML-KEM is achieved in two steps. First, ML-KEM constructs a PKE (called K-PKE, see Figure \ref{fig:k-pke-routines} in Appendix) whose IND-CPA security reduces to the conjectured intractability of the decisional Module Learning with Error (MLWE) problem \cite{DBLP:conf/stoc/Regev05,DBLP:conf/eurocrypt/LyubashevskyPR10,DBLP:journals/jacm/Regev09,DBLP:conf/eurocrypt/LyubashevskyPR10,DBLP:conf/stoc/Peikert09}. Then, the $\kem^{\not\bot}_m$ variant (see Figure \ref{fig:u-notbot-m-routines}) of the Fujisaki-Okamoto transformation is applied to convert the IND-CPA secure PKE into an IND-CCA secure KEM (See Figure \ref{fig:ml-kem-routines} in Appendix).
 
-\subsection{ML-KEM+}
+% NOTE: section/subsection normally cannot have math expression or the PDF bookmarks will not typeset properly
+%   Use texorpdfstring to set the bookmark name in the second argument
+\subsection{\texorpdfstring{$\mlkemplus$}{ML-KEM+}}
 
 We apply the encrypt-then-MAC transformation to the K-PKE routines of ML-KEM. The resulting KEM is called $\mlkemplus$ (See Figure \ref{fig:ml-kem-plus-routines}). The key generation routines are identical between $\mlkemplus$ and ML-KEM. The $\mlkemplus$  encapsulation and decapsulation algorithms make use of two additional algorithms, namely a {\sf MAC} and a {\sf KDF}.
 
@@ -961,41 +979,42 @@ We apply the encrypt-then-MAC transformation to the K-PKE routines of ML-KEM. Th
         \end{algorithm}
     \end{minipage}
 
-    \caption{$\texttt{ML-KEM}^+$ applies our encrypt-then-MAC transformation to K-PKE. $G$ is SHA3-512, $H$ is SHA3-256, $\texttt{KDF}$ is Shake256}\label{fig:ml-kem-plus-routines}
+    \caption{$\mlkemplus$ applies our encrypt-then-MAC transformation to the K-PKE sub-routines of ML-KEM. $G$ is SHA3-512, $H$ is SHA3-256, $\texttt{KDF}$ is Shake256}\label{fig:ml-kem-plus-routines}
 \end{figure}
 
 For performance and practical security, $\mlkemplus$ makes two minor modifications to the encrypt-then-MAC transformation: \begin{itemize}
     \setlength\itemsep{0.1em}
-    \item \textbf{Hashing $\pk$ into MAC key and shared secret.} The public key goes into deriving both the MAC key and the shared secret for the same two reasons why Kyber hashes its public key into the pseudorandom coin and the shared secret \cite{DBLP:conf/eurosp/BosDKLLSSSS18}. The first reason is to make the KEM contributory. In a realistic key exchange, the public key and the random PKE plaintext are generated by opposite parties. Hashing both the public key and the PKE plaintext ensures that both parties have inputs into the shared secret. The second reason is to prevent multi-target attacks: if the MAC key is derived from the PKE plaintext alone, then an adversary can pre-compute a large dictionary mapping MAC keys to the pre-image PKE plaintext. Upon receiving some ciphertext, an adversary can search through this key-plaintext dictionary and recover the decryption. Adding the public key into the derivation of the MAC key will dramatically increase the space and time requirement of such dictionary attack and render it infeasible in practice.
+    \item \textbf{Hashing $\pk$ into MAC key and shared secret.} The public key goes into deriving both the MAC key and the shared secret for the same two reasons why Kyber hashes its public key into the pseudorandom coin and the shared secret \cite{DBLP:conf/eurosp/BosDKLLSSSS18}. The first reason is to make the KEM contributory. In a realistic key exchange, the public key and the random PKE plaintext are generated by opposite parties. Hashing both the public key and the PKE plaintext ensures that both parties have inputs into the shared secret. The second reason is multi-user security: if the MAC key is derived from the PKE plaintext alone, then an adversary can pre-compute a large dictionary mapping MAC keys to the pre-image PKE plaintext. Upon receiving some ciphertext, an adversary can search through this key-plaintext dictionary and recover the decryption. Hashing the public key into the MAC key prevents an adversary from computing one large lookup table and use it against multiple keypairs.
+    % \textcolor{blue}{ This is NOT true as I have commented in my previous email, since pk is known to the attacker. ``Adding the public key into the derivation of the MAC key will dramatically increase the space and time requirement of such dictionary attack and render it infeasible in practice.''}
     \item \textbf{Hashing the MAC tag instead of the entire ciphertext.} Because we allow the PKE to be randomized, the shared secret must have inputs from both the plaintext and the ciphertext. However, we find it unnecessary to hash the entire ciphertext. Instead, since the MAC tag functions as a keyed hash of the ciphertext, we can use the much shorter MAC tag as a substitute ciphertext hash, which yields meaningful performance improvements. On the other hand, not hashing the entire ciphertext will not give an adversary additional advantage because assuming that the adversary does not already know the underlying decryption, it cannot tamper with any part of the challenge ciphertext without making the ciphertext-tag pair invalid, so the decapsulation oracle will always return the implicit rejection.
 \end{itemize}
 
 Compared to ML-KEM, $\mlkemplus$ makes the following performance trade-offs: \begin{itemize}
     \setlength\itemsep{0.1em}
-    \item $\mlkemplus$ encapsulation contains two additional steps: computing the MAC tag and hashing the MAC tag into the shared secret.
-    \item $\mlkemplus$ ciphertext size increases by the size of the MAC tag
-    \item $\mlkemplus$ decapsulation replaces re-execution $\texttt{K-PKE}.\texttt{Enc}$ with computing the MAC tag
+    \item The $\mlkemplus$ encapsulation contains two additional steps: computing the MAC tag and hashing the MAC tag into the shared secret.
+    \item An $\mlkemplus$ ciphertext size increases by the size of the MAC tag.
+    \item The $\mlkemplus$ decapsulation replaces re-execution $\texttt{K-PKE}.\texttt{Enc}$ with computing the MAC tag. 
 \end{itemize}
 
 \subsection{Choosing a message authentication code (MAC)}\label{sec:choosing-a-message-authenticator}
-In Figure \ref{fig:ml-kem-plus-routines}, while $H$, $G$ and \textsf{KDF} are instantiated by SHA3-256, SHA3-512 and Shake256, respectively, there could be various choices of standardized and well-analyze MAC algorithms. For implementation, we instantiated the MAC with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}. All MACs are parameterized with a 256-bit key to ensure that MAC keys are at least as hard to guess as the underlying PKE plaintext. On the other hand, all MACs use 128-bit tag except for KMAC, which can have variable tag length. We suspect that 128-bit tag might be insufficient for the 192-bit and 256-bit security level, so for instantiation with the higher security levels, we only use KMAC with 192-bit and 256-bit tag length output.
+In Figure \ref{fig:ml-kem-plus-routines}, while $H$, $G$ and \textsf{KDF} are instantiated by SHA3-256, SHA3-512 and Shake256, respectively, there could be various choices of standardized and well-analyze MAC algorithms. For implementation, we instantiated the MAC with a selection that covered a wide range of MAC designs, including Poly1305 \cite{bernstein2005poly1305}, GMAC \cite{mcgrew2004galois}, CMAC \cite{iwata2003omac}\cite{black2000cbc}, and KMAC \cite{SP80053r4}. All MACs are parameterized with a 256-bit key to ensure that MAC keys are at least as hard to guess as the underlying PKE plaintext. On the other hand, all MACs use a 128-bit tag except for KMAC, which can have a variable tag length. We suspect that a 128-bit tag might be insufficient for the 192-bit and 256-bit security levels, so for instantiation with the higher security levels, we only use KMAC with 192-bit and 256-bit tag length outputs.
 
-\textbf{Poly1305 and GMAC} are both Carter-Wegman style authenticators \cite{wegman1981new} that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC operates by breaking the message into message blocks that can then be parsed into finite field elements. The tag is computed by evaluating a polynomial whose coefficients are the message blocks and whose interdeterminate is the secret key, which is also called a \textit{hash key}. Specifically, Poly1035 operates in the prime field $\mathbb{F}_q$ where $q = 2^{130} - 5$ whereas GMAC operates in the binary field $\mathbb{F}_{2^{128}}$.
+\textbf{Poly1305 and GMAC} are both Carter-Wegman style MACs \cite{wegman1981new} that compute the tag using finite field arithmetic. Generically speaking, Carter-Wegman MAC operates by breaking the message into message blocks that can then be parsed into finite field elements. The tag is computed by evaluating a polynomial whose coefficients are the message blocks and whose indeterminate is the secret key (also called a \textit{hash key}). Specifically, Poly1035 operates in the prime field $\mathbb{F}_q$ where $q = 2^{130} - 5$ whereas GMAC operates in the binary field $\mathbb{F}_{2^{128}}$.
 
-\textbf{CMAC} is based on the CBC-MAC with the block cipher instantiated from AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XOR'd with the previous block's output, then encrypted under AES using the symmetric key. The final output is XOR'd with a sub key derived from the symmetric key, before being encrypted for one last time.
+\textbf{CMAC} is based on the CBC-MAC with the block cipher instantiated from AES-256. To compute a CMAC tag, the message is first broke into 128-bit blocks with appropriate padding. Each block is first XORed with the previous block's output, then encrypted under AES using the symmetric key. The final output is XORed with a sub key derived from the symmetric key, before being encrypted for one last time.
 
-\textbf{KMAC} is based on the SHA-3 family of sponge functions \cite{FIPS202}. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC is the only MAC to support variable key and tag length, though we fixed the key length at 256 bits. On the other hand, we chose the appropriate tag length for the corresponding security level: when instantiated with ML-KEM-512, the tag length is 128 bits; with ML-KEM-768 the tag length is 192 bits; with ML-KEM-1024 the tag length is 256 bits.
+\textbf{KMAC} is based on the SHA-3 family of sponge functions \cite{FIPS202}. We chose KMAC-256, which uses Shake256 as the underlying extendable output functions. KMAC is the only MAC to support variable key and tag length, though we fixed the key length at 256 bits. On the other hand, we chose the appropriate tag length for the corresponding security level: when instantiated with ML-KEM-512, the tag length is 128 bits; with ML-KEM-768, the tag length is 192 bits; with ML-KEM-1024, the tag length is 256 bits.
 
 \section{Performance comparison}\label{sec:performance-comparison}
-We measured the real-world performance of the individual routines of our $\mlkemplus$ construction, as well as the round trip time of performing key exchange over a network in a variety of authentication modes. Our implementation extended from the reference implementation by the PQCrystals team \cite{kyberrefimpl}. All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance (AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM) in the \texttt{us-west-2} region.
+We measured the real-world performance of the individual routines of our $\mlkemplus$ construction, as well as the round trip time of performing key exchange over a network in a variety of authentication modes. Our implementation extended from the Kyber implementation \cite{kyberrefimpl}. All C code is compiled with \texttt{GCC 11.4.1} and \texttt{OpenSSL 3.0.8}. All binaries are executed on an AWS c7a.medium instance (AMD EPYC 9R14 CPU at 3.7 GHz and 1 GB of RAM) in the \texttt{us-west-2} region.
 
 \subsection{MAC performance}
-To isolate the performance characteristics of each authenticator in our instantiation of $\mlkemplus$ we measured the CPU cycles needed for each authenticator to compute a tag on random inputs whose sizes correspond to the ciphertext sizes of ML-KEM. The median CPU cycle counts in 10,000 rounds of testing are summarized in Table \ref{tbl:mac-performance}.
+To isolate the performance characteristics of each MAC, we measured the CPU cycles needed for each MAC to compute a tag on random inputs whose sizes correspond to the ciphertext sizes of ML-KEM. The median CPU cycle counts in 10,000 rounds of testing are summarized in Table \ref{tbl:mac-performance}.
 
 \begin{table}[h]
     \centering
-    \footnotesize
-    % \small
+    % \footnotesize
+    \small
     \caption{CPU cycles needed to compute tag on various input sizes}\label{tbl:mac-performance}
     \begin{tabular}[t]{|c|c|}
         \hline
@@ -1015,7 +1034,7 @@ To isolate the performance characteristics of each authenticator in our instanti
         \hline
         KMAC & 6373 \\
         \hline
-    \end{tabular}
+    \end{tabular}\hspace{.3cm}
     % TODO: 128-bit tag size is not suitable for higher security level.
     \begin{tabular}[t]{|c|c|}
         \hline
@@ -1035,7 +1054,7 @@ To isolate the performance characteristics of each authenticator in our instanti
         \hline
         KMAC & 9697 \\
         \hline
-    \end{tabular}
+    \end{tabular}\hspace{.3cm}
     \begin{tabular}[t]{|c|c|}
         \hline
         \multicolumn{2}{|c|}{\textbf{256-bit security}} \\
@@ -1058,7 +1077,7 @@ To isolate the performance characteristics of each authenticator in our instanti
 \end{table}
 
 \subsection{Individual routine performance}
-Compared to the $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in ML-KEM, the encrypt-then-MAC transformation achieves massive CPU cycle count reduction in decapsulation while incurring only a minimal increase of encapsulation cycle count and ciphertext size. Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the encrypt-then-MAC transformation over the $\kem^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the $\text{ML-KEM}^+$ can be found in Table \ref{tbl:kem-performance}.
+Compared to the $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used in ML-KEM, the encrypt-then-MAC transformation achieves massive CPU cycle count reduction in decapsulation while incurring only a minimal increase of encapsulation cycle count and ciphertext size. Since \texttt{K-PKE.\encrypt} carries significantly more computational complexity than \texttt{K-PKE.\decrypt} or any MAC we chose, the performance advantage of the encrypt-then-MAC transformation over the $\kem^{\not\bot}_m$ transformation is dominated by the runtime saving gained from replacing \emph{re-encryption} with MAC. A comparison between ML-KEM and variations of the $\mlkemplus$ can be found in Table \ref{tbl:kem-performance}.
 
 \emph{Remark.} We also included the performance of Kyber as it is submitted to the third round of the NIST PQC standardization project, which differs from ML-KEM by deriving the shared secret from hashing the public key, the PKE plaintext, and the PKE ciphertext, while ML-KEM derives its shared secret by hashing only the public key and the PKE plaintext. This results in ML-KEM having meaningful performance improvement in encapsulation over Kyber, though the performance difference in decapsulation is negligible.
 
@@ -1094,13 +1113,13 @@ Compared to the $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used
         \text{Kyber512} & 97811 & 98090 & 119937 & 120299 \\
         \hline
         % ML-KEM+-512
-        $\text{ML-KEM}^+$-512 w/ Poly1305 & 93157 & 93626 & 33733 & 33908 \\
+        $\mlkemplus$-512 w/ Poly1305 & 93157 & 93626 & 33733 & 33908 \\
         \hline
-        $\text{ML-KEM}^+$-512 w/ GMAC & 97369 & 97766 & 37725 & 37831 \\
+        $\mlkemplus$-512 w/ GMAC & 97369 & 97766 & 37725 & 37831 \\
         \hline
-        $\text{ML-KEM}^+$-512 w/ CMAC & 99739 & 99959 & 40117 & 39943 \\
+        $\mlkemplus$-512 w/ CMAC & 99739 & 99959 & 40117 & 39943 \\
         \hline
-        $\text{ML-KEM}^+$-512 w/ KMAC & 101009 & 101313 & 40741 & 40916 \\
+        $\mlkemplus$-512 w/ KMAC & 101009 & 101313 & 40741 & 40916 \\
         \hline
     \end{tabular}\vspace{0.3cm}
 
@@ -1131,13 +1150,13 @@ Compared to the $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used
         \hline
         \text{Kyber768} & 153061 & 153670 & 182129 & 182755 \\
         \hline
-        % $\text{ML-KEM}^+$-768 w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
+        % $\mlkemplus$-768 w/ Poly1305 & 146405 & 146860 & 43315 & 43463 \\
         % \hline
-        % $\text{ML-KEM}^+$-768 w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
+        % $\mlkemplus$-768 w/ GMAC & 149525 & 150128 & 46513 & 46706 \\
         % \hline
-        % $\text{ML-KEM}^+$-768 w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
+        % $\mlkemplus$-768 w/ CMAC & 153139 & 153735 & 49841 & 50074 \\
         % \hline
-        $\text{ML-KEM}^+$-768 w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
+        $\mlkemplus$-768 w/ KMAC & 155219 & 155848 & 52415 & 52611 \\
         \hline
     \end{tabular}\vspace{0.3cm}
 
@@ -1167,13 +1186,13 @@ Compared to the $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used
         \hline
         \text{Kyber1024} & 222351 & 223260 & 258231 & 259067 \\
         \hline
-        % $\text{ML-KEM}^+$-1024 w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
+        % $\mlkemplus$-1024 w/ Poly1305 & 205763 & 206499 & 51375 & 51562 \\
         % \hline
-        % $\text{ML-KEM}^+$-1024 w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
+        % $\mlkemplus$-1024 w/ GMAC & 208805 & 209681 & 54573 & 54780 \\
         % \hline
-        % $\text{ML-KEM}^+$-1024 w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
+        % $\mlkemplus$-1024 w/ CMAC & 213667 & 214483 & 59175 & 59408 \\
         % \hline
-        $\text{ML-KEM}^+$-1024 w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
+        $\mlkemplus$-1024 w/ KMAC & 216761 & 217468 & 62269 & 62516 \\
         \hline
     \end{tabular}
 \end{table}
@@ -1181,7 +1200,7 @@ Compared to the $\kem^{\not\bot}_m$ variant of Fujisaki-Okamoto transformed used
 \subsection{Key exchange protocols}\label{sec:key-exchange-protocols}
 The CRYSTALS-Kyber team \cite{DBLP:conf/eurosp/BosDKLLSSSS18} proposed three key exchange protocols: $\texttt{Kyber.KE}$ for a passively secure ephemeral key exchange, $\texttt{Kyber.UAKE}$ for unilaterally authenticated key exchange, and \texttt{Kyber.AKE} for mutually authenticated key exchange. First formally proposed in \cite{DBLP:conf/stoc/BellareCK98} and later analyzed in \cite{DBLP:conf/eurocrypt/CanettiK01}, these key exchange protocols all achieve weak forward secrecy, and the authenticated key exchange protocols are resistant to certain categories of active adversaries (e.g. Man-in-the-Middle attacks).
 
-We implemented each of the three Kyber key exchange protocols using $\mlkemplus$ and ML-KEM, then measured the round trip time of each handshake. We denote the party who sends the first message to be the client and the other party to be the server. Round trip time (RTT) is defined to be the time interval between the moment before the client starts generating ephemeral keypairs and the moment after the client derives the final session key. All experiments are run on a pair of AWS c7a.medium instances both located in the \texttt{us-west-2} region. For each experiment, a total of 10,000 rounds of key exchange are performed, with the median and average round trip time (measured in microsecond) recorded.
+We implemented each of the three Kyber key exchange protocols using $\mlkemplus$ and ML-KEM, then measured the round trip time of each handshake. We denote the party who sends the first message to be the client and the other party to be the server. Round trip time (RTT) is defined to be the time interval between the moment before the client starts generating ephemeral keypairs and the moment after the client derives the final session key. All experiments are run on a pair of AWS c7a.medium instances both located in the \texttt{us-west-2} region. For each experiment, a total of 10,000 rounds of key exchange are performed, with the median and average round trip time (measured in microsecond $\mu s$) recorded.
 
 % \emph{Remark.} Using KEM for authentication is especially interesting within the context of post-quantum cryptography: post-quantum KEM schemes usually enjoy better performance characteristics than post-quantum signature schemes with faster runtime, smaller memory footprint, and smaller communication sizes. KEMTLS \cite{DBLP:conf/ccs/SchwabeSW20} was proposed in 2020 as an alternative to existing TLS handshake protocols, and many experimental implementations have demonstrated the performance advantage.
 
@@ -1289,7 +1308,7 @@ In unauthenticated key exchange (KE), a single pair of ephemeral keypair $(\pk_e
 \end{table}
 
 \subsubsection{Unilaterally authenticated key exchange}\label{sec:uakex}
-In unilaterally authenticated key exchange (UAKE), the authenticating party proves its identity to the other party by demonstrating possession of a secret key that corresponds to a published long-term public key. In this implementation, the client possesses the long-term public key $\pk_S$ of the server, and the server authenticates itself by correctly decrypting the challenge encryption sent by the client. UAKE routines are summarized in Figure \ref{fig:uake-routines}. $\mlkemplus$-512 with Poly1305 reduces RTT by 29.0\% compared to ML-KEM-512; $\mlkemplus$-768 with KMAC reduces RTT by 28.4\%; $\mlkemplus$-1024 with KMAC reduces RTT by 31.3\% (See Table \ref{tbl:uake-rtt}).
+In unilaterally authenticated key exchange (UAKE), the authenticating party proves its identity to the other party by demonstrating possession of a secret key that corresponds to a published long-term public key. In this implementation, the client possesses the long-term public key $\pk_S$ of the server, and the server authenticates itself by correctly decrypting the challenge encryption sent by the client using its long-term secret key $\sk_S$ (see Figure \ref{fig:uake-routines}). $\mlkemplus$-512 with Poly1305 reduces RTT by 29.0\% compared to ML-KEM-512; $\mlkemplus$-768 with KMAC reduces RTT by 28.4\%; $\mlkemplus$-1024 with KMAC reduces RTT by 31.3\% (See Table \ref{tbl:uake-rtt}).
 
 \begin{figure}[h]
     \centering
@@ -1398,7 +1417,7 @@ In unilaterally authenticated key exchange (UAKE), the authenticating party prov
 \end{table}
 
 \subsubsection{Mutually authenticated key exchange (AKE)}\label{sec:akex}
-Mutually authenticated key exchange is largely identical to unilaterally authenticated key exchange, except for that client authentication is required. This means that client possesses server's long-term public key and its own long-term secret key, while the server possesses client's long-term public key and its own long-term secret key. The session key is derived by applying \texttt{KDF} onto the concatenation of shared secrets produced under the ephemeral keypair, server's long-term keypair, and client's long-term keypair, in this order. The key exchange routines are described in Figure \ref{fig:ake-routines}. $\mlkemplus$-512 with Poly1305 reduces RTT by 39.5\% compared to ML-KEM-512; $\mlkemplus$-768 with KMAC reduces RTT by 30.6\%; $\mlkemplus$-1024 with KMAC reduces RTT by 44.9\% (See Table \ref{tbl:ake-rtt}).
+Mutually authenticated key exchange is largely identical to unilaterally authenticated key exchange, except for that client authentication is required. This means that client possesses server's long-term public key $\pk_S$ and its own long-term secret key $\sk_C$, while the server possesses client's long-term public key $\pk_C$ and its own long-term secret key $\sk_S$. The session key is derived by applying \texttt{KDF} onto the concatenation of shared secrets produced under the ephemeral keypair, server's long-term keypair, and client's long-term keypair, in this order. The key exchange routines are described in Figure \ref{fig:ake-routines}. $\mlkemplus$-512 with Poly1305 reduces RTT by 39.5\% compared to ML-KEM-512; $\mlkemplus$-768 with KMAC reduces RTT by 30.6\%; $\mlkemplus$-1024 with KMAC reduces RTT by 44.9\% (See Table \ref{tbl:ake-rtt}).
 
 \begin{figure}[h]
     \centering
@@ -1507,7 +1526,7 @@ Mutually authenticated key exchange is largely identical to unilaterally authent
 \end{table}
 
 \section{Conclusions and future works}\label{sec:future-works}
-In this paper we propose a generic KEM transformation based on the encrypt-then-MAC pattern. We reduce the IND-CCA security of the encrypt-then-MAC KEM to the OW-PCA security of the input PKE and the one-time existential unforgeability of the input MAC in the random oracle model. Compared to the Fujisaki-Okamoto transformation, the encrypt-then-MAC transformation replaces the computationally expensive re-encryption with computing a MAC tag. At the cost of minimal increase in encapsulation cost and ciphertext size, the encrypt-then-MAC transformation substantially improves the efficiency of the decapsulation routine. Where the input PKE's encryption is slower than decryption, the encrypt-then-MAC transformation achieves meaningful time savings in practical key exchange protocols. We also propose $\mlkemplus$ as an efficient alternative to ML-KEM. Compared to ML-KEM, $\mlkemplus$ achieves great performance improvements in a variety of practical scenarios.
+In this paper, we propose a generic KEM transformation based on the encrypt-then-MAC pattern. We reduce the IND-CCA security of the encrypt-then-MAC KEM to the OW-PCA security of the input PKE and the one-time existential unforgeability of the input MAC in the random oracle model. Compared to the Fujisaki-Okamoto transformation, the encrypt-then-MAC transformation replaces the computationally expensive re-encryption with computing a MAC tag. At the cost of minimal increase in encapsulation cost and ciphertext size, the encrypt-then-MAC transformation substantially improves the efficiency of the decapsulation routine. Where the input PKE's encryption is slower than decryption, the encrypt-then-MAC transformation achieves meaningful time savings in practical key exchange protocols. We also propose $\mlkemplus$ as an efficient alternative to ML-KEM. Compared to ML-KEM, $\mlkemplus$ achieves great performance improvements in a variety of practical scenarios.
 
 
 % The encrypt-then-MAC transformation is a generic KEM construction whose IND-CCA security reduces to the OW-PCA security of the input PKE and the one-time existential unforgeability of the input MAC in the random oracle model. Compared to the Fujisaki-Okamoto transformation, the encrypt-then-MAC replaces the computationally expensive re-encryption with computing a MAC tag. At the cost of minimal increase in encapsulation cost and ciphertext size, the encrypt-then-MAC substantially improves the efficiency of the decapsulation routine. Where the input PKE's encryption is slower than decryption, the encrypt-then-MAC KEM achieves meaningful time savings in practical key exchange protocols.
