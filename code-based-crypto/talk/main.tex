@@ -1,0 +1,114 @@
+% TODO: outline of the talk:
+% - Overview: what is Classic McEliece, summary of Goppa code and the cryptosystem
+% - Preliminaries: finite field, polynomial ring, Bernoulli's rule
+% - Goppa decoder:
+%   - Lagrange interpolation
+%   - Best approximant theorem
+%   - Interpolate with error as a Reed Solomon decoder
+%   - Definition of code space, Goppa squaring theorem
+%   - Goppa decoder via Reed-Solomon decoder
+% - Canonical parity check matrix, systematic form, syndrome decoding
+% - Implementation details
+%   - Semi-systematic form
+\documentclass{article}
+\usepackage[margin=1in,letterpaper]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+
+% For source code
+\usepackage{listings}
+
+% Algorithms and pseudocode
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{hyperref}
+
+% Custom commands
+\usepackage{crypto-primitives}
+
+% Environments: definitions, theorems, propositions, corollaries, lemmas
+%    Theorems, propositions, and definitions are numbered within the section
+%    Corollaries are numbered within the theorem, though they are rarely used
+\newtheorem{definition}{Definition}[section]
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem*{remark}{Remark}
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{lemma}{Lemma}[theorem]
+
+
+\title{
+    A graduate introduction to classic McEliece
+}
+\author{
+    Ganyu (Bruce) Xu
+}
+% Leave the date field empty to display the date of compilation
+\date{November, 2024}
+
+\begin{document}
+%%%% TITLE %%%%%
+\maketitle
+
+\section{Introduction}
+Classic McEliece is an IND-CCA2 key encapsulation mechanism (KEM) submitted to NIST's post-quantum cryptography (PQC) standardization project. Its security is based on the conjectured intractability of the \textbf{Syndrome Decoding Problem}.
+
+This document provides an introduction to the mathematics behind classic McEliece with a particular emphasis on the details of binary Goppa code. We assume a graduate level of mathematical maturity, though most of the results can be reasoned about using first or second year undergraduate math.
+
+Classic McEliece is an appealing candidate for PQC because its cryptanalysis has been remarkably stable since its earliest conception in 1978 \cite{mceliece1978public} (whereas lattice-based cryptography saw enormous advance in its cryptanalysis in the last decade alone, forcing many latticed-based schemes to revise their parameters). Classic McEliece also has the following advantages: \begin{itemize}
+    \item Encryption is faster
+    \item Ciphertext is smaller
+    \item There is no decryption failure that can leak information about secret key
+\end{itemize}
+
+On the other hand, Classic McEliece has larger public key size and slower decryption routine.
+
+\subsection{A summary of binary Goppa code}
+Binary Goppa code is a linear error-correcting code. Each instance is parameteried by: \begin{itemize}
+    \item some base field $K = \mathbb{F}_{2^m}$
+    \item $n$ distinct field elements $\alpha_1, \alpha_2, \ldots, \alpha_n \in K$
+    \item An irreducible polynomial $g \in K[x]$ such that $\deg(g) = t$
+\end{itemize} 
+
+% TODO: need better summary
+
+\subsection{An overview of Classic McEliece}
+Each instance of Classic McEliece is parameterized by three integers: \begin{itemize}
+    \item $m$ is the size of the base field $K = \mathbb{F}_{2^m}$
+    \item $n$ is the size of code words: $\text{codewords} \subseteq K^n$
+    \item $t$ is the error-correcting capacity of the underlying Goppa code
+\end{itemize}
+
+\paragraph{Key generation.} Begin by randomly generating the parameters of a Goppa code instance, which include: \begin{itemize}
+    \item $n$ distinct field elements $\alpha_1, \alpha_2, \ldots, \alpha_n \in K$
+    \item A degree-$t$, square-free polynomial $g \in K[x]$ such that $g(\alpha_i) \neq 0$ for $1 \leq i \leq n$
+\end{itemize}
+
+$\alpha_1, \alpha_2, \ldots, \alpha_n$ and $g$ can be used to compute the canonical parity-check matrix $H \in K^{t \times n}$
+
+$$
+H_{i,j} = \frac{\alpha_j^{i - 1}}{g(\alpha_j)} \text{ for } 1 \leq i \leq t, 1 \leq j \leq n
+$$
+
+$H$ is then transformed into reduced row-echelon form (or systematic form per DJB) $H^\prime = [I_t \mid T]$ for some $T \in K^{t \times (n - t)}$. $T$ is returned as the public key. $\Gamma = (\alpha_1, \alpha_2, \ldots, \alpha_n, g)$ is returned as the secret key.
+
+\paragraph{Encryption.} The message space is the subset of $\mathbb{F}_2^n$ whose Hamming weight is exactly $t$:
+
+$$\mathcal{M} = \{\mathbf{e} \in \mathbb{F}_2^n \mid \mathop{wt}(\mathbf{e}) = t\}$$
+
+To encrypt, compute:
+
+$$\mathbf{y} \leftarrow [I_t \mid T] \mathbf{e}$$
+
+$\mathbf{y} \in K^t$ is returned as the ciphertext.
+
+\paragraph{Decryption.} Given $\mathbf{y} \in K^t$ and $\Gamma = (\alpha_1, \alpha_2, \ldots, \alpha_n, g)$, let $\mathbf{r} \leftarrow (y_1, y_2, \ldots, y_t, 0, 0, \ldots, 0) \in \mathbb{F}_2^n$. then feed $(\Gamma, \mathbf{r})$ into some Goppa decoder, which will directly recover $\mathbf{e} \in \mathbb{F}_2^n$ such that $\mathop{wt}(\mathbf{e}) = t$. Return $\mathbf{e}$ as the decryption.
+
+\section{Implementation details}
+% TODO: semi-systematic form
+% TODO: how to generate field ordering and irreducible polynomial
+
+\bibliographystyle{alpha}
+\bibliography{references}
+
+\end{document}
