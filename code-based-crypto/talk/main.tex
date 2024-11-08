@@ -104,6 +104,58 @@ $\mathbf{y} \in K^t$ is returned as the ciphertext.
 
 \paragraph{Decryption.} Given $\mathbf{y} \in K^t$ and $\Gamma = (\alpha_1, \alpha_2, \ldots, \alpha_n, g)$, let $\mathbf{r} \leftarrow (y_1, y_2, \ldots, y_t, 0, 0, \ldots, 0) \in \mathbb{F}_2^n$. then feed $(\Gamma, \mathbf{r})$ into some Goppa decoder, which will directly recover $\mathbf{e} \in \mathbb{F}_2^n$ such that $\mathop{wt}(\mathbf{e}) = t$. Return $\mathbf{e}$ as the decryption.
 
+\section{Preliminaries}
+% TODO: degree of polynomial
+% TODO: Hamming weight
+% TODO: Bernoulli's rule
+
+\section{Understanding binary Goppa code decoding}
+\subsection{Polynomial interpolation}
+
+\begin{theorem}[Lagrange Interpolation]\label{thm:lagrange-interpolation}
+    Let $K$ be a finite field, $\alpha_1, \alpha_2, \ldots, \alpha_n \in K$ be $n$ distinct field elements, and $r_1, r_2, \ldots, r_n \in K$ be $n$ (possibly non-distinct) elements. There exists a unique degree-$(n-1)$ polynomial $f$ such that $f(\alpha_i) = r_i$:
+
+    \begin{equation*}
+        f = \sum_{i=1}^n\left(
+            r_i \prod_{j \neq i}\frac{x - \alpha_j}{\alpha_i - \alpha_j}
+        \right)
+    \end{equation*}
+\end{theorem}
+
+It's easy to check that the interpolation is correct, and that the degree of $f$ is less than $n$. If there exists another $g \in K[x]$ with $\deg(g) < n$ that interpolates $(\alpha_i, r_i)_{i=1}^n$, then $f - g$ is a polynomial with $n$ distinct roots. However, $\deg(f-g)$ is less than $n$ since $\deg(f), \deg(g) < n$. Therefore, it must be that $f-g = 0$, which means that $f = g$, thus proving uniqueness.
+
+\subsection{Shamir's secret sharing}
+Lagrange interpolation can be used to build a secret sharing scheme \cite{shamir1979share}.
+
+% TODO: shamir secret sharing
+
+\subsection{Polynomial approximant}
+% TODO: need intuition?
+
+\begin{theorem}[Best approximant theorem]\label{thm:best-approximant-theorem}
+    Let $K$ be some finite field and $n, t$ be non-negative integers such that $2t < n$. Given polynomials $A, B \in K[x]$ such that $\deg(B) < \deg(A)$, then there exists unique pair of polynomials $a, b \in K[x]$ such that $\deg(a) \leq t$, $\deg(b) < \deg(a)$, $\gcd(a, b) = 1$, and $\deg(aB - bA) < n - t$. If $c, d \in K[x]$ is such that $\deg(c) \leq t$ and $\deg(cB - dA) < n - t$, then $(c, d) = \lambda (a, b)$ for some $\lambda \in K[x]$.
+\end{theorem}
+
+% TODO: proof
+
+\subsection{Interpolation with error}
+In this section we introduce an algorithm that can recover a degree $(n - 2t)$ polynomial given $n$ points with up to $t$ errors.
+
+Let $K$ be some finite field and $n, t$ be non-negative integers such that $2t < n$. Let $f \in K[x]$ be a polynomial with degree $\deg(f) < n - 2t$. Let $\alpha_1, \alpha_2, \ldots, \alpha_n$ be $n$ distinct elements. Denote $\mathbf{c} = (f(\alpha_1), f(\alpha_2), \ldots, f(\alpha_n)) \in K^n$. If $\mathbf{r} \in K^n$ is such that $\mathop{wt}(\mathbf{r} - \mathbf{c}) \leq t$, then the following procedure can recover $f$ using $\alpha_1, \alpha_2, \ldots, \alpha_n$ and $\mathbf{r}$: \begin{enumerate}
+    \item Let $A = \prod_{i=1}^n (x - \alpha_i)$
+    \item Let $B$ interpolate $(\alpha_i, r_i)$
+    \item Compute degree-$t$ approximant $(a, b)$ of $(A, B)$. The error can be corrected if and only if $a \mid A$
+    \item Compute $f = B - bA / a$. Furthermore, $(B - f)(\alpha_i) \neq 0$ if and only if $a(\alpha_i) = 0$.
+\end{enumerate}
+
+\begin{proof}
+    % TODO: proof
+\end{proof}
+
+\subsection{Goppa decoding}
+
+\subsection{Parity check matrix}
+
 \section{Implementation details}
 % TODO: semi-systematic form
 % TODO: how to generate field ordering and irreducible polynomial
