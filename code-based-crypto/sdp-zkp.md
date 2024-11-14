@@ -12,3 +12,5 @@ Each instance is parameterized by a $(n, k)$-linear code over some finite field 
     - sample random full-rank matrix $H \in K^{(n-k)\times n}$
     - compute $\mathbf{y} \leftarrow H\cdot\mathbf{e}$
     - $\texttt{sk} \leftarrow \mathbf{e}, \texttt{pk} \leftarrow (\mathbf{y}, H)$
+- **Commit**:
+    - Sample random word $\mathbf{u} \leftarrow K^n$
