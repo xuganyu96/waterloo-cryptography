@@ -4,3 +4,11 @@ Cayrel, Veron, and Alaoui proposed in 2010 the following zero-knowledge proof in
 $$
 \mathbf{y} = H\cdot\mathbf{e}
 $$
+
+Each instance is parameterized by a $(n, k)$-linear code over some finite field $K$, some chosen Hamming weight $w$. The procedure is as follows:
+
+- **Key generation:**
+    - sample random $\mathbf{e} \in K^n$ with Hamming weight $w$
+    - sample random full-rank matrix $H \in K^{(n-k)\times n}$
+    - compute $\mathbf{y} \leftarrow H\cdot\mathbf{e}$
+    - $\texttt{sk} \leftarrow \mathbf{e}, \texttt{pk} \leftarrow (\mathbf{y}, H)$
