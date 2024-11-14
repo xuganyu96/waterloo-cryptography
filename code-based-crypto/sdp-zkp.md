@@ -29,4 +29,4 @@ Each instance is parameterized by a $(n, k)$-linear code over some finite field 
 
 The following theorem is due to the original authors:
 
-> This protocol is complete and zero-knowledge. It is sound with soundness error $\epsilon = \frac{q}{2(q-1)}$ where $q = \vert K \vert$
+> This protocol is complete and zero-knowledge. It is sound with soundness error $\epsilon = \frac{q}{2(q-1)}$ where $q = \vert K \vert$. Under the random oracle model, if there exists a cheating prover with non-negligible advantage over the soundness error, then there exists a second PPT that can either find collision in the hash function, or solve the syndrome decoding problem.
