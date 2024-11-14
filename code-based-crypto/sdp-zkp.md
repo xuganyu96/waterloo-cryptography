@@ -17,4 +17,4 @@ Each instance is parameterized by a $(n, k)$-linear code over some finite field 
     - Sample random isometry $\sigma \leftarrow S_n \times (K^\ast)^n$
     - Compute $c_0 \leftarrow h(\sigma, H\cdot\mathcal{u})$ and $c_1 \leftarrow h(\sigma(\mathbf{u}), \sigma(\mathbf{e}))$
     - Return $c = (c_0, c_1)$
-- **Challenge 1**: Sample random $\beta \stackrel{\$}{\leftarrow} K^\ast$
+- **Challenge 1**: Sample random $\beta \stackrel{r}{\leftarrow} K^\ast$
