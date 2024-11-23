@@ -1,4 +1,4 @@
-TODO: need to fix attack output
+# Plaintext-checking attack on Kyber/ML-KEM
 
 ```bash
 export PEM_PATH="/path/to/pem"
