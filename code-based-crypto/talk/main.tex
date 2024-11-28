@@ -13,6 +13,7 @@
 \documentclass{article}
 \usepackage[margin=1in,letterpaper]{geometry}
 \usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{xcolor}
 
 % For source code
 \usepackage{listings}
@@ -51,7 +52,7 @@
 \maketitle
 
 \section{Introduction}
-Classic McEliece is an IND-CCA2 key encapsulation mechanism (KEM) submitted to NIST's post-quantum cryptography (PQC) standardization project. Its security is based on the conjectured intractability of the \textbf{Syndrome Decoding Problem}.
+Classic McEliece is an IND-CCA secure key encapsulation mechanism (KEM) submitted to NIST's post-quantum cryptography (PQC) standardization project. Its security is based on the conjectured intractability of the \textbf{Syndrome Decoding Problem}.
 
 This document provides an introduction to the mathematics behind classic McEliece with a particular emphasis on the details of binary Goppa code. We assume a graduate level of mathematical maturity, though most of the results can be reasoned about using first or second year undergraduate math.
 
@@ -124,35 +125,126 @@ $\mathbf{y} \in K^t$ is returned as the ciphertext.
 
 It's easy to check that the interpolation is correct, and that the degree of $f$ is less than $n$. If there exists another $g \in K[x]$ with $\deg(g) < n$ that interpolates $(\alpha_i, r_i)_{i=1}^n$, then $f - g$ is a polynomial with $n$ distinct roots. However, $\deg(f-g)$ is less than $n$ since $\deg(f), \deg(g) < n$. Therefore, it must be that $f-g = 0$, which means that $f = g$, thus proving uniqueness.
 
-\subsection{Shamir's secret sharing}
-Lagrange interpolation can be used to build a secret sharing scheme \cite{shamir1979share}.
+\paragraph{Shamir's secret sharing.} In the secret sharing scheme proposed by Shamir in 1979 \cite{shamir1979share}, the secret is a degree-$t-1$ polynomial, and each share is $(\alpha, g(\alpha))$ for some $\alpha\in K$. If there are $t$ distinct shares, then the secret polynomial can be recovered; if there are only $t-1$ shares, then there are as many unique polynomials as there are distinct possible points in the field, meaning that if the field $K$ has cryptographically large order, then any adversary with only $t-1$ shares will have negligible probability of recovering the secret. This scheme is information-theoretically secure.
 
-% TODO: shamir secret sharing
-
-\subsection{Polynomial approximant}
-% TODO: need intuition?
+\subsection{Low-degree approximant}
+{\color{red} Is low-degree approximant related to approximant in linear algebra? Probably yes, but we need a clear connection}
 
 \begin{theorem}[Best approximant theorem]\label{thm:best-approximant-theorem}
     Let $K$ be some finite field and $n, t$ be non-negative integers such that $2t < n$. Given polynomials $A, B \in K[x]$ such that $\deg(B) < \deg(A)$, then there exists unique pair of polynomials $a, b \in K[x]$ such that $\deg(a) \leq t$, $\deg(b) < \deg(a)$, $\gcd(a, b) = 1$, and $\deg(aB - bA) < n - t$. If $c, d \in K[x]$ is such that $\deg(c) \leq t$ and $\deg(cB - dA) < n - t$, then $(c, d) = \lambda (a, b)$ for some $\lambda \in K[x]$.
 \end{theorem}
 
-% TODO: proof
+\begin{proof}\label{proof:best-approximant-theorem}
+    Let's first bound the degree of the polynomial $aB - bA$: $\deg(aB) = \deg(a) + \deg(B) < n + t$, and similarly we have $\deg(bA) = \deg(b) + \deg(A) < n + t$. Therefore, $\deg(aB - bA) = \max(\deg(bA), \deg(aB)) < n + t$, which means that the maximal degree of $aB - bA$ is $n - t - 1$. We can write $aB - bA$ as follows:
 
-\subsection{Interpolation with error}
-In this section we introduce an algorithm that can recover a degree $(n - 2t)$ polynomial given $n$ points with up to $t$ errors.
+    \begin{equation*}
+        aB - bA = \sum_{i=0}^{n+t-1}k_{i} \cdot x^{i}
+    \end{equation*}
 
-Let $K$ be some finite field and $n, t$ be non-negative integers such that $2t < n$. Let $f \in K[x]$ be a polynomial with degree $\deg(f) < n - 2t$. Let $\alpha_1, \alpha_2, \ldots, \alpha_n$ be $n$ distinct elements. Denote $\mathbf{c} = (f(\alpha_1), f(\alpha_2), \ldots, f(\alpha_n)) \in K^n$. If $\mathbf{r} \in K^n$ is such that $\mathop{wt}(\mathbf{r} - \mathbf{c}) \leq t$, then the following procedure can recover $f$ using $\alpha_1, \alpha_2, \ldots, \alpha_n$ and $\mathbf{r}$: \begin{enumerate}
-    \item Let $A = \prod_{i=1}^n (x - \alpha_i)$
-    \item Let $B$ interpolate $(\alpha_i, r_i)$
-    \item Compute degree-$t$ approximant $(a, b)$ of $(A, B)$. The error can be corrected if and only if $a \mid A$
-    \item Compute $f = B - bA / a$. Furthermore, $(B - f)(\alpha_i) \neq 0$ if and only if $a(\alpha_i) = 0$.
+    Now consider a function $\sigma$ that maps $(a, b)$ to the higher-order $2t$ coefficients of $aB - bA$. Since the map $(a, b) \mapsto aB - bA$ is trivially linear, and the map from $aB - bA$ to its coefficients is trivially linear, it is easy to see that $\sigma: (a, b) \mapsto (k_{n+t-1}, k_{n+t-2}, \ldots, k_{n-t})$ is also a linear map.
+
+    Because $\deg(a) \leq t$ and $\deg(b) < t$, $a$ can have up to $t+1$ non-zero coefficients, and $b$ can have up to $t$ non-zero coefficients, so $(a, b)$ is an $2t+1$-dimensional linear space, while $\mathop{\text{Img}}(\sigma)$ has $2t$ dimensions. By the rank-nullity theorem, we know that $\sigma(a, b) = \mathbf{0}$ has non-zero solution. With this non-zero solution, the first $2t$ coefficients of $aB - bA$ are all zeros, so the degree of $aB - bA$ must be less than $n - t$.
+
+    % TODO: pathological case where one of a, b, A, B is zero?
+
+    At this point we have arrived at some $(a, b)$ such that $\deg(b) < \deg(a) \leq t$ and $\deg(aB - bA) < n - t$. If $\gcd(a, b) \neq 1$, then we can divide $a, b$ by the non-trivial GCD, which will make them co-prime while $\deg(aB - bA)$ must still be less than $n - t$. This proves the existence of co-prime degree-$t$ approximants, now we will prove the uniqueness of such a solution.
+
+    Suppose that $c, d \in K[x]$ are polynomials such that $\deg(d) < \deg(c) \leq t$ and $\deg(cB-dA) < n-t$ (but they are not necessarily co-prime), then consider the following equation:
+
+    \begin{equation*}
+        \det\left(
+            \begin{bmatrix}
+                a & c \\
+                aB-bA & cB-dA
+            \end{bmatrix}
+        \right) = a(cB-dA) - c(aB-bA) = (cb - ad)A
+    \end{equation*}
+
+    The degree of the middle term $\deg(a(cB-dA)-c(aB-bA))$ is less than $n$ because $\deg(cB-dA), \deg(aB-bA)$ are both less than $n - t$ and $\deg(a), \deg(c)$ are both at most $t$. On the other hand, since we assumed $\deg(A) = n$, $a(cB-dA)-c(aB-bA) = (cb-ad)A$ must imply that $cb-ad=0$. In addition, since we assumed $\gcd(a, b) = 1$, it must be that $a \mid c$, from here we naturally get $d = c/a \cdot b$. In other words, $(c, d) = c/a \cdot (a, b)$ is a non-zero multiple of $(a, b)$. Any other degree-$t$ approximants cannot have lower degree than $(a, b)$, which makes $(a, b)$ the \textit{best approximants}.
+\end{proof}
+
+Note that the proof above also gave an algorithm for finding $(a, b)$: given $A, B$, the coefficients of $aB-bA$ can be explicitly written as a linear system of equation with respect to the coefficients ot $(a, b)$, so finding non-zero $(a, b)$ is equivalent to solving a linear system $M \in K^{(2t+1) \times 2t}$. For the remainder of the paper we assume the existence of a well-defined function $\texttt{approximate}: (A, B, t) \mapsto (a, b)$
+
+\subsection{Interpolation with error}\label{sec:interpolate-with-error}
+Let $n, t$ be non-negative integers such that $2t < n$. Using low-degree polynomial approximants, we can recover a degree-$(n - 2t - 1)$ polynomial using evaluations at $n$ distinct points with up to $t$ errors. Specifically: \begin{enumerate}
+    \item $f \in K[x]$ is a polynomial with degree $\deg(f) < n - 2t$
+    \item $\alpha_1, \alpha_2, \ldots, \alpha_n \in K$ are distinct field elements
+    \item $r_1, r_2, \ldots, r_n \in K$ are such that $r_i \neq f(\alpha_i)$ at no more than $t$ positions
+\end{enumerate}
+
+The algorithm is as follows \begin{enumerate}\label{alg:interpolate-with-error}
+    \item Let $A = \prod_{i=1}^n(x-\alpha_i)$
+    \item Interpolate $B \in K[x]$ such that $B(\alpha_i) = r_i$ for $1 \leq i \leq n$
+    \item Compute degree-$t$ approximant $(a, b)$ of $(A, B)$ using theorem \ref{thm:best-approximant-theorem}. The error can be recovered if an only if $a \mid A$
+    \item Compute $\hat{f} = B - bA/a$, which will be the output
 \end{enumerate}
 
 \begin{proof}
-    % TODO: proof
+    let $S = \{i \mid r_i = f(\alpha_i) \}$ denote the set of positions where $r_i$ is correct. $A$ can be factored into two polynomials:
+
+    \begin{equation*}
+        A = \left(\prod_{i\in S}(x - \alpha_i)\right)\left(\prod_{i\not\in S}(x - \alpha_i)\right)
+    \end{equation*}
+
+    We denote the first factor by $E = \prod_{i\in S}(x-\alpha_i)$ and the second factor by $c = \prod_{i\not\in S}(x-\alpha_i)$, then $A = Ec$.
+
+    Now observe the polynomial $(B - f)$: since for all $i \in S$ we have $B(\alpha_i) = r_i = f(\alpha_i)$, we know that $x - \alpha_i$ divides $B - f$, and since $\alpha_i$'s are all distinct, $\prod_{i \in S}(x - \alpha_i) = E$ must divide $B - f$. In other words:
+
+    \begin{equation*}
+        Ed = B-f
+    \end{equation*}
+
+    for some non-zero polynomial $d \in K[x]$. Observe that:
+
+    \begin{equation*}
+    Ad = (Ec)d = (Ed)c = (B - f)c = Bc - fc
+    \end{equation*}
+
+    which re-arranges to:
+
+    \begin{equation*}
+    fc = cB-dA
+    \end{equation*}
+
+    Let's take a look at the degrees of each term: \begin{itemize}
+        \item $\deg(f) < n - 2t$ by assumption
+        \item $\deg(c) \leq t$ since we assumed there to be no more than $t$ errors
+        \item $\deg(fc) = \deg(f) + \deg(c) < (n - 2t) + t = n - t$
+        \item $\deg(A) = n$, $\deg(B) = n-1 < \deg(A)$
+    \end{itemize}
+
+    In other words, $(c, d)$ are degree-$t$ approximants of $(A, B)$. By Theorem \ref{thm:best-approximant-theorem}, we know that $(c, d) = \lambda(a, b)$ for some non-zero $\lambda \in K[x]$ and $(a, b)$ are the best degree-$t$ approximants of $(A, B)$. This means that $a \mid c$, and since $c \mid A$, it naturally follows that $a \mid A$.
+
+    Substituting $(c, d)$ with $\lambda(a, b)$ gives us the desired results:
+
+    \begin{equation*}
+        f = B - bA/a
+    \end{equation*}
 \end{proof}
 
+\begin{theorem}
+    $r_i \neq f(\alpha_i)$ if and only if $a(\alpha_i) = 0$
+\end{theorem}
+
+\begin{proof}
+    TODO: prove this theorem
+\end{proof}
+
+This is in fact, a Reed-Solomon decoder. In Reed-Solomon code, the set of symbols is the set of degree-$n-2t$ polynomials, encoding involves evaluating the polynomial at $n$ distinct points. If there are no more than $t$ errors, then applying algorithm \ref{alg:interpolate-with-error} will allow the decoder to recover the polynomial.
+
 \subsection{Goppa decoding}
+In this section we restrict $K$ to be finite field of characteristic 2 ($K = \mathbb{F}_{2^m}$).
+
+Each binary Goppa code is parameterized by $n$ distinct field elements $\alpha_1, \alpha_2, \ldots, \alpha_n \in K$ (called \textbf{field ordering}) and a degree-$t$ irreducible polynomial $g\in K[c]$ such that $g(\alpha_i)\neq 0$ for all $1 \leq i \leq n$. The set of code words is defined as follows:
+
+\begin{equation*}
+    \mathcal{C} = \{
+        \mathbf{c} \in \mathbb{F}_2^n 
+        \mid \sum_{i=1}^n \frac{c_iA}{x - \alpha_i} \equiv 0 \mod g
+    \}
+\end{equation*}
+
+where $A = \prod_{i=1}^n(x - \alpha_i)$.
 
 \subsection{Parity check matrix}
 
