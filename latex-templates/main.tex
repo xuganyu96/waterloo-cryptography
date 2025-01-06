@@ -11,10 +11,6 @@
 \usepackage{algpseudocode}
 \usepackage{hyperref}
 
-% Custom commands
-\usepackage{crypto-primitives}
-\usepackage{kyber-algos}
-
 % Environments: definitions, theorems, propositions, corollaries, lemmas
 %    Theorems, propositions, and definitions are numbered within the section
 %    Corollaries are numbered within the theorem, though they are rarely used
@@ -39,21 +35,10 @@
 %%%% TITLE %%%%%
 \maketitle
 
-\section{Kyber and ML-KEM }
-CRYSTALS-Kyber \cite{bos2018crystals} is an \texttt{IND-CCA} secure key encapsulation mechanism whose security is based on the hardness of the Module Learning with Error (MLWE) problem. It is submitted to NIST's ``Pots-Quantum Cryptography'' contest, where it advanced to the third round \cite{avanzi2019crystals}.
-
-A modified version was standardized by NIST \cite{key2023mechanism} and renamed to ``ML-KEM''.
-
-\kybercpapkekeygen
-\kybercpapkeenc
-\kybercpapkedec
-\kyberccakemkeygen
-\kyberccakemencap
-\kyberccakemdecap
-
-
+\section{Reed-Solomon code}
+Reed-Solomon code \cite{bellare1995optimal}
 
 \bibliographystyle{alpha}
-\bibliography{references}
+\bibliography{references.bib}
 
 \end{document}
