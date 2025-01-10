@@ -1,0 +1,266 @@
+\documentclass[runningheads]{llncs}
+
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{color}
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+\urlstyle{rm}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{listings}
+% \usepackage[linesnumbered,ruled,vlined]{algorithm2e}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}} % require "Require" with "Input"
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\begin{document}
+
+\title{Understanding binary Goppa decoding in Classic McEliece}
+
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%\titlerunning{Abbreviated paper title}
+
+\author{
+    Ganyu Xu\inst{1}
+    % First Author\inst{1}\orcidID{0000-1111-2222-3333} \and
+    % Second Author\inst{2,3}\orcidID{1111-2222-3333-4444} \and
+    % Third Author\inst{3}\orcidID{2222--3333-4444-5555}
+}
+% First names are abbreviated in the running head.
+% If there are more than two authors, 'et al.' is used.
+%
+\authorrunning{G. Xu et al.}
+
+\institute{
+    University of Waterloo, Waterloo, Ontario, Canada
+    \email{g66xu@uwaterloo.ca}
+}
+
+\maketitle 
+
+\begin{abstract}
+    Supplementary materials to ``Understanding binary Goppa decoding'' that reflect the actual decoder used in the reference implementations of Classic McEliece in NIST PQC Round 4 submission
+
+    \keywords{
+        Error-correcting code
+        \and Classic McEliece
+        \and Post-quantum cryptography
+    }
+\end{abstract}
+
+\section{Introduction}
+
+\section{Preliminaries}
+
+\section{Berlekamp-Massey Algorithm}\label{sec:berlekamp-massey-algorithm}
+The Berlekamp-Massey algorithm was first proposed by Elwin Berlekamp \cite{DBLP:journals/tit/Berlekamp68} for decoding BCH code and later extended by James Massey \cite{DBLP:journals/tit/Massey69} to synthesize shortest LFSR. In this section, we will review the Berlekamp-Massey algorithm from the perspective of finding the shortest LFSR that generates a given finite sequence, including some key results that proved the optimality of the generated LFSR.
+
+Let $\mathbb{F}$ be some finite field. A linear-feedback shift register (LFSR) of length $L$ is parameterized by the connection coefficients $c_1, c_2, \ldots, c_L \in \mathbb{F}$ and the seed values $s_0, s_1, \ldots, s_{L-1}\in\mathbb{F}$. An LFSR outputs an infinite sequence $s_0, s_1, \ldots$ where the first $L$ digits are the seed values, then for $j \geq L$:
+
+\begin{equation*}
+    s_j + \sum_{i=1}^{L}c_is_{j-i} = 0
+\end{equation*}
+
+By convention, an empty LFSR with length $0$ outputs an infinite sequence of all $0$'s. We further define the \textbf{connection polynomial} of an LFSR to be $C(x) = 1 + c_1x + c_2x^2 + \ldots + c_Lx^L$. Note that there is no requirement for the connection coefficients to be non-zero, so the degree of the polynomial can be less than the actual length of the corresponding LFSR.
+
+Let $\mathbf{s} = (s_0, s_1, \ldots) \in \mathbb{F}^\infty$ be some infinite sequence. Let $L_N(\mathbf{s})$ denote the length of the shortest LFSR that generates the first $N$ digits of $\mathbf{s}$ (where there is no ambiguity we will simply use $L_N$ for short). First observe that $L_N \leq N$ because one can always find an LFSR that generates the first $N$ digits simply by using these digits as the seed values. Second, observe that $L_N$ is \textbf{monotonically non-decreasing} with respect to $N$: $L_{N+1}\geq L_N$. This makes sense because any LFSR that generates the first $N+1$ digits is also an LFSR that generates the first $N$ digits, so the shortest LFSR that generates the first $N$ digits cannot be longer than the shortest LFSR that generates the first $N + 1$ digits.
+
+A summary of the shortest LFSR synthesis algorithm, as presented in \cite{DBLP:journals/tit/Massey69}, can be found in Figure \ref{fig:shortest-lfsr-synthesis}
+
+\begin{figure}[h]
+    \centering
+    \begin{algorithm}[H]
+        \caption{Shortest LFSR synthesis}\label{alg:shortest-lfsr-synthesis}
+        \begin{algorithmic}[1]
+            \Require $(s_0, s_1, \ldots, s_{N-1}) \in \mathbb{F}$
+            \Ensure The connection polynomial $C(x)$ and length $l$ of a shortest LFSR
+            \State $C(x) \leftarrow 1, l \leftarrow 0, n \leftarrow 0, B(x) \leftarrow 1, d_m \leftarrow 1, y \leftarrow 1$
+            \While{$n < N$}
+                \State $d_n \leftarrow s_n + \sum_{i=1}^{l}c_is_{n-i}$
+                \If{$d_n = 0$}
+                    \State $y \leftarrow y + 1$
+                \ElsIf{$2 l > n$}
+                    \State $C(x) \leftarrow C(x) - d_nd_m^{-1}x^yB(x)$
+                    \State $y \leftarrow y + 1$
+                \Else
+                    \State $T(x) \leftarrow C(x)$
+                    \State $C(x) \leftarrow C(x) - d_nd_m^{-1}x^yB(x)$
+                    \State $l \leftarrow n + 1 - l$
+                    \State $B(x) \leftarrow T(x)$
+                    \State $d_m \leftarrow d_n$
+                    \State $y \leftarrow 1$
+                \EndIf
+                \State $n \leftarrow n + 1$
+            \EndWhile
+            \State \Return $C(x), l$
+        \end{algorithmic}
+    \end{algorithm}
+    \caption{The Berlekamp-Massey algorithm iteratively constructs a shortest LFSR that generates some input sequence}\label{fig:shortest-lfsr-synthesis}
+\end{figure}
+
+The optimality of Algorithm \ref{alg:shortest-lfsr-synthesis} is proved in Theorem \ref{thm:shortest-lfsr-synthesis} below:
+
+\begin{theorem}[shortest LFSR synthesis]\label{thm:shortest-lfsr-synthesis}
+    Let $\mathbf{s}$ be an infinite sequence and $N \geq 0$. If there exists an LFSR with length $L_N(\mathbf{s})$ that generates $s_0, s_1, \ldots, s_{N-1}$ but not $s_{N}$, then $L_{N+1}(\mathbf{s}) = \max(L_N(\mathbf{s}), N + 1 - L_N(\mathbf{s}))$
+\end{theorem}
+
+To prove Theorem \ref{thm:shortest-lfsr-synthesis}, we will first prove a Lemma
+
+\begin{lemma}[LFSR length change]\label{lemma:lfsr-length-change}
+    If there exists an LFSR with length $L$ that generates $s_0, s_1, \ldots, s_{N-1}$ but not $s_N$, then the length $L^\prime$ of any LFSR that generates $s_0, s_1, \ldots, s_N$ must be such that $L^\prime \geq N + 1 - L$
+\end{lemma}
+
+\begin{proof}
+    Let $(c_1, c_2, \ldots, c_L)$ be an length-$L$ LFSR that generates $s_0, \ldots, s_{N-1}$ but not $s_N$. Let $(c_1^\prime, c_2^\prime, \ldots, c_{L^\prime}^\prime)$ be some length $L^\prime$ LFSR that generates $s_0, \ldots, s_N$, then by the definition of LFSR we have the following three equations:
+
+    \begin{align}
+        s_j &= -\sum_{i=1}^Lc_is_{j-i} & (L \leq j < N) \label{eq:lfsr-l-1}\\
+        s_N &\neq -\sum_{i=1}^Lc_is_{N-i} \label{eq:lfsr-l-neq}\\
+        s_j &= -\sum_{i=1}^{L^\prime}c_i^\prime s_{j-i} & (L^\prime \leq j \leq N) \label{eq:lfsr-l-prime}
+    \end{align}
+
+    If $L^\prime \leq N - L$, then $N-L \leq j \leq N$ falls in the range of equation \ref{eq:lfsr-l-prime}. The RHS of equation \ref{eq:lfsr-l-neq} can be re-written:
+
+    \begin{equation*}\begin{aligned}
+        -\sum_{i=1}^Lc_is_{N-i} &= -\sum_{i=1}^Lc_i (-\sum_{k=1}^{L^\prime} c_k^\prime s_{N-i-k}) \\
+        &= -\sum_{k=1}^{L^\prime} c_k^\prime (-\sum_{i=1}^Lc_i s_{N-i-k}) \\
+        &= -\sum_{k+1}^{L^\prime}c_k^{L^\prime} s_{N-k} \\
+        &= s_N
+    \end{aligned}\end{equation*}
+
+    This contradicts equation \ref{eq:lfsr-l-neq}, thus it must be that $L^\prime \geq N + 1 - L$.
+\end{proof}
+
+Let $n < N$. Let $C^{(n)}(x)$ denote the connection polynomial of the shortest LFSR that generates the first $n$ digits. If $C^{(n)}$ also generates $s_n$, then $C^{(n+1)} = C^{(n)}$ because of monotonicity. If $C^{(n)}$ does not generate $s_n$, then by Lemma \ref{lemma:lfsr-length-change} we have $L_{n+1} \geq n + 1 - L_n$. Furthermore because of monotonicity, $L_{n+1} \geq L_n$, thus we can establish a (recursive) lower bound : $L_{n+1} \geq \max(L_n, n + 1 - L_n)$.
+
+It turns out that this lower bound can be achieved: suppose $C^{(n)}$ generates the first $n$ digits but not the first $n+1$ digits. Let $d_n = s_n + \sum_{i=1}^{L_n}c_i^{(n)}s_{n-i}$, by the earlier assumption we know $d_n \neq 0$. Let $m$ be the number of digits such that $L_m < L_{m+1} = L_n$ ($m$ is the sequence length before the last LFSR length change) and let $d_m = s_m + \sum_{i=1}^{L_m}c_i^{(m)}s_{m - i}$. Because $L_m < L_{m+1}$, $d_m$ must also be non-zero. We claim that:
+
+\begin{equation*}
+    C^{(n+1)} = C^{(n)} - d_nd_m^{-1}x^{n-m}C^{(m)}
+\end{equation*}
+
+We need to verify two points: one is that $C^{(n+1)}$ indeed generates the first $n+1$ digits, second is that $C^{(n+1)}$ achieves the lower bound. First expand $C^{(n+1)}$:
+
+\begin{equation*}\begin{aligned}
+    C^{(n+1)} &= 1 + \sum_{i=1}^{L_n}c^{(n)}_ix^i - d_nd_m^{-1}x^{n-m}\left(1 + \sum_{i=1}^{L_m}c_i^{(m)}x^i\right) \\
+    &= 1 + \sum_{i=1}^{L_n}c^{(n)}_ix^i - d_nd_m^{-1}\left(x^{n-m} + \sum_{i=1}^{L_m}c_i^{(m)}x^{n - m + i}\right) \\
+\end{aligned}\end{equation*}
+
+Because of monotonicity we know $L_{n+1} \geq L_n, L_m$, so for $j \geq L_{n+1}$:
+
+\begin{equation*}\begin{aligned}
+   \text{j-th output} &= -\sum_{i=1}^{L_n}c_i^{(n)}s_{j-i} + d_nd_m^{-1}\left(
+        s_{j - (n - m)} + \sum_{i=1}^{L_m}c_i^{(m)}s_{j - (n - m + i)}
+    \right) \\
+    &= -\sum_{i=1}^{L_n}c_i^{(n)}s_{j-i} + d_nd_m^{-1}\left(
+        s_{m - (j - n)} + \sum_{i=1}^{L_m}c_i^{(m)}s_{m - (j - n) + i)}
+    \right)
+\end{aligned}\end{equation*}
+
+Where $j < n$, $-\sum_{i=1}^{L_n}c_i^{(n)}s_{j-i}$ evaluates to $s_j$, and $m-(j-n) < m$, so $s_{m - (j - n)} + \sum_{i=1}^{L_m}c_i^{(m)}s_{m - (j - n) + i} = 0$. The entire expression evaluates to $s_j$.
+
+On the other hand, if $j = n$, then $-\sum_{i=1}^{L_n}c_i^{(n)}s_{j-i} = s_j - d_n$, and $m-(j-n) = m$, so $s_{m - (j - n)} + \sum_{i=1}^{L_m}c_i^{(m)}s_{m - (j - n) + i} = d_m$. Thus:
+
+$$
+\text{j-th output} = (s_n - d_n) + d_nd_m^{-1}d_m = s_n
+$$
+
+Hence $C^{(n+1)}$ generates the first $n+1$ digits. For the second point, observe that:
+
+\begin{equation*}\begin{aligned}
+    \deg(C^{(n+1)}) &= \deg(C^{(n)} - d_nd_mx^{n-m}C^{(m)}) \\
+    &= \max(\deg(C^{(n)}), \deg(x^{n-m}C^{(m)})) \\
+    &= \max(L_n, n - m + L_m)
+\end{aligned}\end{equation*}
+
+We inductively assume that the lower bound holds for all $j < n$, then $L_n = L_{m+1} = \max(L_m, m+1-L_m)$. Since we assumed $L_m < L_{m+1}$, it must be that $L_n = L_{m+1} = m+1-L_m$. Therefore:
+
+\begin{equation*}\begin{aligned}
+    \deg(C^{(n+1)}) &= \max(L_n, n - m + L_m) \\
+    &= \max(L_n, n - m + (m + 1 - L_n)) \\
+    &= \max(L_n, n + 1 - L_n)
+\end{aligned}\end{equation*}
+
+This proves that the lower bound can be achieved, which proves Theorem \ref{thm:shortest-lfsr-synthesis}.
+
+There are two more points to discuss regarding Algorithm \ref{alg:shortest-lfsr-synthesis}. First, in the proof above we assumed that when $C^{(n)}$ fails to generate $s_n$, some $m: L_m < L_{m+1} < L_n$ exists, which is not the case for when $s_n$ is the first non-zero digit of the sequence. In this case, the algorithm simply set the initial condition to be such that $C^{(n+1)}$ is correct, and after this iteration, $m$ and its related parameters $C^{(m)}(x)$ and $d_m$ are guaranteed to be updated, so subsequent iterations will work according to the proof above.
+
+Second, there is a distinction betweeen $2l > n$ and $2l \leq n$ because it decides whether there is going to be a length change, which will decide how $C^{(m)}, d_m, y$ will be updated. When $2l > n$, $l \geq n + 1 - l$, so $l \leftarrow \max(l, n + 1 - l) = l$ does not incur a length change; on the other hand, when $2l \leq n$, $l < n + 1 - l$, so there will be a length change, meaning that the current set of connection polynomial $C^{(n)}$ and difference $d_n$ becomes ``the most recent length change''.
+
+\section{Alternant code decoding}\label{sec:alternant-code-decoding}
+
+\section{Double-sized syndrome}\label{sec:double-sized-syndrome}
+Let $\mathbb{F}_{2^m}$ be some binary extension field, let $\alpha_1, \alpha_2, \ldots, \alpha_n \in \mathbb{F}_{2^m}$ be $n$ distinct elements, let $g(x)\in\mathbb{F}_{2^m}[x]$ be a monic irreducible polynomial of degree $t$. The binary Goppa code parameterized by $\Gamma = (\alpha_1, \ldots, \alpha_n, g)$ is defined by:
+
+\begin{equation*}
+    \mathcal{C} = \{\mathbf{c}\in\mathbb{F}_2^n \mid \sum_{i=1}^n \frac{c_iA}{x - \alpha_i}\equiv 0 \mod g\}
+\end{equation*}
+
+Where $A = \prod_{i=1}^{n}(x - \alpha_i)$ is the vanishing polynomial of $\alpha_1, \ldots, \alpha_n$. Note that the original formulation of Goppa code only required $g\in\mathbb{F}_{2^m}[x]$ to be square-free and co-prime with $A$ (i.e. $g(\alpha_i)\neq 0$ for all $1 \leq i \leq n$), but in Classic McEliece $g$ is sampled to be monic irreducible, so we also require $g$ to be monic ireducible.
+
+Section \ref{sec:alternant-code-decoding} described how Algorithm \ref{alg:shortest-lfsr-synthesis} can be used to produce the error-locator polynomial $a(x)$ given a parity check matrix $H \in \mathbb{F}^{t \times n}$ and a received codeword $\mathbf{r}\in\mathbb{F}^n$, but this algorithm can only correct up to $\lceil\frac{t}{2}\rceil$ errors instead of the full-capacity $t$. In this section, we will review the techniques used in \cite{DBLP:journals/jce/HeyseG13} to allow the application of Berlekamp-Massey algorithm for recovering all $t$ errors.
+
+\begin{theorem}[Double-sized parity check matrix]\label{them:double-sized-parity-check-matrix}
+    Given binary Goppa code $\Gamma = (\alpha_1, \ldots, \alpha_n, g)$ over binary extension field $\mathbb{F}_{2^m}$, $\mathbf{c}\in\mathbf{F}_2^n$ is a codeword if and only if for all $0\leq s\leq 2t-1$:
+
+    \begin{equation*}
+        \sum_{i=1}^n \frac{\alpha_i^s c_i}{g^2(\alpha_i)} = 0
+    \end{equation*}
+\end{theorem}
+
+Theorem \ref{them:double-sized-parity-check-matrix} provides an alternative parity check matrix $H^{(2)}$ that has $2t$ rows instead of $t$ rows as in the canonical parity check matrix. For the remainder of this section we will prove Theorem \ref{them:double-sized-parity-check-matrix} using a series of Theorems and Lemmas.
+
+\begin{proof}
+    We begin by stating a well-known results:
+
+    \begin{theorem}[Goppa squaring]\label{thm:goppa-squaring}
+        Given binary extension field $\mathbb{F}_{2^m}$, $n$ distinct elements $\alpha_1, \ldots, \alpha_n$, and degree-$t$ monic irreducible polynomial $g(x)\in\mathbb{F}_{2^m}[x]$, $\sum_{i=1}^n\frac{c_iA}{x-\alpha_i}\equiv 0 \mod g$ if and only if $\sum_{i=1}^n\frac{c_iA}{x-\alpha_i}\equiv 0 \mod g^2$
+    \end{theorem}
+    See \cite{DBLP:journals/iacr/Bernstein22} for proof.
+
+    Let $B = \sum_{i=1}^n\frac{c_iA}{g^2(\alpha_i)(x - \alpha_i)}$ and $C = \sum_{i=1}^n\frac{c_iA}{x - \alpha_i}$, we claim:
+    
+    \begin{equation}\label{eq:double-sized-lemma-1}
+        C \equiv 0 \mod g^2 \Longleftrightarrow \deg(B) < n - 2t
+    \end{equation}
+
+    Observe that for each $1\leq j \leq n$, $B(\alpha_j)g^2(\alpha_j) = C(\alpha_j)$, which means that $\alpha_1, \alpha_2, \ldots, \alpha_n$ are roots of the polynomial $Bg^2 - C$. Consequently $Bg^2 - C$ is divisible by $A$.
+
+    If $C \equiv 0 \mod g^2$, then $Bg^2 - C = g^2(B - C/{g^2})$ where $B - C/g^2\in\mathbb{F}_{2^m}[x]$. Because $g$ and $A$ are co-prime, it must be that $A$ divides $B - C/g^2$, but the degree of $B$ and the degree of $C/g^2$ are both less than $n$, so it must be that $B - C/g^2 = 0$. It is easy to show that $\deg(C)\leq n - 1$, so $\deg(B) = \deg(C/g^2) \leq n - 1 - 2t < n - 2t$.
+
+    If $\deg(B) < n - 2t$, then $\deg(Bg^2) < n$, so $\deg(Bg^2 - C) < n$. But since $A$ divides $Bg^2 - C$, it must be that $Bg^2 - C = 0$, which implies that $C = Bg^2$ is divisible by $g^2$.
+
+    Now denote $Q = \sum_{i=1}^{n}\frac{\alpha_i^{2t}c_iA}{g^2(\alpha_i)(x - \alpha_i)}$. It is easy to show the follwing:
+
+    \begin{equation}\label{eq:double-sized-lemma-2}
+        \deg(B) < n - 2t \Longleftrightarrow \deg(x^{2t}B - Q) < n
+    \end{equation}
+    
+    On the RHS of the relation above:
+
+    \begin{equation*}\begin{aligned}
+        x^{2t}B - Q &= \sum_{i=1}^{n}\frac{(x^{2t} - \alpha_i^{2t})c_iA}{g^2(\alpha_i)(x - \alpha_i)} \\
+        &= \sum_{i=1}^{n}\left(
+            \frac{c_iA}{g^2(\alpha_i)}\sum_{s=0}^{2t-1}x^s\alpha_i^{2t-1-s}
+        \right) \\
+        &= A \sum_{s=0}^{2t-1}\left(\sum_{i=1}^{n}\left(\frac{c_i\alpha_i^{2t-1-s}}{g^2(\alpha_i)}\right)x^s\right)
+    \end{aligned}\end{equation*}
+
+    In other words, $x^{2t}B - Q$ is divisible by $A$, so $\deg(x^{2t}B - Q) < n$ if and only if $x^{2t}B - Q = 0$, which happens if and only if $\sum_{i=1}^{n}\frac{c_i\alpha_i^{2t-1-s}}{g^2(\alpha_i)} = 0$ for all $0\leq s \leq 2t-1$:
+
+    \begin{equation}\label{eq:double-sized-lemma-3}
+        \deg(x^{2t}B - Q) < n \Longleftrightarrow \sum_{i=1}^{n}\frac{c_i\alpha_i^s}{g^2(\alpha_i)} = 0 \;\;(0 \leq s \leq 2t-1)
+    \end{equation}
+
+    Combining Theorem \ref{thm:goppa-squaring} and equations \ref{eq:double-sized-lemma-1}, \ref{eq:double-sized-lemma-2}, \ref{eq:double-sized-lemma-3} proves Theorem \ref{them:double-sized-parity-check-matrix}.
+\end{proof}
+
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+\bibliographystyle{splncs04}
+\bibliography{references.bib}
+\end{document}
