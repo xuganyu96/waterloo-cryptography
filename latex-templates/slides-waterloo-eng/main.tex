@@ -1,0 +1,99 @@
+\documentclass{beamer}
+\usetheme{Madrid}
+% University of Waterloo black and gold
+\definecolor{uwaterlooblack}{RGB}{0,0,0}  % Example: Dark Blue
+\definecolor{uwaterloogold}{RGB}{235,171,0} % Example: Gold
+\definecolor{uwaterlooengpurple}{RGB}{93,0,150}
+
+% Apply custom colors
+\setbeamercolor{structure}{fg=uwaterlooengpurple} % Main color
+\setbeamercolor{frametitle}{fg=white, bg=uwaterlooengpurple} % Frame title
+\setbeamercolor{title}{fg=white} % Title color
+\setbeamercolor{author}{fg=uwaterlooblack} % Author color
+\setbeamercolor{date}{fg=uwaterlooblack} % Date color
+
+% Change itemize bullet colors
+\setbeamercolor{item}{fg=uwaterlooengpurple} 
+
+% Change sidebar colors (if used)
+\setbeamercolor{sidebar}{bg=uwaterlooblack, fg=white}
+
+%Information to be included in the title page:
+\title[Short title] %optional
+{Full title}
+
+\author{
+    A.~B.~Arthur\inst{1} \and J.~Doe\inst{2}
+}
+
+\institute[VFU] % (optional)
+{
+  \inst{1}%
+  Faculty of Engineering\\
+  University of Waterloo
+  \and
+  \inst{2}%
+  Faculty of Chemistry\\
+  Very Famous University
+}
+
+% \date{March 2025}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\begin{frame}
+\frametitle{Sample frame title}
+This is some text in the first frame. This is some text in the first frame. This is some text in the first frame.
+\end{frame}
+
+\begin{frame}{Example Slide}
+    This is an example slide with customized colors.
+    \begin{itemize}
+        \item First item
+        \item Second item
+        \item Third item
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Sample frame title}
+
+In this slide, some important text will be
+\alert{highlighted} because it's important.
+Please, don't abuse it.
+
+\begin{block}{Remark}
+Sample text
+\end{block}
+
+\begin{alertblock}{Important theorem}
+Sample text in red box
+\end{alertblock}
+
+\begin{examples}
+Sample text in green box. The title of the block is ``Examples".
+\end{examples}
+\end{frame}
+
+\begin{frame}
+\frametitle{Two-column slide}
+\begin{columns}
+\column{0.5\textwidth}
+This is a text in first column.
+$$E=mc^2$$
+\begin{itemize}
+\item First item
+\item Second item
+\end{itemize}
+
+\column{0.5\textwidth}
+This text will be in the second column
+and on a second thoughts, this is a nice looking
+layout in some cases.
+\end{columns}
+\end{frame}
+
+
+\end{document}
