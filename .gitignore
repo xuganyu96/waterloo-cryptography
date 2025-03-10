@@ -56,3 +56,6 @@ __pycache__/
 # Beamer
 *.nav
 *.snm
+
+# Personal stuff
+labs/
